@@ -149,15 +149,28 @@ with aba_edit:
         st.caption("O **e-mail do Google** do responsável libera a área da família: ele vê a carteirinha, "
                    "o embarque do dia, as mensalidades e pode avisar faltas.")
         resp = repo.responsaveis_do(cid, p["id"])
+        ac = repo.acessos(list(resp["email"].dropna())) if not resp.empty else {}
         for r in resp.itertuples():
             with st.container(border=True):
                 x1, x2 = st.columns([4, 1])
-                x1.markdown(f"**{r.nome}** {('· ' + r.parentesco) if r.parentesco else ''}"
-                            f"{' · 💰 financeiro' if r.financeiro else ''}  \n"
-                            f"📞 {r.telefone or '—'} · ✉️ {r.email or 'sem e-mail (não acessa o app)'}")
+                x1.markdown(f"**{_ui.esc(r.nome)}** {('· ' + _ui.esc(r.parentesco)) if r.parentesco else ''}"
+                            f"{' · 💰 financeiro' if r.financeiro else ''} "
+                            f"{_ui.selo_acesso(r.email, ac) if r.email else ''}  \n"
+                            f"📞 {_ui.esc(r.telefone or '—')} · ✉️ {_ui.esc(r.email or 'sem e-mail (não acessa o app)')}",
+                            unsafe_allow_html=True)
                 if x2.button("Remover", key=f"rm_{r.id}"):
                     repo.desvincular_responsavel(cid, p["id"], r.id)
                     st.rerun()
+                if r.email:
+                    msg = (f"Olá, {r.nome.split(' ')[0]}! {c['nome']} cadastrou você como responsável de "
+                           f"{p['nome']} no app Pequenos a Bordo. Acesse {_ui.APP_URL} e clique em \"Entrar com "
+                           f"Google\" usando o e-mail {r.email}. Lá você vê a carteirinha, acompanha o embarque, avisa "
+                           "faltas, vê as mensalidades e assina o contrato. 🚐")
+                    lk = link_whats(r.telefone, msg)
+                    if lk:
+                        st.link_button("Convidar no WhatsApp", lk, icon=":material/send:", key=f"conv_{r.id}")
+        if not resp.empty and resp["email"].notna().any():
+            _ui.aviso_modo_teste()
 
         outros = repo.responsaveis(cid)
         outros = outros[~outros["id"].isin(resp["id"])] if not resp.empty and not outros.empty else outros

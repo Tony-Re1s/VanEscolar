@@ -76,6 +76,26 @@ def tag(chave: str, texto: str | None = None) -> str:
     return f"<span class='ve-tag ve-{esc(chave)}'>{esc(texto or chave)}</span>"
 
 
+APP_URL = "https://pequenosabordo.streamlit.app"
+
+
+def selo_acesso(email: str | None, acessos: dict) -> str:
+    """Etiqueta 'já acessou' / 'ainda não entrou' para um e-mail."""
+    if not email:
+        return tag("aberto", "sem e-mail")
+    quando = acessos.get(email.strip().lower())
+    if quando is None:
+        return tag("vence_logo", "ainda não entrou")
+    from core.fmt import TZ
+    return tag("pago", "acessou " + quando.astimezone(TZ).strftime("%d/%m %H:%M"))
+
+
+def aviso_modo_teste():
+    import streamlit as st
+    st.caption("🔐 Enquanto o login estiver em **modo Teste** no Google, inclua o e-mail da pessoa em "
+               "**Google Cloud → Google Auth Platform → Público → Usuários de teste**, senão o Google bloqueia a entrada.")
+
+
 def vans_acessiveis(u: dict) -> list[dict]:
     """Vans que a pessoa pode operar na rota/chamada: todas da empresa dela (gestor) + as que ela dirige.
     Cada item: id, nome, placa, cid (empresa dona), empresa, gestor (True se ela é a gestora dessa empresa)."""

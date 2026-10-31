@@ -509,3 +509,13 @@ def rotas_dos_filhos(pids: list[str], dia: date) -> pd.DataFrame:
                ) as posicao
         from passageiros p join rotas_iniciadas ri on ri.van_id = p.van_id and ri.data = :d
         where p.id = any(cast(:ids as uuid[]))""", ids=pids, d=dia)
+
+
+# ------------------------------------------------------------------ convites / acesso
+def acessos(emails: list[str]) -> dict:
+    """{email: último acesso} de quem já entrou no app (quem não está no dict nunca entrou)."""
+    emails = [e.strip().lower() for e in emails if e]
+    if not emails:
+        return {}
+    df = db.ao_vivo("select email, ultimo_acesso from usuarios where email = any(cast(:e as text[]))", e=emails)
+    return dict(zip(df["email"], df["ultimo_acesso"])) if len(df) else {}

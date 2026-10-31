@@ -14,6 +14,9 @@ st.caption("O motorista entra com o **e-mail do Google** cadastrado aqui e vê *
 
 df = repo.vans(cid, so_ativas=False)
 
+from core.fmt import link_whats
+
+ac = repo.acessos(list(df["motorista_email"].dropna())) if not df.empty else {}
 for v in df.itertuples():
     eu = (v.motorista_email or "") == u["email"]
     quem = "você" if eu else (v.motorista_nome or "sem motorista")
@@ -22,8 +25,21 @@ for v in df.itertuples():
                     f"<span class='ve-sub'>{_ui.esc(v.veiculo or 'veículo não informado')} · "
                     f"{_ui.esc(v.placa or 'sem placa')} · {v.capacidade} lugares · {v.alunos} aluno(s) · "
                     f"motorista: {_ui.esc(quem)}"
-                    f"{'' if eu or not v.motorista_email else ' (' + _ui.esc(v.motorista_email) + ')'}</span>",
+                    f"{'' if eu or not v.motorista_email else ' (' + _ui.esc(v.motorista_email) + ')'}</span>"
+                    + ("" if eu or not v.motorista_email else " " + _ui.selo_acesso(v.motorista_email, ac)),
                     unsafe_allow_html=True)
+        if not eu and v.motorista_email:
+            msg = (f"Olá, {(v.motorista_nome or '').split(' ')[0] or 'tudo bem'}! Você foi cadastrado(a) como motorista "
+                   f"da {v.nome} no app Pequenos a Bordo ({c['nome']}). Acesse {_ui.APP_URL} e clique em "
+                   f"\"Entrar com Google\" usando o e-mail {v.motorista_email}. Lá você vê a rota, faz a chamada, "
+                   "inicia a rota e avisa os pais. 🚐")
+            lk = link_whats(v.motorista_telefone, msg)
+            if lk:
+                st.link_button("Convidar no WhatsApp", lk, icon=":material/send:")
+            else:
+                st.caption("Cadastre o WhatsApp do motorista para enviar o convite.")
+if not df.empty and any((e or "") != u["email"] for e in df["motorista_email"].dropna()):
+    _ui.aviso_modo_teste()
 
 NOVA = "➕ Nova van"
 opcoes = [NOVA] + [r.nome for r in df.itertuples()]
