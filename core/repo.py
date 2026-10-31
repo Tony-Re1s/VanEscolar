@@ -519,3 +519,40 @@ def acessos(emails: list[str]) -> dict:
         return {}
     df = db.ao_vivo("select email, ultimo_acesso from usuarios where email = any(cast(:e as text[]))", e=emails)
     return dict(zip(df["email"], df["ultimo_acesso"])) if len(df) else {}
+
+
+# ------------------------------------------------------------------ painel de mensalidades
+def serie_mensalidades(cid, ini: date, fim: date, hoje: date, van=None) -> pd.DataFrame:
+    """Por competência: previsto, recebido e vencido em aberto (isentos fora da conta)."""
+    return db.consultar(f"""
+        select m.competencia as mes,
+               sum(m.valor) filter (where coalesce(m.forma,'') <> 'Isento') as previsto,
+               sum(coalesce(m.valor_pago, 0)) as recebido,
+               sum(m.valor) filter (where m.pago_em is null and m.vencimento < :hoje) as vencido
+        from mensalidades m join passageiros p on p.id = m.passageiro_id
+        where m.condutor_id = :cid and m.competencia >= :i and m.competencia < :f and {_filtro_van('p.van_id')}
+        group by 1 order by 1""", cid=cid, i=ini, f=fim, hoje=hoje, van=van)
+
+
+def vencidas_todas(cid, hoje: date, van=None) -> pd.DataFrame:
+    """Todas as mensalidades vencidas e não pagas (qualquer mês), mais antigas primeiro."""
+    return db.consultar(_SEL_MENS + f""" where m.condutor_id = :cid and m.pago_em is null and m.vencimento < :hoje
+                                         and {_filtro_van('p.van_id')} order by p.nome, m.vencimento""",
+                        cid=cid, hoje=hoje, van=van)
+
+
+def atrasos_por_aluno(cid, desde: date, hoje: date, van=None) -> pd.DataFrame:
+    """Histórico de pontualidade por aluno: pagas em dia, pagas com atraso, média de dias de atraso, em aberto."""
+    return db.consultar(f"""
+        select p.nome as aluno,
+               count(*) filter (where m.pago_em is not null and m.pago_em <= m.vencimento) as em_dia,
+               count(*) filter (where m.pago_em > m.vencimento) as com_atraso,
+               round(avg(m.pago_em - m.vencimento) filter (where m.pago_em > m.vencimento)) as dias_medios,
+               count(*) filter (where m.pago_em is null and m.vencimento < :hoje) as vencidas,
+               coalesce(sum(m.valor) filter (where m.pago_em is null and m.vencimento < :hoje), 0) as em_aberto
+        from mensalidades m join passageiros p on p.id = m.passageiro_id
+        where m.condutor_id = :cid and m.competencia >= :d and m.vencimento < :hoje
+          and coalesce(m.forma, '') <> 'Isento' and {_filtro_van('p.van_id')}
+        group by p.nome
+        order by vencidas desc, com_atraso desc, dias_medios desc nulls last, p.nome""",
+                        cid=cid, d=desde, hoje=hoje, van=van)
