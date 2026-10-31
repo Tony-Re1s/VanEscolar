@@ -36,9 +36,14 @@ Eventuais danos causados ao veículo pelo(a) aluno(a), devidamente comprovados, 
 
 TITULO = "CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE TRANSPORTE ESCOLAR"
 
-# campos da cláusula 8 — (chave, rótulo); o responsável pode editar todos
-CAMPOS = [("aluno", "Aluno(a)"), ("escola", "Escola"), ("responsavel", "Responsável legal"), ("cpf", "CPF"),
-          ("telefone", "Telefone"), ("endereco", "Endereço")]
+# Condições do serviço — o gestor prepara por aluno
+MODALIDADES = ["Ida e volta", "Somente ida", "Somente volta"]
+# Dados do contratante — o responsável preenche e pode editar
+CAMPOS_CONTRATANTE = [("responsavel", "Nome completo"), ("cpf", "CPF"), ("rg", "RG"),
+                      ("nascimento", "Data de nascimento"), ("parentesco", "Parentesco com o(a) aluno(a)"),
+                      ("telefone", "Telefone")]
+CAMPOS_ENDERECO = [("cep", "CEP"), ("rua", "Rua / avenida"), ("numero", "Número"), ("complemento", "Complemento"),
+                   ("bairro", "Bairro"), ("cidade", "Cidade"), ("uf", "UF")]
 
 
 def preambulo(empresa: dict) -> str:
@@ -55,12 +60,74 @@ def clausulas(empresa: dict) -> str:
     return (empresa.get("contrato_clausulas") or "").strip() or CLAUSULAS_PADRAO
 
 
-def montar_texto(empresa: dict, dados: dict) -> str:
+def _brl(v) -> str:
+    s = f"{float(v or 0):,.2f}"
+    return "R$ " + s.replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def _data(v) -> str:
+    if not v:
+        return ""
+    if isinstance(v, str):
+        return v if "/" in v else "/".join(reversed(v.split("-")))
+    return v.strftime("%d/%m/%Y")
+
+
+def servico_padrao(aluno: dict, ano: int) -> dict:
+    """Condições sugeridas a partir do cadastro do aluno (o gestor ajusta antes de liberar)."""
+    from datetime import date
+    ida, volta = bool(aluno.get("faz_ida", True)), bool(aluno.get("faz_volta", True))
+    modalidade = "Ida e volta" if ida and volta else "Somente ida" if ida else "Somente volta"
+    ini = aluno.get("inicio")
+    ini = ini if ini and getattr(ini, "year", 0) == ano else date(ano, 1, 1)
+    fim = aluno.get("fim")
+    fim = fim if fim and getattr(fim, "year", 0) == ano else date(ano, 12, 31)
+    casa = ", ".join(x for x in (aluno.get("endereco"), aluno.get("bairro")) if x)
+    escola = " – ".join(x for x in (aluno.get("escola"), aluno.get("escola_endereco")) if x)
+    return dict(aluno=aluno.get("nome") or "", escola=aluno.get("escola") or "", turno=aluno.get("turno_txt") or "",
+                modalidade=modalidade, horario_busca="", horario_entrega="", embarque=casa, desembarque=escola,
+                inicio=ini.isoformat(), fim=fim.isoformat(), valor_parcela=float(aluno.get("mensalidade") or 0),
+                parcelas=12, dia_vencimento=int(aluno.get("dia_venc") or 10))
+
+
+def _numero(clausulas_txt: str) -> int:
+    return len(re.findall(r"(?mi)^CL[ÁA]USULA", clausulas_txt))
+
+
+def linhas_servico(sv: dict) -> list[str]:
+    total = float(sv.get("valor_parcela") or 0) * int(sv.get("parcelas") or 0)
+    horarios = " · ".join(x for x in (f"busca às {sv['horario_busca']}" if sv.get("horario_busca") else "",
+                                      f"entrega às {sv['horario_entrega']}" if sv.get("horario_entrega") else "") if x)
+    return [f"Aluno(a): {sv.get('aluno', '')}",
+            f"Escola: {sv.get('escola', '')}",
+            f"Turno: {sv.get('turno', '')}",
+            f"Modalidade: {sv.get('modalidade', '')}",
+            f"Horários: {horarios or 'conforme combinado'}",
+            f"Endereço de embarque: {sv.get('embarque', '')}",
+            f"Endereço de desembarque: {sv.get('desembarque', '')}",
+            f"Vigência: de {_data(sv.get('inicio'))} a {_data(sv.get('fim'))}",
+            f"Valor: {_brl(total)}, em {int(sv.get('parcelas') or 0)} parcelas de {_brl(sv.get('valor_parcela'))}, "
+            f"com vencimento todo dia {int(sv.get('dia_vencimento') or 0)}"]
+
+
+def endereco_txt(d: dict) -> str:
+    rua = ", ".join(x for x in (d.get("rua"), d.get("numero"), d.get("complemento")) if x)
+    cid = "/".join(x for x in (d.get("cidade"), d.get("uf")) if x)
+    return " – ".join(x for x in (rua, d.get("bairro"), cid, f"CEP {d['cep']}" if d.get("cep") else "") if x)
+
+
+def linhas_contratante(d: dict) -> list[str]:
+    return [f"{rot}: {d.get(k) or ''}" for k, rot in CAMPOS_CONTRATANTE] + [f"Endereço: {endereco_txt(d)}"]
+
+
+def montar_texto(empresa: dict, servico: dict, contratante: dict) -> str:
     """Contrato completo em texto (é o que fica congelado e gera o código de conferência)."""
-    linhas = [TITULO, "", preambulo(empresa), "", clausulas(empresa), "",
-              "CLÁUSULA 8ª – DOS DADOS DO ALUNO E RESPONSÁVEL"]
-    linhas += [f"{rot}: {dados.get(k) or ''}" for k, rot in CAMPOS]
-    linhas += ["", f"Local e data: {dados.get('local') or ''}, {dados.get('data') or ''}"]
+    cl = clausulas(empresa)
+    n = _numero(cl)
+    linhas = [TITULO, "", preambulo(empresa), "", cl, "",
+              f"CLÁUSULA {n + 1}ª – DAS CONDIÇÕES DO SERVIÇO", *linhas_servico(servico), "",
+              f"CLÁUSULA {n + 2}ª – DOS DADOS DO CONTRATANTE", *linhas_contratante(contratante), "",
+              f"Local e data: {contratante.get('local') or ''}, {contratante.get('data') or ''}"]
     return "\n".join(linhas)
 
 
@@ -118,7 +185,8 @@ def gerar_pdf(c: dict, empresa: dict) -> bytes:
         if not linha:
             continue
         if linha.upper().startswith("CLÁUSULA") or linha.upper().startswith("CLAUSULA"):
-            na_8 = "8ª" in linha
+            na_8 = any(k in linha.upper() for k in ("DAS CONDIÇÕES DO SERVIÇO", "DOS DADOS DO CONTRATANTE",
+                                                      "DOS DADOS DO ALUNO"))
             out.append(Paragraph(escape(linha), cab))
         elif na_8 or linha.startswith("Local e data:"):
             rot, _, val = linha.partition(":")
@@ -127,6 +195,7 @@ def gerar_pdf(c: dict, empresa: dict) -> bytes:
             out.append(Paragraph(escape(linha), corpo))
 
     out.append(Spacer(1, 14))
+    ini_assin = len(out)
     out.append(Paragraph("<b>Assinatura eletrônica do(a) CONTRATANTE</b>", corpo))
     out.append(Paragraph(escape(f"{c['responsavel_nome']} — {c['responsavel_email']} — aceito em "
                                 f"{_quando(c['responsavel_assinou_em'])}"), corpo))
@@ -141,5 +210,7 @@ def gerar_pdf(c: dict, empresa: dict) -> bytes:
     out.append(Paragraph(escape(
         f"Documento assinado eletronicamente no app Pequenos a Bordo, com identificação das partes por login "
         f"Google. Código de conferência: {c['codigo']}. Contrato {c['ano']}."), peq))
+    from reportlab.platypus import KeepTogether
+    out = out[:ini_assin - 1] + [KeepTogether(out[ini_assin - 1:])]   # assinaturas nunca ficam sozinhas na página
     doc.build(out)
     return buf.getvalue()

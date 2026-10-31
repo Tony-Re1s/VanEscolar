@@ -188,48 +188,119 @@ with aba_edit:
                         st.rerun()
 
 # ------------------------------------------------------------------ contratos
+def _form_servico(r, sv: dict, chave: str):
+    """Formulário das condições do serviço (gestor). Devolve o dict ou None se não salvou."""
+    from datetime import date as _date
+    from core import contrato as ct
+    with st.form(chave):
+        a, b = st.columns(2)
+        aluno_n = a.text_input("Aluno(a)", value=sv.get("aluno", ""))
+        escola_n = b.text_input("Escola", value=sv.get("escola", ""))
+        a, b, cc, dd = st.columns(4)
+        turno = a.selectbox("Turno", list(TURNOS.values()),
+                            index=list(TURNOS.values()).index(sv["turno"]) if sv.get("turno") in TURNOS.values() else 0)
+        modal = b.selectbox("Modalidade", ct.MODALIDADES,
+                            index=ct.MODALIDADES.index(sv["modalidade"]) if sv.get("modalidade") in ct.MODALIDADES else 0)
+        hb = cc.text_input("Horário de busca", value=sv.get("horario_busca", ""), placeholder="06:40")
+        he = dd.text_input("Horário de entrega", value=sv.get("horario_entrega", ""), placeholder="12:30")
+        embarque = st.text_input("Endereço de embarque", value=sv.get("embarque", ""))
+        desembarque = st.text_input("Endereço de desembarque", value=sv.get("desembarque", ""))
+        a, b = st.columns(2)
+        ini = a.date_input("Início", value=_date.fromisoformat(sv["inicio"]), format="DD/MM/YYYY")
+        fim = b.date_input("Fim", value=_date.fromisoformat(sv["fim"]), format="DD/MM/YYYY")
+        a, b, cc = st.columns(3)
+        parcela = a.number_input("Valor da parcela (R$)", min_value=0.0, step=10.0, value=float(sv.get("valor_parcela", 0)))
+        parcelas = b.number_input("Nº de parcelas", min_value=1, max_value=12, value=int(sv.get("parcelas", 12)))
+        dia = cc.number_input("Dia do vencimento", min_value=1, max_value=28, value=int(sv.get("dia_vencimento", 10)))
+        st.caption(f"Valor total: {brl(parcela * parcelas)}")
+        ok = st.form_submit_button("Salvar e liberar para o responsável", type="primary")
+    if not ok:
+        return None
+    if fim < ini:
+        st.error("O fim é antes do início.")
+        return None
+    return dict(aluno=aluno_n.strip(), escola=escola_n.strip(), turno=turno, modalidade=modal,
+                horario_busca=hb.strip(), horario_entrega=he.strip(), embarque=embarque.strip(),
+                desembarque=desembarque.strip(), inicio=ini.isoformat(), fim=fim.isoformat(),
+                valor_parcela=float(parcela), parcelas=int(parcelas), dia_vencimento=int(dia))
+
+
 with aba_ct:
     from core import contrato as ct
-    from core.fmt import TZ, data_br, link_whats as _lw
+    from core.fmt import TZ, link_whats as _lw
     ano = hoje().year
     emp = repo.empresa(cid)
+    eu_nome = st.session_state["usuario"].get("nome") or st.session_state["usuario"]["email"]
     cts = repo.contratos_empresa(cid, ano)
+    por_id = {r.id: r._asdict() for r in todos.itertuples()} if not todos.empty else {}
+
+    def _padrao(pid):
+        a = dict(por_id.get(pid, {}))
+        a["turno_txt"] = TURNOS.get(a.get("turno"), "")
+        return ct.servico_padrao(a, ano)
+
     if cts.empty:
         st.info("Nenhum aluno ativo.")
     else:
         n = cts["situacao"].value_counts()
-        st.caption(f"Contratos {ano}: {n.get('ok', 0)} assinados pelas duas partes · {n.get('assinar', 0)} aguardando "
-                   f"a sua assinatura · {n.get('pendente', 0)} pendentes com o responsável")
+        st.caption(f"Contratos {ano}: {n.get('ok', 0)} assinados · {n.get('assinar', 0)} para você assinar · "
+                   f"{n.get('pendente', 0)} com o responsável · {n.get('preparar', 0)} para preparar")
         if not emp.get("cnpj"):
-            st.warning("Preencha o **CNPJ** e o nome da contratada em **Minha empresa → Contrato** antes de pedir "
+            st.warning("Preencha o **CNPJ** e o nome da contratada em **Minha empresa → Contrato** antes de liberar "
                        "os contratos.", icon=":material/contract_edit:")
-        filtro = st.segmented_control("Mostrar", ["Todos", "Para eu assinar", "Pendentes", "Assinados"],
-                                      default="Todos", key="f_ct", label_visibility="collapsed")
-        mapa = {"Para eu assinar": "assinar", "Pendentes": "pendente", "Assinados": "ok"}
+        sem = cts[cts["situacao"] == "preparar"]
+        if len(sem):
+            with st.popover(f"Liberar {len(sem)} contrato(s) com as condições do cadastro",
+                            icon=":material/bolt:"):
+                st.caption("Usa a mensalidade, o vencimento, o turno, ida/volta e os endereços do cadastro de cada "
+                           "aluno, 12 parcelas e o ano todo. Você pode ajustar um a um depois, enquanto o responsável "
+                           "não assinar.")
+                if st.button("Liberar todos", type="primary"):
+                    for pid in sem["passageiro_id"]:
+                        repo.preparar_contrato(cid, pid, ano, _padrao(pid), eu_nome)
+                    st.rerun()
+
+        filtro = st.segmented_control("Mostrar", ["Todos", "Preparar", "Com o responsável", "Para eu assinar",
+                                                  "Assinados"], default="Todos", key="f_ct",
+                                      label_visibility="collapsed")
+        mapa = {"Preparar": "preparar", "Com o responsável": "pendente", "Para eu assinar": "assinar",
+                "Assinados": "ok"}
         if filtro in mapa:
             cts = cts[cts["situacao"] == mapa[filtro]]
         rot = {"ok": ("pago", "Assinado ✅"), "assinar": ("vence_logo", "Assine você"),
-               "pendente": ("aberto", "Com o responsável")}
+               "pendente": ("aberto", "Com o responsável"), "preparar": ("vencido", "Preparar")}
         for r in cts.itertuples():
             with st.container(border=True):
                 cls, txt = rot[r.situacao]
                 st.markdown(f"**{_ui.esc(r.aluno)}** {_ui.tag(cls, txt)}"
                             f"{' <span class=ve-sub>· ' + _ui.esc(r.van) + '</span>' if r.van else ''}",
                             unsafe_allow_html=True)
-                if r.situacao == "pendente":
-                    if not r.tem_email:
-                        st.caption("Sem e-mail do Google no responsável — cadastre na aba **Cadastrar / editar** "
-                                   "para ele conseguir assinar.")
-                    else:
-                        tel = todos.loc[todos["id"] == r.passageiro_id, "telefone_resp"].squeeze() \
-                            if not todos.empty else None
-                        msg = (f"Olá! O contrato de transporte escolar de {r.aluno} ({ano}) já está no app "
-                               "Pequenos a Bordo: https://pequenosabordo.streamlit.app — entre com o seu Google, "
-                               "confira os dados e clique em Assinar e enviar. Obrigado!")
-                        lk = _lw(tel, msg)
-                        if lk:
-                            st.link_button("Lembrar no WhatsApp", lk, icon=":material/chat:")
+
+                if r.situacao in ("preparar", "pendente"):
+                    sv = dict(r.servico) if r.servico else _padrao(r.passageiro_id)
+                    if r.situacao == "pendente":
+                        st.caption("  ·  ".join(ct.linhas_servico(sv)[3:]))
+                        if not r.tem_email:
+                            st.caption("⚠️ Sem e-mail do Google no responsável — cadastre na aba **Cadastrar / "
+                                       "editar** para ele conseguir assinar.")
+                        else:
+                            tel = todos.loc[todos["id"] == r.passageiro_id, "telefone_resp"].squeeze() \
+                                if not todos.empty else None
+                            msg = (f"Olá! O contrato de transporte escolar de {r.aluno} ({ano}) já está no app "
+                                   "Pequenos a Bordo: https://pequenosabordo.streamlit.app — entre com o seu Google, "
+                                   "confira as condições, preencha seus dados e clique em Assinar e enviar. Obrigado!")
+                            lk = _lw(tel if isinstance(tel, str) else None, msg)
+                            if lk:
+                                st.link_button("Lembrar no WhatsApp", lk, icon=":material/chat:")
+                    titulo = "Preparar contrato" if r.situacao == "preparar" else "Ajustar condições"
+                    with st.expander(titulo, expanded=False):
+                        novo = _form_servico(r, sv, f"sv_{r.passageiro_id}")
+                        if novo:
+                            repo.preparar_contrato(cid, r.passageiro_id, ano, novo, eu_nome)
+                            st.toast("Contrato liberado para o responsável.")
+                            st.rerun()
                     continue
+
                 st.caption(f"Assinado por {r.responsavel_nome} em "
                            f"{r.responsavel_assinou_em.astimezone(TZ).strftime('%d/%m/%Y %H:%M')}"
                            + (f" · contratada em {r.contratada_assinou_em.astimezone(TZ).strftime('%d/%m/%Y %H:%M')}"
@@ -239,20 +310,15 @@ with aba_ct:
                 if r.situacao == "assinar":
                     if x1.button("Assinar", key=f"ass_{r.contrato_id}", type="primary", icon=":material/draw:",
                                  use_container_width=True):
-                        repo.assinar_contrato_contratada(cid, r.contrato_id,
-                                                         st.session_state["usuario"].get("nome") or
-                                                         st.session_state["usuario"]["email"])
+                        repo.assinar_contrato_contratada(cid, r.contrato_id, eu_nome)
                         st.rerun()
                 x2.download_button("PDF", ct.gerar_pdf(c_full, emp), file_name=f"contrato_{ano}_{r.aluno}.pdf",
                                    mime="application/pdf", icon=":material/download:", key=f"pdfg_{r.contrato_id}",
                                    use_container_width=True)
                 with x3.popover("Descartar", icon=":material/delete:", use_container_width=True):
-                    st.caption("Apaga este contrato para o responsável preencher e assinar de novo "
-                               "(ex.: dados errados).")
+                    st.caption("Apaga este contrato (inclusive as assinaturas). Depois é só preparar e liberar de novo.")
                     if st.button("Confirmar descarte", key=f"desc_{r.contrato_id}"):
                         repo.cancelar_contrato(cid, r.contrato_id)
                         st.rerun()
-                with st.expander("Ver dados preenchidos"):
-                    d = c_full["dados"]
-                    st.markdown("  \n".join(f"**{rot}:** {_ui.esc(d.get(k, ''))}" for k, rot in ct.CAMPOS)
-                                + f"  \n**Local e data:** {_ui.esc(d.get('local', ''))}, {_ui.esc(d.get('data', ''))}")
+                with st.expander("Ver contrato"):
+                    st.text(c_full["texto"] or "")

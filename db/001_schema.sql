@@ -222,3 +222,23 @@ create table if not exists contratos (
   unique (passageiro_id, ano)
 );
 create index if not exists ix_contratos_condutor on contratos(condutor_id, ano);
+
+-- v4 — contrato em duas etapas: o gestor prepara as condições do serviço (servico) e libera;
+-- o responsável completa os dados dele (dados) e assina. Até lá os campos de assinatura ficam vazios.
+alter table contratos add column if not exists servico jsonb;
+alter table contratos add column if not exists preparado_por text;
+alter table contratos add column if not exists preparado_em timestamptz;
+alter table contratos alter column texto drop not null, alter column dados drop not null,
+  alter column codigo drop not null, alter column responsavel_email drop not null,
+  alter column responsavel_nome drop not null, alter column responsavel_assinou_em drop not null,
+  alter column responsavel_assinou_em drop default;
+
+-- v5 — início de rota (os pais veem que a van saiu)
+create table if not exists rotas_iniciadas (
+  van_id      uuid not null references vans(id) on delete cascade,
+  data        date not null,
+  trecho      trecho not null,
+  iniciada_em timestamptz not null default now(),
+  iniciada_por text,
+  primary key (van_id, data, trecho)
+);

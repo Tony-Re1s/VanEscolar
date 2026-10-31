@@ -414,19 +414,38 @@ def empresa(cid) -> dict | None:
     return df.iloc[0].to_dict() if len(df) else None
 
 
+def preparar_contrato(cid, pid, ano, servico: dict, por: str):
+    """Gestor cria/atualiza as condições do serviço e libera para o responsável (só enquanto ele não assinou)."""
+    import json as _json
+    db.gravar("""
+        insert into contratos (condutor_id, passageiro_id, ano, servico, preparado_por, preparado_em)
+        select :cid, :pid, :ano, cast(:sv as jsonb), :por, now()
+        where exists (select 1 from passageiros where id = :pid and condutor_id = :cid)
+        on conflict (passageiro_id, ano) do update set servico = excluded.servico, preparado_por = excluded.preparado_por,
+            preparado_em = now()
+        where contratos.responsavel_assinou_em is null""",
+              cid=cid, pid=pid, ano=ano, sv=_json.dumps(servico, ensure_ascii=False, default=str), por=por)
+
+
 def assinar_contrato_responsavel(cid, pid, ano, texto, dados: dict, codigo, email, nome, ip):
-    """Grava o aceite do responsável. Só aceita aluno que é da empresa e que tem este e-mail como responsável."""
+    """Grava a assinatura do responsável no contrato já liberado. Só se o e-mail for responsável do aluno."""
     import json as _json
     return db.gravar("""
-        insert into contratos (condutor_id, passageiro_id, ano, texto, dados, codigo, responsavel_email,
-                               responsavel_nome, responsavel_ip)
-        select :cid, :pid, :ano, :texto, cast(:dados as jsonb), :codigo, :email, :nome, :ip
-        where exists (select 1 from passageiros p join passageiro_responsavel pr on pr.passageiro_id = p.id
-                      join responsaveis r on r.id = pr.responsavel_id
-                      where p.id = :pid and p.condutor_id = :cid and lower(r.email) = :email)
-        on conflict (passageiro_id, ano) do nothing
+        update contratos set texto = :texto, dados = cast(:dados as jsonb), codigo = :codigo,
+               responsavel_email = :email, responsavel_nome = :nome, responsavel_ip = :ip, responsavel_assinou_em = now()
+        where passageiro_id = :pid and ano = :ano and condutor_id = :cid and servico is not null
+          and responsavel_assinou_em is null
+          and exists (select 1 from passageiro_responsavel pr join responsaveis r on r.id = pr.responsavel_id
+                      where pr.passageiro_id = :pid and lower(r.email) = :email)
         returning id""", cid=cid, pid=pid, ano=ano, texto=texto, dados=_json.dumps(dados, ensure_ascii=False),
                      codigo=codigo, email=email, nome=nome, ip=ip)
+
+
+def ultimo_contratante(email: str) -> dict:
+    """Dados do contratante do último contrato que este e-mail assinou (para não digitar tudo de novo)."""
+    df = db.ao_vivo("""select dados from contratos where lower(responsavel_email) = :e and dados is not null
+                       order by responsavel_assinou_em desc limit 1""", e=email)
+    return dict(df.iloc[0]["dados"]) if len(df) else {}
 
 
 def assinar_contrato_contratada(cid, contrato_id, por: str):
@@ -444,7 +463,9 @@ def contratos_empresa(cid, ano: int) -> pd.DataFrame:
     return db.ao_vivo("""
         select p.id as passageiro_id, p.nome as aluno, v.nome as van, c.id as contrato_id, c.responsavel_nome,
                c.responsavel_assinou_em, c.contratada_assinou_em,
-               case when c.id is null then 'pendente'
+               c.servico,
+               case when c.id is null then 'preparar'
+                    when c.responsavel_assinou_em is null then 'pendente'
                     when c.contratada_assinou_em is null then 'assinar'
                     else 'ok' end as situacao,
                exists (select 1 from passageiro_responsavel pr join responsaveis r on r.id = pr.responsavel_id
@@ -457,3 +478,34 @@ def contratos_empresa(cid, ano: int) -> pd.DataFrame:
 def atualizar_dados_contrato(cid, d: dict):
     db.gravar("""update condutores set razao_social=:razao_social, cnpj=:cnpj, cidade=:cidade,
                  contrato_clausulas=:contrato_clausulas where id=:cid""", cid=cid, **d)
+
+
+# ------------------------------------------------------------------ início de rota
+def iniciar_rota(cid, van, dia: date, trecho: str, por: str):
+    db.gravar("""insert into rotas_iniciadas (van_id, data, trecho, iniciada_por)
+                 select :van, :d, :t, :por where exists (select 1 from vans where id = :van and condutor_id = :cid)
+                 on conflict (van_id, data, trecho) do nothing""", van=van, cid=cid, d=dia, t=trecho, por=por)
+
+
+def desfazer_inicio_rota(cid, van, dia: date, trecho: str):
+    db.gravar("""delete from rotas_iniciadas ri using vans v where ri.van_id = v.id and v.condutor_id = :cid
+                 and ri.van_id = :van and ri.data = :d and ri.trecho = :t""", van=van, cid=cid, d=dia, t=trecho)
+
+
+def rota_iniciada(van, dia: date, trecho: str):
+    df = db.ao_vivo("select iniciada_em from rotas_iniciadas where van_id=:van and data=:d and trecho=:t",
+                    van=van, d=dia, t=trecho)
+    return df.iloc[0]["iniciada_em"] if len(df) else None
+
+
+def rotas_dos_filhos(pids: list[str], dia: date) -> pd.DataFrame:
+    """Para cada filho: se a van dele já saiu hoje (ida/volta) e a posição dele na ordem da ida."""
+    return db.ao_vivo("""
+        select p.id as passageiro_id, ri.trecho, ri.iniciada_em,
+               (select count(*) + 1 from passageiros q
+                 where q.van_id = p.van_id and q.ativo and q.faz_ida and q.turno = p.turno
+                   and (q.ordem_rota, q.nome) < (p.ordem_rota, p.nome)
+                   and not exists (select 1 from ausencias a where a.passageiro_id = q.id and a.data = :d and a.ida)
+               ) as posicao
+        from passageiros p join rotas_iniciadas ri on ri.van_id = p.van_id and ri.data = :d
+        where p.id = any(cast(:ids as uuid[]))""", ids=pids, d=dia)

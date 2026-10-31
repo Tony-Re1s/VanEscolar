@@ -19,14 +19,17 @@ if filhos.empty:
     st.stop()
 
 status = repo.status_hoje(pids, h)
+rotas = repo.rotas_dos_filhos(pids, h)
 
 
 def _contrato(f, pid):
-    """Contrato do ano: se não enviado, formulário com os dados editáveis + aceite; se enviado, situação e PDF."""
+    """Contrato do ano. O gestor libera com as condições do serviço; o responsável completa os dados dele e assina."""
     ano = h.year
     emp = repo.empresa(f.condutor_id)
     c = repo.contrato_do_aluno(pid, ano)
-    if c:
+    if not c or not c.get("servico"):
+        return                                   # ainda não liberado pelo gestor: nada a fazer
+    if c.get("responsavel_assinou_em") is not None:
         ok = c["contratada_assinou_em"] is not None
         with st.expander(f"📄 Contrato {ano} — " + ("assinado pelas duas partes ✅" if ok
                                                     else "enviado, aguardando a contratada"), expanded=False):
@@ -36,34 +39,58 @@ def _contrato(f, pid):
                                mime="application/pdf", icon=":material/download:", key=f"pdf_{pid}")
         return
 
-    st.warning(f"**Contrato {ano} pendente** — leia, confira seus dados e envie para {emp['razao_social'] or emp['nome']}.",
-               icon=":material/contract_edit:")
-    with st.expander("📄 Preencher e assinar o contrato", expanded=True):
+    sv = dict(c["servico"])
+    st.warning(f"**Contrato {ano} para assinar** — confira as condições, preencha seus dados e envie para "
+               f"{emp.get('razao_social') or emp['nome']}.", icon=":material/contract_edit:")
+    with st.expander("📄 Ler, preencher e assinar o contrato", expanded=True):
+        n = ct._numero(ct.clausulas(emp))
+        st.markdown(f"**{ct.TITULO}**")
+        st.markdown(ct.preambulo(emp))
+        st.text_area("Cláusulas", ct.clausulas(emp), height=240, disabled=True, key=f"cl_{pid}",
+                     label_visibility="collapsed")
+        st.markdown(f"**CLÁUSULA {n + 1}ª – DAS CONDIÇÕES DO SERVIÇO**")
+        st.markdown("  \n".join(_ui.esc(x) for x in ct.linhas_servico(sv)))
+        st.caption("Alguma condição errada? Fale com a van antes de assinar — ela corrige e libera de novo.")
+
+        # pré-preenche: o que já assinou antes (irmãos / ano anterior) > cadastro do responsável
         resp = repo.responsaveis_do(f.condutor_id, pid)
         eu = resp[resp["email"].fillna("").str.lower() == u["email"]] if not resp.empty else resp
         r0 = eu.iloc[0].to_dict() if len(eu) else {}
-        st.markdown(f"**{ct.TITULO}**")
-        st.markdown(ct.preambulo(emp))
-        st.text_area("Cláusulas", ct.clausulas(emp), height=260, disabled=True, key=f"cl_{pid}",
-                     label_visibility="collapsed")
-        st.markdown("**CLÁUSULA 8ª – DOS DADOS DO ALUNO E RESPONSÁVEL** — confira e corrija se precisar")
+        ant = repo.ultimo_contratante(u["email"])
+        v = lambda k, alt="": ant.get(k) or alt  # noqa: E731
+
+        st.markdown(f"**CLÁUSULA {n + 2}ª – DOS DADOS DO CONTRATANTE** — preencha ou corrija")
         with st.form(f"contrato_{pid}"):
+            nome = st.text_input("Nome completo *", value=v("responsavel", r0.get("nome") or u.get("nome") or ""))
             a, b = st.columns(2)
-            aluno = a.text_input("Aluno(a) *", value=f.nome)
-            escola = b.text_input("Escola *", value=f.escola or "")
+            cpf = a.text_input("CPF *", value=v("cpf"), placeholder="000.000.000-00")
+            rg = b.text_input("RG", value=v("rg"))
             a, b = st.columns(2)
-            nome = a.text_input("Responsável legal *", value=r0.get("nome") or u.get("nome") or "")
-            cpf = b.text_input("CPF *", placeholder="000.000.000-00")
-            a, b = st.columns(2)
-            tel = a.text_input("Telefone *", value=r0.get("telefone") or "")
-            local = b.text_input("Local *", value=emp.get("cidade") or "")
-            endereco = st.text_input("Endereço *", value=", ".join(x for x in (f.endereco,) if x))
-            aceite = st.checkbox("Li e concordo com todas as cláusulas deste contrato. Entendo que este aceite, feito "
-                                 "com o meu login Google, vale como minha assinatura eletrônica.")
+            nasc = a.text_input("Data de nascimento", value=v("nascimento"), placeholder="dd/mm/aaaa")
+            par_ops = ["Mãe", "Pai", "Avó", "Avô", "Tia", "Tio", "Responsável legal", "Outro"]
+            par_atual = v("parentesco", r0.get("parentesco") or "Mãe")
+            parentesco = b.selectbox("Parentesco *", par_ops,
+                                     index=par_ops.index(par_atual) if par_atual in par_ops else len(par_ops) - 1)
+            tel = st.text_input("Telefone *", value=v("telefone", r0.get("telefone") or ""))
+            st.markdown("**Endereço**")
+            a, b = st.columns([1, 2])
+            cep = a.text_input("CEP *", value=v("cep"), placeholder="00000-000")
+            rua = b.text_input("Rua / avenida *", value=v("rua"))
+            a, b, cc = st.columns([1, 2, 2])
+            numero = a.text_input("Número *", value=v("numero"))
+            compl = b.text_input("Complemento", value=v("complemento"), placeholder="apto, bloco…")
+            bairro = cc.text_input("Bairro *", value=v("bairro"))
+            a, b = st.columns([3, 1])
+            cidade = a.text_input("Cidade *", value=v("cidade", emp.get("cidade") or ""))
+            uf = b.text_input("UF *", value=v("uf", "SP"), max_chars=2)
+            local = st.text_input("Local da assinatura *", value=v("local", emp.get("cidade") or ""))
+            aceite = st.checkbox("Li e concordo com todas as cláusulas e condições deste contrato. Entendo que este "
+                                 "aceite, feito com o meu login Google, vale como minha assinatura eletrônica.")
             enviar = st.form_submit_button("Assinar e enviar", type="primary", use_container_width=True)
         if enviar:
-            faltando = [n for n, v in (("aluno", aluno), ("escola", escola), ("responsável", nome), ("CPF", cpf),
-                                       ("telefone", tel), ("local", local), ("endereço", endereco)) if not v.strip()]
+            obrig = (("nome", nome), ("CPF", cpf), ("telefone", tel), ("CEP", cep), ("rua", rua), ("número", numero),
+                     ("bairro", bairro), ("cidade", cidade), ("UF", uf), ("local", local))
+            faltando = [rot for rot, val in obrig if not val.strip()]
             if faltando:
                 st.error("Preencha: " + ", ".join(faltando) + ".")
                 return
@@ -73,10 +100,11 @@ def _contrato(f, pid):
             if not aceite:
                 st.error("Marque que leu e concorda com o contrato.")
                 return
-            dados = dict(aluno=aluno.strip(), escola=escola.strip(), responsavel=nome.strip(),
-                         cpf=ct.formatar_cpf(cpf), telefone=tel.strip(), endereco=endereco.strip(),
-                         local=local.strip(), data=data_br(h))
-            texto = ct.montar_texto(emp, dados)
+            dados = dict(responsavel=nome.strip(), cpf=ct.formatar_cpf(cpf), rg=rg.strip(), nascimento=nasc.strip(),
+                         parentesco=parentesco, telefone=tel.strip(), cep=cep.strip(), rua=rua.strip(),
+                         numero=numero.strip(), complemento=compl.strip(), bairro=bairro.strip(),
+                         cidade=cidade.strip(), uf=uf.strip().upper(), local=local.strip(), data=data_br(h))
+            texto = ct.montar_texto(emp, sv, dados)
             cod = ct.codigo(texto, dados, u["email"])
             ip = (st.context.headers.get("X-Forwarded-For") or "").split(",")[0].strip() or None
             r = repo.assinar_contrato_responsavel(f.condutor_id, pid, ano, texto, dados, cod, u["email"],
@@ -87,6 +115,8 @@ def _contrato(f, pid):
                 return
             st.toast("Contrato assinado e enviado! ✅")
             st.rerun()
+
+
 abas = st.tabs([r.nome.split()[0] for r in filhos.itertuples()]) if len(filhos) > 1 else [st.container()]
 
 for aba, f in zip(abas, filhos.itertuples()):
@@ -122,6 +152,14 @@ for aba, f in zip(abas, filhos.itertuples()):
                 linhas.append(f"**{t.capitalize()}:** {rot[t][r['status']]} às {r['hora'].astimezone(TZ).strftime('%H:%M')}")
             else:
                 linhas.append(f"**{t.capitalize()}:** aguardando")
+        rt = rotas[rotas["passageiro_id"].astype(str) == pid] if not rotas.empty else rotas
+        for t in ("ida", "volta"):
+            x = rt[rt["trecho"] == t] if not rt.empty else rt
+            if not x.empty and not (not s.empty and (s["trecho"] == t).any()):
+                q = x.iloc[0]
+                pos = f" · {f.nome.split()[0]} é o {int(q['posicao'])}º da rota" if t == "ida" else ""
+                st.info(f"🚐 A van saiu para a {'ida' if t == 'ida' else 'volta'} às "
+                        f"{q['iniciada_em'].astimezone(TZ).strftime('%H:%M')}{pos}.", icon=":material/directions_bus:")
         st.markdown("  \n".join(linhas))
         st.caption("Atualiza quando o motorista marca na chamada. Recarregue a página para ver o mais recente.")
 
