@@ -1,4 +1,4 @@
-# 🚐 VanEscolar
+# 🚐 Pequenos a Bordo
 
 App de gestão para **motorista de van escolar**, com área para os **pais**.
 Feito com **Streamlit + Neon (Postgres) + GitHub**, login com Google. Inspirado no SmartVan, do nosso jeito.
@@ -56,7 +56,7 @@ Dá para **reaproveitar o cliente OAuth do app de finanças**: em *Credenciais* 
 > **Publicar app** — com os escopos básicos (e-mail e perfil) o Google não exige verificação.
 
 ### 3. Streamlit Cloud
-1. **share.streamlit.io** → *Create app* → repositório `VanEscolar`, branch `main`, arquivo `app.py`.
+1. **share.streamlit.io** → *Create app* → repositório `VanEscolar` (nome do repo mantido), branch `main`, arquivo `app.py`.
 2. *Advanced settings* → **Secrets**: cole o conteúdo de `.streamlit/secrets.toml.example` preenchido.
    `cookie_secret`: qualquer frase longa e aleatória.
 

@@ -1,4 +1,4 @@
-"""VanEscolar — ponto de entrada.
+"""Pequenos a Bordo — ponto de entrada.
 
 Rodar local:  streamlit run app.py
 """
@@ -7,8 +7,13 @@ import streamlit as st
 from core import auth, db
 from telas import _ui
 
-st.set_page_config(page_title="VanEscolar", page_icon="🚐", layout="wide", initial_sidebar_state="auto")
+from pathlib import Path
+
+_ST = Path(__file__).parent / "static"
+st.set_page_config(page_title="Pequenos a Bordo", page_icon=str(_ST / "favicon.png"), layout="wide",
+                   initial_sidebar_state="auto")
 _ui.css()
+st.logo(str(_ST / "logo.svg"), size="large", icon_image=str(_ST / "van.svg"))
 
 db.migrar()
 usuario = auth.exigir_login()
@@ -17,7 +22,7 @@ if st.session_state.pop("_recarregar_perfil", False):
 
 cond = usuario.get("condutor")
 if cond and not cond.get("ativo", True):
-    st.error("O seu cadastro de condutor está desativado. Fale com o administrador do VanEscolar.")
+    st.error("O seu cadastro de condutor está desativado. Fale com o administrador do Pequenos a Bordo.")
     st.button("Sair", on_click=auth.sair)
     st.stop()
 

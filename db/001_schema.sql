@@ -1,4 +1,4 @@
--- VanEscolar — schema completo (Postgres / Neon)
+-- Pequenos a Bordo — schema completo (Postgres / Neon)
 -- O app aplica este arquivo sozinho no 1º acesso (tudo é "if not exists").
 -- Isolamento: toda tabela de dados tem condutor_id; o app sempre filtra por ele.
 

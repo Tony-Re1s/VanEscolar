@@ -9,7 +9,11 @@ CSS = """
 <style>
 :root { --ve-amarelo:#F5B700; --ve-azul:#1D3557; --ve-verde:#2A9D8F; --ve-vermelho:#D62839; --ve-cinza:#6B7280; }
 .block-container {padding-top: 2rem; padding-bottom: 4rem; max-width: 1100px;}
-.ve-logo {font-size: 3.2rem; line-height: 1;}
+.ve-logo {width: 112px; height: 112px; line-height: 1;}
+.ve-logo svg {width: 100%; height: 100%; animation: ve-anda 1.6s ease-in-out infinite; transform-origin: 50% 85%;}
+@keyframes ve-anda {0%,100% {transform: translateY(0) rotate(0deg);} 25% {transform: translateY(-3px) rotate(-1.5deg);}
+                    50% {transform: translateY(0) rotate(0deg);} 75% {transform: translateY(-2px) rotate(1deg);}}
+@media (prefers-reduced-motion: reduce) {.ve-logo svg {animation: none;}}
 .ve-kpis {display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:10px; margin: .2rem 0 1rem;}
 .ve-kpi {border-radius:14px; padding:12px 14px; background: var(--secondary-background-color);
          border:1px solid rgba(128,128,128,.18);}

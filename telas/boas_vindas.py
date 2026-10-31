@@ -5,7 +5,7 @@ from core import auth, repo
 
 u = st.session_state["usuario"]
 
-st.title("🚐 Bem-vindo ao VanEscolar")
+st.title("Bem-vindo ao Pequenos a Bordo")
 
 if not u.get("filhos"):
     st.info("**É pai, mãe ou responsável?** Peça ao condutor da van para cadastrar o seu e-mail "
