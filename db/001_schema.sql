@@ -194,3 +194,31 @@ with novas as (
   returning id, condutor_id
 )
 update passageiros p set van_id = novas.id from novas where p.condutor_id = novas.condutor_id and p.van_id is null;
+
+-- ============================================================================================
+-- v3 — contrato digital: o gestor define os dados da contratada e as cláusulas; o responsável
+-- preenche os dados dele, aceita e envia; o gestor contra-assina. O texto assinado fica congelado.
+-- ============================================================================================
+alter table condutores add column if not exists razao_social text;
+alter table condutores add column if not exists cnpj text;
+alter table condutores add column if not exists cidade text;
+alter table condutores add column if not exists contrato_clausulas text;     -- vazio = modelo padrão
+
+create table if not exists contratos (
+  id                     uuid primary key default gen_random_uuid(),
+  condutor_id            uuid not null references condutores(id) on delete cascade,
+  passageiro_id          uuid not null references passageiros(id) on delete cascade,
+  ano                    int not null,
+  texto                  text not null,             -- contrato completo como foi assinado
+  dados                  jsonb not null,            -- campos preenchidos pelo responsável
+  codigo                 text not null,             -- hash curto do texto+dados (confere a integridade)
+  responsavel_email      text not null,
+  responsavel_nome       text not null,
+  responsavel_assinou_em timestamptz not null default now(),
+  responsavel_ip         text,
+  contratada_por         text,
+  contratada_assinou_em  timestamptz,
+  criado_em              timestamptz not null default now(),
+  unique (passageiro_id, ano)
+);
+create index if not exists ix_contratos_condutor on contratos(condutor_id, ano);

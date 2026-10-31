@@ -401,3 +401,59 @@ def ausencias_empresa(cid, desde: date, van=None) -> pd.DataFrame:
                           left join vans v on v.id = p.van_id
                           where p.condutor_id = :cid and a.data >= :d and {_filtro_van('p.van_id')}
                           order by a.data, p.nome""", cid=cid, d=desde, van=van)
+
+
+# ------------------------------------------------------------------ contratos
+def contrato_do_aluno(pid, ano: int) -> dict | None:
+    df = db.ao_vivo("select * from contratos where passageiro_id = :pid and ano = :a", pid=pid, a=ano)
+    return df.iloc[0].to_dict() if len(df) else None
+
+
+def empresa(cid) -> dict | None:
+    df = db.ao_vivo("select * from condutores where id = :cid", cid=cid)
+    return df.iloc[0].to_dict() if len(df) else None
+
+
+def assinar_contrato_responsavel(cid, pid, ano, texto, dados: dict, codigo, email, nome, ip):
+    """Grava o aceite do responsável. Só aceita aluno que é da empresa e que tem este e-mail como responsável."""
+    import json as _json
+    return db.gravar("""
+        insert into contratos (condutor_id, passageiro_id, ano, texto, dados, codigo, responsavel_email,
+                               responsavel_nome, responsavel_ip)
+        select :cid, :pid, :ano, :texto, cast(:dados as jsonb), :codigo, :email, :nome, :ip
+        where exists (select 1 from passageiros p join passageiro_responsavel pr on pr.passageiro_id = p.id
+                      join responsaveis r on r.id = pr.responsavel_id
+                      where p.id = :pid and p.condutor_id = :cid and lower(r.email) = :email)
+        on conflict (passageiro_id, ano) do nothing
+        returning id""", cid=cid, pid=pid, ano=ano, texto=texto, dados=_json.dumps(dados, ensure_ascii=False),
+                     codigo=codigo, email=email, nome=nome, ip=ip)
+
+
+def assinar_contrato_contratada(cid, contrato_id, por: str):
+    db.gravar("""update contratos set contratada_por = :por, contratada_assinou_em = now()
+                 where id = :id and condutor_id = :cid and contratada_assinou_em is null""",
+              id=contrato_id, cid=cid, por=por)
+
+
+def cancelar_contrato(cid, contrato_id):
+    """Gestor descarta o contrato (ex.: dados errados) — o responsável preenche e envia de novo."""
+    db.gravar("delete from contratos where id = :id and condutor_id = :cid", id=contrato_id, cid=cid)
+
+
+def contratos_empresa(cid, ano: int) -> pd.DataFrame:
+    return db.ao_vivo("""
+        select p.id as passageiro_id, p.nome as aluno, v.nome as van, c.id as contrato_id, c.responsavel_nome,
+               c.responsavel_assinou_em, c.contratada_assinou_em,
+               case when c.id is null then 'pendente'
+                    when c.contratada_assinou_em is null then 'assinar'
+                    else 'ok' end as situacao,
+               exists (select 1 from passageiro_responsavel pr join responsaveis r on r.id = pr.responsavel_id
+                       where pr.passageiro_id = p.id and r.email is not null) as tem_email
+        from passageiros p left join vans v on v.id = p.van_id
+        left join contratos c on c.passageiro_id = p.id and c.ano = :a
+        where p.condutor_id = :cid and p.ativo order by p.nome""", cid=cid, a=ano)
+
+
+def atualizar_dados_contrato(cid, d: dict):
+    db.gravar("""update condutores set razao_social=:razao_social, cnpj=:cnpj, cidade=:cidade,
+                 contrato_clausulas=:contrato_clausulas where id=:cid""", cid=cid, **d)

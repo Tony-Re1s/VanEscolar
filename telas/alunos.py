@@ -6,6 +6,7 @@ import streamlit as st
 
 from core import repo
 from core.fmt import TURNOS, brl, hoje, idade, link_whats
+from telas import _ui
 from telas._ui import exigir_condutor
 
 c = exigir_condutor()
@@ -23,7 +24,7 @@ if vans.empty:
 if escolas.empty:
     st.info("Dica: cadastre as **escolas** antes, para escolher aqui.", icon=":material/school:")
 
-aba_lista, aba_edit = st.tabs(["Lista", "Cadastrar / editar"])
+aba_lista, aba_edit, aba_ct = st.tabs(["Lista", "Cadastrar / editar", "Contratos"])
 
 # ------------------------------------------------------------------ lista
 with aba_lista:
@@ -185,3 +186,73 @@ with aba_edit:
                         repo.vincular_responsavel(cid, p["id"], dict(nome=rn.strip(), parentesco=rp, telefone=rt or None,
                                                                      email=re_ or None), financeiro=rf)
                         st.rerun()
+
+# ------------------------------------------------------------------ contratos
+with aba_ct:
+    from core import contrato as ct
+    from core.fmt import TZ, data_br, link_whats as _lw
+    ano = hoje().year
+    emp = repo.empresa(cid)
+    cts = repo.contratos_empresa(cid, ano)
+    if cts.empty:
+        st.info("Nenhum aluno ativo.")
+    else:
+        n = cts["situacao"].value_counts()
+        st.caption(f"Contratos {ano}: {n.get('ok', 0)} assinados pelas duas partes · {n.get('assinar', 0)} aguardando "
+                   f"a sua assinatura · {n.get('pendente', 0)} pendentes com o responsável")
+        if not emp.get("cnpj"):
+            st.warning("Preencha o **CNPJ** e o nome da contratada em **Minha empresa → Contrato** antes de pedir "
+                       "os contratos.", icon=":material/contract_edit:")
+        filtro = st.segmented_control("Mostrar", ["Todos", "Para eu assinar", "Pendentes", "Assinados"],
+                                      default="Todos", key="f_ct", label_visibility="collapsed")
+        mapa = {"Para eu assinar": "assinar", "Pendentes": "pendente", "Assinados": "ok"}
+        if filtro in mapa:
+            cts = cts[cts["situacao"] == mapa[filtro]]
+        rot = {"ok": ("pago", "Assinado ✅"), "assinar": ("vence_logo", "Assine você"),
+               "pendente": ("aberto", "Com o responsável")}
+        for r in cts.itertuples():
+            with st.container(border=True):
+                cls, txt = rot[r.situacao]
+                st.markdown(f"**{_ui.esc(r.aluno)}** {_ui.tag(cls, txt)}"
+                            f"{' <span class=ve-sub>· ' + _ui.esc(r.van) + '</span>' if r.van else ''}",
+                            unsafe_allow_html=True)
+                if r.situacao == "pendente":
+                    if not r.tem_email:
+                        st.caption("Sem e-mail do Google no responsável — cadastre na aba **Cadastrar / editar** "
+                                   "para ele conseguir assinar.")
+                    else:
+                        tel = todos.loc[todos["id"] == r.passageiro_id, "telefone_resp"].squeeze() \
+                            if not todos.empty else None
+                        msg = (f"Olá! O contrato de transporte escolar de {r.aluno} ({ano}) já está no app "
+                               "Pequenos a Bordo: https://pequenosabordo.streamlit.app — entre com o seu Google, "
+                               "confira os dados e clique em Assinar e enviar. Obrigado!")
+                        lk = _lw(tel, msg)
+                        if lk:
+                            st.link_button("Lembrar no WhatsApp", lk, icon=":material/chat:")
+                    continue
+                st.caption(f"Assinado por {r.responsavel_nome} em "
+                           f"{r.responsavel_assinou_em.astimezone(TZ).strftime('%d/%m/%Y %H:%M')}"
+                           + (f" · contratada em {r.contratada_assinou_em.astimezone(TZ).strftime('%d/%m/%Y %H:%M')}"
+                              if r.contratada_assinou_em else ""))
+                c_full = repo.contrato_do_aluno(r.passageiro_id, ano)
+                x1, x2, x3 = st.container(key=f"linha_ct_{r.contrato_id}").columns(3)
+                if r.situacao == "assinar":
+                    if x1.button("Assinar", key=f"ass_{r.contrato_id}", type="primary", icon=":material/draw:",
+                                 use_container_width=True):
+                        repo.assinar_contrato_contratada(cid, r.contrato_id,
+                                                         st.session_state["usuario"].get("nome") or
+                                                         st.session_state["usuario"]["email"])
+                        st.rerun()
+                x2.download_button("PDF", ct.gerar_pdf(c_full, emp), file_name=f"contrato_{ano}_{r.aluno}.pdf",
+                                   mime="application/pdf", icon=":material/download:", key=f"pdfg_{r.contrato_id}",
+                                   use_container_width=True)
+                with x3.popover("Descartar", icon=":material/delete:", use_container_width=True):
+                    st.caption("Apaga este contrato para o responsável preencher e assinar de novo "
+                               "(ex.: dados errados).")
+                    if st.button("Confirmar descarte", key=f"desc_{r.contrato_id}"):
+                        repo.cancelar_contrato(cid, r.contrato_id)
+                        st.rerun()
+                with st.expander("Ver dados preenchidos"):
+                    d = c_full["dados"]
+                    st.markdown("  \n".join(f"**{rot}:** {_ui.esc(d.get(k, ''))}" for k, rot in ct.CAMPOS)
+                                + f"  \n**Local e data:** {_ui.esc(d.get('local', ''))}, {_ui.esc(d.get('data', ''))}")
