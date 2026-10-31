@@ -81,6 +81,9 @@ def perfil(usuario: dict) -> dict:
                       join condutores c on c.id = p.condutor_id and c.ativo
                       where lower(r.email) = :e""", e=usuario["email"])
     usuario["filhos"] = [str(x) for x in r["passageiro_id"]] if len(r) else []
+    from core import repo
+    vm = repo.vans_do_motorista(usuario["email"])
+    usuario["vans_motorista"] = vm.to_dict("records") if len(vm) else []
     usuario["admin"] = usuario["email"] in admins()
     return usuario
 

@@ -1,39 +1,87 @@
-"""Consultas e gravações. Tudo filtrado pelo condutor (cid) — nunca confie em id vindo da tela sem ele."""
+"""Consultas e gravações. Tudo filtrado pela empresa (cid) — nunca confie em id vindo da tela sem ele.
+
+Empresa = tabela `condutores` (o gestor). Cada empresa tem várias `vans`; cada van tem um motorista.
+`van` nos filtros: None = todas as vans da empresa.
+"""
 from __future__ import annotations
 
 from datetime import date
 
 import pandas as pd
+from sqlalchemy import text
 
 from core import db
 from core.fmt import inicio_mes, somar_meses, vencimento
 
-
-# ------------------------------------------------------------------ condutor
-def criar_condutor(usuario_id, d: dict) -> dict:
-    return db.gravar("""
-        insert into condutores (usuario_id, nome, telefone, cnh, veiculo, placa, capacidade, chave_pix, dia_vencimento)
-        values (:u, :nome, :telefone, :cnh, :veiculo, :placa, :capacidade, :chave_pix, :dia_vencimento)
-        on conflict (usuario_id) do update set nome = excluded.nome
-        returning *""", u=usuario_id, **d)
+_VAN = "(cast(:van as uuid) is null or {col} = cast(:van as uuid))"
 
 
-def atualizar_condutor(cid, d: dict):
-    db.gravar("""update condutores set nome=:nome, telefone=:telefone, cnh=:cnh, veiculo=:veiculo, placa=:placa,
-                 capacidade=:capacidade, chave_pix=:chave_pix, dia_vencimento=:dia_vencimento where id=:cid""",
-              cid=cid, **d)
+def _filtro_van(col: str) -> str:
+    return _VAN.format(col=col)
 
 
-def condutores_todos() -> pd.DataFrame:
+# ------------------------------------------------------------------ empresa (gestor)
+def criar_empresa(usuario_id, email: str, nome: str, telefone: str | None, dirige: bool) -> dict:
+    """Cadastro inicial: só nome e WhatsApp. Se o gestor também dirige, já cria a 'Van 1' com ele de motorista."""
+    c = db.gravar("""
+        insert into condutores (usuario_id, nome, telefone) values (:u, :nome, :tel)
+        on conflict (usuario_id) do update set nome = excluded.nome, telefone = excluded.telefone
+        returning *""", u=usuario_id, nome=nome, tel=telefone)
+    if dirige and vans(c["id"], so_ativas=False).empty:
+        salvar_van(c["id"], dict(nome="Van 1", veiculo=None, placa=None, capacidade=15, motorista_nome=nome,
+                                 motorista_email=email, motorista_telefone=telefone, motorista_cnh=None, ativo=True))
+    return c
+
+
+def atualizar_empresa(cid, d: dict):
+    db.gravar("""update condutores set nome=:nome, telefone=:telefone, chave_pix=:chave_pix,
+                 dia_vencimento=:dia_vencimento where id=:cid""", cid=cid, **d)
+
+
+def empresas_todas() -> pd.DataFrame:
     return db.ao_vivo("""
-        select c.id, c.nome, u.email, c.telefone, c.placa, c.ativo, c.criado_em::date as desde,
+        select c.id, c.nome, u.email, c.telefone, c.ativo, c.criado_em::date as desde,
+               (select count(*) from vans v where v.condutor_id = c.id and v.ativo) as vans,
                (select count(*) from passageiros p where p.condutor_id = c.id and p.ativo) as alunos,
                u.ultimo_acesso
         from condutores c join usuarios u on u.id = c.usuario_id order by c.criado_em""")
 
 
-def ativar_condutor(cid, ativo: bool):
+def ativar_empresa(cid, ativo: bool):
     db.gravar("update condutores set ativo = :a where id = :cid", a=ativo, cid=cid)
+
+
+# ------------------------------------------------------------------ vans e motoristas
+def vans(cid, so_ativas=True) -> pd.DataFrame:
+    return db.consultar(f"""
+        select v.*, (select count(*) from passageiros p where p.van_id = v.id and p.ativo) as alunos
+        from vans v where v.condutor_id = :cid {'and v.ativo' if so_ativas else ''}
+        order by v.ativo desc, v.nome""", cid=cid)
+
+
+_CAMPOS_V = ["nome", "veiculo", "placa", "capacidade", "motorista_nome", "motorista_email", "motorista_telefone",
+             "motorista_cnh", "ativo"]
+
+
+def salvar_van(cid, d: dict, vid=None):
+    d = {k: d.get(k) for k in _CAMPOS_V}
+    d["motorista_email"] = (d.get("motorista_email") or "").strip().lower() or None
+    d["placa"] = (d.get("placa") or "").strip().upper() or None
+    if vid:
+        db.gravar(f"update vans set {', '.join(f'{k}=:{k}' for k in _CAMPOS_V)} where id=:vid and condutor_id=:cid",
+                  cid=cid, vid=vid, **d)
+    else:
+        db.gravar(f"insert into vans (condutor_id, {', '.join(_CAMPOS_V)}) "
+                  f"values (:cid, {', '.join(':' + k for k in _CAMPOS_V)})", cid=cid, **d)
+
+
+def vans_do_motorista(email: str) -> pd.DataFrame:
+    """Vans (de qualquer empresa ativa) em que este e-mail é o motorista."""
+    return db.ao_vivo("""
+        select v.id, v.nome, v.placa, v.veiculo, v.capacidade, v.condutor_id, c.nome as empresa,
+               c.telefone as empresa_tel
+        from vans v join condutores c on c.id = v.condutor_id
+        where lower(v.motorista_email) = :e and v.ativo and c.ativo order by c.nome, v.nome""", e=email)
 
 
 # ------------------------------------------------------------------ escolas
@@ -57,7 +105,7 @@ def salvar_escola(cid, d: dict, eid=None):
 
 # ------------------------------------------------------------------ passageiros
 _SEL_PASS = """
-    select p.*, e.nome as escola, e.endereco as escola_endereco,
+    select p.*, e.nome as escola, e.endereco as escola_endereco, v.nome as van,
            coalesce(p.dia_vencimento, c.dia_vencimento) as dia_venc,
            (select string_agg(r.nome || coalesce(' (' || r.parentesco || ')', ''), ', ' order by r.nome)
               from passageiro_responsavel pr join responsaveis r on r.id = pr.responsavel_id
@@ -68,21 +116,18 @@ _SEL_PASS = """
     from passageiros p
     join condutores c on c.id = p.condutor_id
     left join escolas e on e.id = p.escola_id
+    left join vans v on v.id = p.van_id
 """
 
 
-def passageiros(cid, so_ativos=True) -> pd.DataFrame:
+def passageiros(cid, so_ativos=True, van=None) -> pd.DataFrame:
     return db.consultar(_SEL_PASS + f" where p.condutor_id = :cid {'and p.ativo' if so_ativos else ''}"
-                        " order by p.turno, p.ordem_rota, p.nome", cid=cid)
+                        f" and {_filtro_van('p.van_id')} order by p.turno, p.ordem_rota, p.nome",
+                        cid=cid, van=van)
 
 
-def passageiro(cid, pid) -> dict | None:
-    df = db.consultar(_SEL_PASS + " where p.condutor_id = :cid and p.id = :pid", cid=cid, pid=pid)
-    return df.iloc[0].to_dict() if len(df) else None
-
-
-_CAMPOS_P = ["escola_id", "nome", "data_nasc", "serie", "turno", "endereco", "bairro", "referencia", "observacoes",
-             "mensalidade", "dia_vencimento", "inicio", "fim", "faz_ida", "faz_volta", "ativo"]
+_CAMPOS_P = ["escola_id", "van_id", "nome", "data_nasc", "serie", "turno", "endereco", "bairro", "referencia",
+             "observacoes", "mensalidade", "dia_vencimento", "inicio", "fim", "faz_ida", "faz_volta", "ativo"]
 
 
 def salvar_passageiro(cid, d: dict, pid=None) -> str:
@@ -98,13 +143,12 @@ def salvar_passageiro(cid, d: dict, pid=None) -> str:
     return str(r["id"])
 
 
-def salvar_ordem(cid, ordens: dict):
-    """{passageiro_id: ordem}"""
+def salvar_ordem(cid, van, ordens: dict):
+    """{passageiro_id: ordem} — só alunos desta van."""
     with db.transacao() as s:
-        from sqlalchemy import text
         for pid, o in ordens.items():
-            s.execute(text("update passageiros set ordem_rota=:o where id=:pid and condutor_id=:cid"),
-                      {"o": int(o), "pid": pid, "cid": cid})
+            s.execute(text("update passageiros set ordem_rota=:o where id=:pid and condutor_id=:cid and van_id=:van"),
+                      {"o": int(o), "pid": pid, "cid": cid, "van": van})
 
 
 # ------------------------------------------------------------------ responsáveis
@@ -157,7 +201,6 @@ def gerar_mensalidades(cid, competencia: date) -> int:
     if alunos.empty:
         return 0
     with db.transacao() as s:
-        from sqlalchemy import text
         for a in alunos.itertuples():
             s.execute(text("""insert into mensalidades (condutor_id, passageiro_id, competencia, valor, vencimento)
                               values (:cid, :pid, :comp, :v, :venc) on conflict do nothing"""),
@@ -167,7 +210,7 @@ def gerar_mensalidades(cid, competencia: date) -> int:
 
 
 _SEL_MENS = """
-    select m.*, p.nome as aluno, p.turno,
+    select m.*, p.nome as aluno, p.turno, p.van_id, v.nome as van,
            (select r.nome from passageiro_responsavel pr join responsaveis r on r.id = pr.responsavel_id
              where pr.passageiro_id = p.id order by pr.financeiro desc, r.nome limit 1) as responsavel,
            (select r.telefone from passageiro_responsavel pr join responsaveis r on r.id = pr.responsavel_id
@@ -178,12 +221,13 @@ _SEL_MENS = """
                 when m.vencimento <= :hoje + 5 then 'vence_logo'
                 else 'aberto' end as situacao
     from mensalidades m join passageiros p on p.id = m.passageiro_id
+    left join vans v on v.id = p.van_id
 """
 
 
-def mensalidades_mes(cid, competencia: date, hoje: date) -> pd.DataFrame:
-    return db.consultar(_SEL_MENS + " where m.condutor_id = :cid and m.competencia = :comp order by m.vencimento, p.nome",
-                        cid=cid, comp=inicio_mes(competencia), hoje=hoje)
+def mensalidades_mes(cid, competencia: date, hoje: date, van=None) -> pd.DataFrame:
+    return db.consultar(_SEL_MENS + f" where m.condutor_id = :cid and m.competencia = :comp and {_filtro_van('p.van_id')}"
+                        " order by m.vencimento, p.nome", cid=cid, comp=inicio_mes(competencia), hoje=hoje, van=van)
 
 
 def mensalidades_em_aberto(cid, hoje: date) -> pd.DataFrame:
@@ -206,48 +250,69 @@ def alterar_mensalidade(cid, mid, valor, venc: date):
               cid=cid, mid=mid, v=valor, d=venc)
 
 
-def excluir_mensalidade(cid, mid):
-    db.gravar("delete from mensalidades where id=:mid and condutor_id=:cid", cid=cid, mid=mid)
-
-
 # ------------------------------------------------------------------ financeiro
-def lancamentos(cid, ini: date, fim: date) -> pd.DataFrame:
-    return db.consultar("""select * from lancamentos where condutor_id=:cid and data >= :i and data < :f
-                           order by data desc, criado_em desc""", cid=cid, i=ini, f=fim)
+def lancamentos(cid, ini: date, fim: date, van=None) -> pd.DataFrame:
+    return db.consultar(f"""select l.*, v.nome as van from lancamentos l left join vans v on v.id = l.van_id
+                            where l.condutor_id=:cid and l.data >= :i and l.data < :f and {_filtro_van('l.van_id')}
+                            order by l.data desc, l.criado_em desc""", cid=cid, i=ini, f=fim, van=van)
 
 
 def salvar_lancamento(cid, d: dict):
-    db.gravar("""insert into lancamentos (condutor_id, tipo, categoria, descricao, valor, data, km)
-                 values (:cid, :tipo, :categoria, :descricao, :valor, :data, :km)""", cid=cid, **d)
+    db.gravar("""insert into lancamentos (condutor_id, van_id, tipo, categoria, descricao, valor, data, km)
+                 select :cid, :van_id, :tipo, :categoria, :descricao, :valor, :data, :km
+                 where cast(:van_id as uuid) is null
+                    or exists (select 1 from vans where id = cast(:van_id as uuid) and condutor_id = :cid)""",
+              cid=cid, **d)
 
 
 def excluir_lancamento(cid, lid):
     db.gravar("delete from lancamentos where id=:lid and condutor_id=:cid", cid=cid, lid=lid)
 
 
-def resumo_meses(cid, ini: date, fim: date) -> pd.DataFrame:
-    """Por mês (regime de caixa): mensalidades recebidas, outras receitas, despesas."""
-    return db.consultar("""
-        with meses as (select generate_series(cast(:i as date), cast(:f as date) - interval '1 month', interval '1 month')::date as mes),
-        m as (select date_trunc('month', pago_em)::date mes, sum(valor_pago) v from mensalidades
-              where condutor_id=:cid and pago_em >= :i and pago_em < :f group by 1),
+def resumo_meses(cid, ini: date, fim: date, van=None) -> pd.DataFrame:
+    """Por mês (regime de caixa): mensalidades recebidas, outras receitas, despesas. Com van: só o que é dela."""
+    return db.consultar(f"""
+        with meses as (select generate_series(cast(:i as date), cast(:f as date) - interval '1 month',
+                                              interval '1 month')::date as mes),
+        m as (select date_trunc('month', m.pago_em)::date mes, sum(m.valor_pago) v
+              from mensalidades m join passageiros p on p.id = m.passageiro_id
+              where m.condutor_id=:cid and m.pago_em >= :i and m.pago_em < :f and {_filtro_van('p.van_id')}
+              group by 1),
         l as (select date_trunc('month', data)::date mes,
                      sum(valor) filter (where tipo='receita') rec, sum(valor) filter (where tipo='despesa') desp
-              from lancamentos where condutor_id=:cid and data >= :i and data < :f group by 1)
+              from lancamentos where condutor_id=:cid and data >= :i and data < :f and {_filtro_van('van_id')}
+              group by 1)
         select meses.mes, coalesce(m.v,0) as mensalidades, coalesce(l.rec,0) as outras_receitas,
                coalesce(l.desp,0) as despesas
-        from meses left join m using (mes) left join l using (mes) order by meses.mes""", cid=cid, i=ini, f=fim)
+        from meses left join m using (mes) left join l using (mes) order by meses.mes""",
+                        cid=cid, i=ini, f=fim, van=van)
 
 
-def despesas_por_categoria(cid, ini: date, fim: date) -> pd.DataFrame:
-    return db.consultar("""select categoria, sum(valor) as valor from lancamentos
-                           where condutor_id=:cid and tipo='despesa' and data >= :i and data < :f
-                           group by 1 order by 2 desc""", cid=cid, i=ini, f=fim)
+def resultado_por_van(cid, ini: date, fim: date) -> pd.DataFrame:
+    """Recebido, despesas e lucro de cada van no período; o que não tem van fica em 'Geral (sem van)'."""
+    return db.consultar("""
+        with m as (select p.van_id, sum(m.valor_pago) v from mensalidades m join passageiros p on p.id = m.passageiro_id
+                   where m.condutor_id=:cid and m.pago_em >= :i and m.pago_em < :f group by 1),
+        l as (select van_id, sum(valor) filter (where tipo='receita') rec, sum(valor) filter (where tipo='despesa') desp
+              from lancamentos where condutor_id=:cid and data >= :i and data < :f group by 1),
+        chaves as (select id as van_id, nome from vans where condutor_id=:cid
+                   union all select null, 'Geral (sem van)')
+        select k.nome as van, coalesce(m.v,0) + coalesce(l.rec,0) as recebido, coalesce(l.desp,0) as despesas
+        from chaves k left join m on m.van_id is not distinct from k.van_id
+                      left join l on l.van_id is not distinct from k.van_id
+        order by (k.van_id is null), k.nome""", cid=cid, i=ini, f=fim)
 
 
-# ------------------------------------------------------------------ chamada / rota
-def chamada_dia(cid, dia: date, trecho: str) -> pd.DataFrame:
-    """Alunos do trecho no dia, com status já marcado e aviso de falta dos pais. Sem cache (pais avisam ao vivo)."""
+def despesas_por_categoria(cid, ini: date, fim: date, van=None) -> pd.DataFrame:
+    return db.consultar(f"""select categoria, sum(valor) as valor from lancamentos
+                            where condutor_id=:cid and tipo='despesa' and data >= :i and data < :f
+                              and {_filtro_van('van_id')}
+                            group by 1 order by 2 desc""", cid=cid, i=ini, f=fim, van=van)
+
+
+# ------------------------------------------------------------------ chamada / rota (por van)
+def chamada_dia(cid, van, dia: date, trecho: str) -> pd.DataFrame:
+    """Alunos da van no trecho do dia, com status marcado e aviso de falta dos pais. Sem cache (pais avisam ao vivo)."""
     col = "faz_ida" if trecho == "ida" else "faz_volta"
     return db.ao_vivo(f"""
         select p.id, p.nome, p.turno, p.endereco, p.bairro, p.referencia, p.observacoes, p.ordem_rota,
@@ -259,28 +324,32 @@ def chamada_dia(cid, dia: date, trecho: str) -> pd.DataFrame:
         left join escolas e on e.id = p.escola_id
         left join chamadas ch on ch.passageiro_id = p.id and ch.data = :d and ch.trecho = :t
         left join ausencias a on a.passageiro_id = p.id and a.data = :d and a.{trecho}
-        where p.condutor_id = :cid and p.ativo and p.{col}
+        where p.condutor_id = :cid and p.van_id = :van and p.ativo and p.{col}
           and p.inicio <= :d and (p.fim is null or p.fim >= :d)
-        order by p.turno, p.ordem_rota, p.nome""", cid=cid, d=dia, t=trecho)
+        order by p.turno, p.ordem_rota, p.nome""", cid=cid, van=van, d=dia, t=trecho)
 
 
-def marcar(cid, pid, dia: date, trecho: str, status: str | None):
+def marcar(cid, van, pid, dia: date, trecho: str, status: str | None):
+    """Só marca aluno que é desta van desta empresa (o motorista não consegue marcar aluno de outra van)."""
     if status is None:
-        db.gravar("delete from chamadas where passageiro_id=:pid and condutor_id=:cid and data=:d and trecho=:t",
-                  pid=pid, cid=cid, d=dia, t=trecho)
+        db.gravar("""delete from chamadas ch using passageiros p
+                     where ch.passageiro_id = p.id and p.id=:pid and p.condutor_id=:cid and p.van_id=:van
+                       and ch.data=:d and ch.trecho=:t""", pid=pid, cid=cid, van=van, d=dia, t=trecho)
         return
     db.gravar("""insert into chamadas (passageiro_id, condutor_id, data, trecho, status)
-                 select :pid, :cid, :d, :t, :s where exists (select 1 from passageiros where id=:pid and condutor_id=:cid)
+                 select :pid, :cid, :d, :t, :s
+                 where exists (select 1 from passageiros where id=:pid and condutor_id=:cid and van_id=:van)
                  on conflict (passageiro_id, data, trecho) do update set status = excluded.status, hora = now()""",
-              pid=pid, cid=cid, d=dia, t=trecho, s=status)
+              pid=pid, cid=cid, van=van, d=dia, t=trecho, s=status)
 
 
-def frequencia(cid, ini: date, fim: date) -> pd.DataFrame:
-    return db.consultar("""
-        select p.nome, count(*) filter (where ch.status in ('embarcou','desembarcou')) as presencas,
-               count(*) filter (where ch.status = 'faltou') as faltas
+def frequencia(cid, ini: date, fim: date, van=None) -> pd.DataFrame:
+    return db.consultar(f"""
+        select p.nome, count(ch.*) filter (where ch.status in ('embarcou','desembarcou')) as presencas,
+               count(ch.*) filter (where ch.status = 'faltou') as faltas
         from passageiros p left join chamadas ch on ch.passageiro_id = p.id and ch.data >= :i and ch.data < :f
-        where p.condutor_id = :cid and p.ativo group by p.nome order by p.nome""", cid=cid, i=ini, f=fim)
+        where p.condutor_id = :cid and p.ativo and {_filtro_van('p.van_id')}
+        group by p.nome order by p.nome""", cid=cid, i=ini, f=fim, van=van)
 
 
 # ------------------------------------------------------------------ área dos pais
@@ -289,9 +358,12 @@ def filhos(pids: list[str]) -> pd.DataFrame:
         return pd.DataFrame()
     return db.ao_vivo("""
         select p.id, p.nome, p.turno, p.serie, p.data_nasc, p.endereco, p.observacoes, p.faz_ida, p.faz_volta,
-               e.nome as escola, c.nome as condutor, c.telefone as condutor_tel, c.placa, c.veiculo, c.chave_pix,
-               c.id as condutor_id
-        from passageiros p join condutores c on c.id = p.condutor_id left join escolas e on e.id = p.escola_id
+               e.nome as escola, c.nome as condutor, c.chave_pix, c.id as condutor_id,
+               coalesce(v.motorista_nome, c.nome) as motorista,
+               coalesce(v.motorista_telefone, c.telefone) as condutor_tel,
+               v.placa, v.veiculo, v.nome as van
+        from passageiros p join condutores c on c.id = p.condutor_id
+        left join escolas e on e.id = p.escola_id left join vans v on v.id = p.van_id
         where p.id = any(cast(:ids as uuid[])) order by p.nome""", ids=pids)
 
 
@@ -323,7 +395,9 @@ def cancelar_ausencia(pid, aid):
     db.gravar("delete from ausencias where id=:aid and passageiro_id=:pid", aid=aid, pid=pid)
 
 
-def ausencias_condutor(cid, desde: date) -> pd.DataFrame:
-    return db.ao_vivo("""select a.data, a.ida, a.volta, a.motivo, p.nome, a.criado_em
-                         from ausencias a join passageiros p on p.id = a.passageiro_id
-                         where p.condutor_id = :cid and a.data >= :d order by a.data, p.nome""", cid=cid, d=desde)
+def ausencias_empresa(cid, desde: date, van=None) -> pd.DataFrame:
+    return db.ao_vivo(f"""select a.data, a.ida, a.volta, a.motivo, p.nome, v.nome as van, a.criado_em
+                          from ausencias a join passageiros p on p.id = a.passageiro_id
+                          left join vans v on v.id = p.van_id
+                          where p.condutor_id = :cid and a.data >= :d and {_filtro_van('p.van_id')}
+                          order by a.data, p.nome""", cid=cid, d=desde, van=van)

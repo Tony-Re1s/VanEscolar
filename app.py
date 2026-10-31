@@ -20,9 +20,10 @@ usuario = auth.exigir_login()
 if st.session_state.pop("_recarregar_perfil", False):
     auth.perfil(usuario)
 
-cond = usuario.get("condutor")
+cond = usuario.get("condutor")          # empresa da qual a pessoa é gestora
+vans_mot = usuario.get("vans_motorista") or []   # vans que a pessoa dirige (de qualquer empresa)
 if cond and not cond.get("ativo", True):
-    st.error("O seu cadastro de condutor está desativado. Fale com o administrador do Pequenos a Bordo.")
+    st.error("O cadastro da sua empresa está desativado. Fale com o administrador do Pequenos a Bordo.")
     st.button("Sair", on_click=auth.sair)
     st.stop()
 
@@ -38,18 +39,25 @@ if cond:
     ]
     paginas["Cadastros"] = [
         st.Page("telas/alunos.py", title="Alunos e responsáveis", icon=":material/groups:"),
+        st.Page("telas/vans.py", title="Vans e motoristas", icon=":material/airport_shuttle:"),
         st.Page("telas/escolas.py", title="Escolas", icon=":material/school:"),
-        st.Page("telas/meu_cadastro.py", title="Meu cadastro e van", icon=":material/airport_shuttle:"),
+        st.Page("telas/meu_cadastro.py", title="Minha empresa", icon=":material/storefront:"),
+    ]
+elif vans_mot:   # motorista contratado: só a(s) van(s) dele
+    paginas["Minha van"] = [
+        st.Page("telas/chamada.py", title="Rota e chamada", icon=":material/fact_check:", default=True),
+        st.Page("telas/motorista_alunos.py", title="Meus alunos", icon=":material/groups:"),
     ]
 if usuario.get("filhos"):
     paginas.setdefault("Família", []).append(
-        st.Page("telas/pais.py", title="Meus filhos", icon=":material/family_restroom:", default=not cond))
+        st.Page("telas/pais.py", title="Meus filhos", icon=":material/family_restroom:",
+                default=not cond and not vans_mot))
 if usuario.get("admin"):
-    paginas["Administração"] = [st.Page("telas/admin.py", title="Condutores", icon=":material/admin_panel_settings:")]
-if not cond:
+    paginas["Administração"] = [st.Page("telas/admin.py", title="Empresas", icon=":material/admin_panel_settings:")]
+if not cond and not vans_mot and not usuario.get("filhos"):
     paginas.setdefault("Começar", []).append(
-        st.Page("telas/boas_vindas.py", title="Sou condutor", icon=":material/rocket_launch:",
-                default=not usuario.get("filhos")))
+        st.Page("telas/boas_vindas.py", title="Criar minha empresa", icon=":material/rocket_launch:",
+                default=not usuario.get("filhos") and not vans_mot))
 
 nav = st.navigation(paginas, expanded=True)
 
@@ -57,7 +65,9 @@ with st.sidebar:
     st.markdown(f"**{_ui.esc(usuario.get('nome') or usuario['email'])}**  \n"
                 f"<span class='ve-sub'>{_ui.esc(usuario['email'])}</span>", unsafe_allow_html=True)
     if cond:
-        st.caption(f"🚐 {cond.get('veiculo') or 'Van'} · {cond.get('placa') or 'sem placa'}")
+        st.caption(f"🏢 {cond['nome']} · gestor")
+    for v in vans_mot:
+        st.caption(f"🚐 {v['nome']} · {v.get('placa') or 'sem placa'}" + ("" if cond else f" · {v['empresa']}"))
     st.button("Sair", icon=":material/logout:", on_click=auth.sair, use_container_width=True)
 
 nav.run()

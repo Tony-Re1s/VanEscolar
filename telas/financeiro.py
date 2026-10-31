@@ -16,19 +16,22 @@ st.title("Financeiro")
 meses = [somar_meses(inicio_mes(h), i) for i in range(-24, 1)]
 comp = st.select_slider("Mês", options=meses, value=inicio_mes(h), format_func=lambda d: mes_label(d, curto=True))
 prox = somar_meses(comp, 1)
+van = _ui.filtro_van(cid, "van_fin", "Ver")
+vans = repo.vans(cid)
 
-res = repo.resumo_meses(cid, somar_meses(comp, -11), prox)
+res = repo.resumo_meses(cid, somar_meses(comp, -11), prox, van=van)
 mes = res.iloc[-1]
 receita = float(mes["mensalidades"]) + float(mes["outras_receitas"])
 desp = float(mes["despesas"])
-mens = repo.mensalidades_mes(cid, comp, h)
+mens = repo.mensalidades_mes(cid, comp, h, van=van)
 inad = mens.loc[mens["situacao"] == "vencido", "valor"].astype(float).sum() if not mens.empty else 0
 _ui.kpis([("Lucro do mês", brl(receita - desp), "recebido − despesas"),
           ("Recebido", brl(receita), f"mensalidades {brl(mes['mensalidades'])}"),
           ("Despesas", brl(desp)),
           ("Inadimplência", brl(inad), "mensalidades vencidas do mês")])
 
-aba_lancar, aba_mes, aba_ano = st.tabs(["Lançar", "Lançamentos do mês", "12 meses"])
+abas = ["Lançar", "Lançamentos do mês", "12 meses"] + (["Por van"] if len(vans) > 1 else [])
+aba_lancar, aba_mes, aba_ano, *aba_van = st.tabs(abas)
 
 with aba_lancar:
     tipo = st.segmented_control("Tipo", ["despesa", "receita"], default="despesa",
@@ -41,23 +44,31 @@ with aba_lancar:
         a2, b2 = st.columns(2)
         data = a2.date_input("Data", value=h if comp == inicio_mes(h) else comp, format="DD/MM/YYYY")
         km = b2.number_input("Hodômetro (km, opcional)", min_value=0, step=100, value=0)
+        if not vans.empty:
+            v_ids = [None] + [str(x) for x in vans["id"]]
+            v_nomes = {None: "Geral (sem van)"} | {str(r.id): r.nome for r in vans.itertuples()}
+            van_l = st.selectbox("Van", v_ids, index=v_ids.index(van) if van in v_ids else 0,
+                                 format_func=v_nomes.get, help="Combustível, manutenção etc. de uma van específica. "
+                                 "Contador, celular e MEI podem ficar como Geral.")
+        else:
+            van_l = None
         desc = st.text_input("Descrição", placeholder="Ex.: troca de óleo, posto X, passeio ao zoológico")
         st.caption("Mensalidades entram sozinhas quando você marca como recebidas — não precisa lançar aqui.")
         if st.form_submit_button("Lançar", type="primary"):
             if valor <= 0:
                 st.error("Informe o valor.")
             else:
-                repo.salvar_lancamento(cid, dict(tipo=tipo, categoria=cat, descricao=desc or None, valor=valor,
+                repo.salvar_lancamento(cid, dict(van_id=van_l, tipo=tipo, categoria=cat, descricao=desc or None, valor=valor,
                                                  data=data, km=km or None))
                 st.toast("Lançado.")
                 st.rerun()
 
 with aba_mes:
-    lan = repo.lancamentos(cid, comp, prox)
+    lan = repo.lancamentos(cid, comp, prox, van=van)
     if lan.empty:
         st.info(f"Nenhum lançamento em {mes_label(comp)}.")
     else:
-        cats = repo.despesas_por_categoria(cid, comp, prox)
+        cats = repo.despesas_por_categoria(cid, comp, prox, van=van)
         if not cats.empty:
             cats["valor"] = cats["valor"].astype(float)
             st.altair_chart(alt.Chart(cats).mark_bar(cornerRadiusEnd=4, color="#1D3557").encode(
@@ -70,7 +81,8 @@ with aba_mes:
             a, b, x = st.container(key=f"lp_{r.id}").columns([4, 2, 1])
             sinal = "−" if r.tipo == "despesa" else "+"
             a.markdown(f"**{_ui.esc(r.categoria)}** <span class='ve-sub'>{data_br(r.data)}"
-                       f"{' · ' + _ui.esc(r.descricao) if r.descricao else ''}{f' · {r.km} km' if r.km else ''}</span>",
+                       f"{' · ' + _ui.esc(r.descricao) if r.descricao else ''}{f' · {r.km} km' if r.km else ''}"
+                       f"{' · 🚐 ' + _ui.esc(r.van) if r.van and len(vans) > 1 else ''}</span>",
                        unsafe_allow_html=True)
             b.markdown(f"{sinal} {brl(r.valor)}")
             if x.button("", icon=":material/delete:", key=f"del_{r.id}", type="tertiary", help="Excluir"):
@@ -100,3 +112,17 @@ with aba_ano:
                         "Média/mês": [brl(res["receitas"].mean()), brl(res["despesas"].mean()),
                                       brl(res["lucro"].mean())]})
     st.dataframe(tot, hide_index=True, use_container_width=True)
+
+if aba_van:
+    with aba_van[0]:
+        st.caption(f"Resultado de cada van em {mes_label(comp)} (regime de caixa). Despesas lançadas como "
+                   "**Geral** aparecem separadas — divida de cabeça ou lance já na van.")
+        pv = repo.resultado_por_van(cid, comp, prox)
+        pv["recebido"] = pv["recebido"].astype(float)
+        pv["despesas"] = pv["despesas"].astype(float)
+        pv["lucro"] = pv["recebido"] - pv["despesas"]
+        st.dataframe(pv, hide_index=True, use_container_width=True,
+                     column_config={"van": "Van",
+                                    "recebido": st.column_config.NumberColumn("Recebido", format="R$ %.2f"),
+                                    "despesas": st.column_config.NumberColumn("Despesas", format="R$ %.2f"),
+                                    "lucro": st.column_config.NumberColumn("Lucro", format="R$ %.2f")})

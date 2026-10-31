@@ -30,11 +30,12 @@ for aba, f in zip(abas, filhos.itertuples()):
             <h3>{_ui.esc(f.nome)}</h3>
             <div>{nasc}{_ui.esc(f.serie or '')} {('· ' + TURNOS.get(f.turno, '')) if f.turno else ''}</div>
             <div class='r'>🏫 {_ui.esc(f.escola or '—')}</div>
-            <div class='r'>🚐 {_ui.esc(f.condutor)} · {_ui.esc(f.veiculo or '')} {_ui.esc(f.placa or '')}</div>
-            <div class='r'>📞 {_ui.esc(f.condutor_tel or '—')}</div></div>""", unsafe_allow_html=True)
+            <div class='r'>🚐 {_ui.esc(f.van or f.condutor)} · {_ui.esc(f.veiculo or '')} {_ui.esc(f.placa or '')}</div>
+            <div class='r'>👤 Motorista: {_ui.esc(f.motorista)} · 📞 {_ui.esc(f.condutor_tel or '—')}</div>
+            <div class='r'>🏢 {_ui.esc(f.condutor)}</div></div>""", unsafe_allow_html=True)
         zap = link_whats(f.condutor_tel, f"Olá! Sou responsável por {f.nome}.")
         if zap:
-            st.link_button("Falar com o condutor", zap, icon=":material/chat:")
+            st.link_button("Falar com o motorista", zap, icon=":material/chat:")
 
         # hoje
         st.subheader("Hoje")
@@ -51,7 +52,7 @@ for aba, f in zip(abas, filhos.itertuples()):
             else:
                 linhas.append(f"**{t.capitalize()}:** aguardando")
         st.markdown("  \n".join(linhas))
-        st.caption("Atualiza quando o condutor marca na chamada. Recarregue a página para ver o mais recente.")
+        st.caption("Atualiza quando o motorista marca na chamada. Recarregue a página para ver o mais recente.")
 
         # avisar falta
         st.subheader("Avisar falta")
@@ -61,7 +62,7 @@ for aba, f in zip(abas, filhos.itertuples()):
             d = a.date_input("Dia", value=h, min_value=h, max_value=h + timedelta(days=90), format="DD/MM/YYYY")
             q = b.selectbox("Trecho", ["Ida e volta", "Só ida", "Só volta"])
             m = st.text_input("Motivo (opcional)", placeholder="Ex.: consulta médica, vou buscar")
-            if st.form_submit_button("Avisar o condutor", type="primary"):
+            if st.form_submit_button("Avisar a van", type="primary"):
                 repo.avisar_ausencia(pid, d, q != "Só volta", q != "Só ida", m or None, u["id"])
                 st.success(f"Aviso registrado para {data_br(d)}.")
                 st.rerun()
@@ -77,7 +78,7 @@ for aba, f in zip(abas, filhos.itertuples()):
         st.subheader("Mensalidades")
         mens = repo.mensalidades_filhos([pid], h)
         if f.chave_pix:
-            st.markdown("Chave Pix do condutor:")
+            st.markdown(f"Chave Pix para pagamento ({f.condutor}):")
             st.code(f.chave_pix, language=None)
         if mens.empty:
             st.caption("Nenhuma mensalidade lançada ainda.")

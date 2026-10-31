@@ -157,3 +157,40 @@ create table if not exists ausencias (
   criado_em      timestamptz not null default now(),
   unique (passageiro_id, data)
 );
+
+-- ============================================================================================
+-- v2 — empresa (gestor) com várias vans; cada van tem um motorista (o próprio gestor ou outra
+-- pessoa, que entra com o Google pelo e-mail cadastrado aqui e só vê a van dela).
+-- ============================================================================================
+create table if not exists vans (
+  id                  uuid primary key default gen_random_uuid(),
+  condutor_id         uuid not null references condutores(id) on delete cascade,   -- a empresa/gestor
+  nome                text not null,                -- apelido: "Van 1", "Van da manhã", "Sprinter branca"
+  veiculo             text,
+  placa               text,
+  capacidade          int not null default 15,
+  motorista_nome      text,
+  motorista_email     text,                         -- e-mail do Google do motorista
+  motorista_telefone  text,
+  motorista_cnh       text,
+  ativo               boolean not null default true,
+  criado_em           timestamptz not null default now()
+);
+create index if not exists ix_vans_condutor on vans(condutor_id);
+create index if not exists ix_vans_motorista on vans(lower(motorista_email));
+
+alter table passageiros add column if not exists van_id uuid references vans(id) on delete set null;
+alter table lancamentos add column if not exists van_id uuid references vans(id) on delete set null;
+create index if not exists ix_pass_van on passageiros(van_id);
+
+-- dados da v1: quem tinha veículo/placa no cadastro ganha a "Van 1" (dirigida por ele) e os alunos vão para ela
+with novas as (
+  insert into vans (condutor_id, nome, veiculo, placa, capacidade, motorista_nome, motorista_email,
+                    motorista_telefone, motorista_cnh)
+  select c.id, 'Van 1', c.veiculo, c.placa, c.capacidade, c.nome, u.email, c.telefone, c.cnh
+  from condutores c join usuarios u on u.id = c.usuario_id
+  where (c.placa is not null or c.veiculo is not null)
+    and not exists (select 1 from vans v where v.condutor_id = c.id)
+  returning id, condutor_id
+)
+update passageiros p set van_id = novas.id from novas where p.condutor_id = novas.condutor_id and p.van_id is null;

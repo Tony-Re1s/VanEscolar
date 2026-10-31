@@ -1,14 +1,28 @@
-"""Rota do dia e chamada (embarque / desembarque / falta)."""
+"""Rota do dia e chamada (embarque / desembarque / falta) — por van.
+Gestor: escolhe qualquer van da empresa. Motorista contratado: só a(s) van(s) que dirige."""
 import streamlit as st
 
 from core import repo
 from core.fmt import TURNOS, agora, data_br, hoje, inicio_mes, link_maps_rota, link_whats, somar_meses
 from telas import _ui
-from telas._ui import exigir_condutor
 
-c = exigir_condutor()
-cid = c["id"]
+u = st.session_state["usuario"]
 st.title("Rota e chamada")
+
+vans = _ui.vans_acessiveis(u)
+if not vans:
+    st.info("Nenhuma van cadastrada. Cadastre em **Vans e motoristas**." if u.get("condutor")
+            else "Você não está como motorista de nenhuma van.")
+    st.stop()
+varias = len({v["cid"] for v in vans}) > 1
+if len(vans) > 1:
+    idx = st.selectbox("Van", range(len(vans)), format_func=lambda i: _ui.rotulo_van(vans[i], varias),
+                       key="van_chamada")
+    van = vans[idx]
+else:
+    van = vans[0]
+    st.caption(f"🚐 {_ui.rotulo_van(van, varias)}")
+cid, van_id = van["cid"], van["id"]
 
 a, b = st.columns([1, 1])
 dia = a.date_input("Dia", value=hoje(), format="DD/MM/YYYY", label_visibility="collapsed")
@@ -16,9 +30,10 @@ padrao = "ida" if agora().hour < 11 or 13 <= agora().hour < 15 else "volta"
 trecho = b.segmented_control("Trecho", ["ida", "volta"], default=padrao, label_visibility="collapsed",
                              format_func=lambda t: "🏠 → 🏫 Ida" if t == "ida" else "🏫 → 🏠 Volta") or padrao
 
-df = repo.chamada_dia(cid, dia, trecho)
+df = repo.chamada_dia(cid, van_id, dia, trecho)
 if df.empty:
-    st.info("Nenhum aluno neste trecho. Cadastre alunos em **Alunos e responsáveis**.")
+    st.info("Nenhum aluno desta van neste trecho." + (" Coloque os alunos na van em **Alunos e responsáveis**."
+                                                      if van["gestor"] else ""))
     st.stop()
 
 turnos_presentes = [t for t in TURNOS if t in set(df["turno"])]
@@ -72,7 +87,7 @@ for r in df.itertuples():
         for col, (k, rot) in zip(cols, BOT[trecho]):
             if col.button(rot, key=f"{k}_{r.id}", use_container_width=True,
                           type="primary" if st_atual == k else "secondary"):
-                repo.marcar(cid, r.id, dia, trecho, None if st_atual == k else k)
+                repo.marcar(cid, van_id, r.id, dia, trecho, None if st_atual == k else k)
                 st.rerun()
         msg = ("Bom dia! A van está chegando para buscar " if trecho == "ida" else "Olá! A van está chegando com ")
         link = link_whats(r.telefone, msg + f"{r.nome.split()[0]}. 🚐")
@@ -82,20 +97,20 @@ for r in df.itertuples():
 st.divider()
 with st.expander("Ordem da rota"):
     st.caption("Defina a ordem de busca (1 = primeiro). Vale para a ida; a volta usa a ordem inversa.")
-    todos = repo.passageiros(cid)
+    todos = repo.passageiros(cid, van=van_id)
     ed = st.data_editor(todos[["id", "ordem_rota", "nome", "turno", "bairro"]].assign(turno=todos["turno"].map(TURNOS)),
                         hide_index=True, use_container_width=True, disabled=["nome", "turno", "bairro"],
                         column_order=["ordem_rota", "nome", "turno", "bairro"],
                         column_config={"ordem_rota": st.column_config.NumberColumn("Ordem", min_value=0, step=1),
-                                       "nome": "Aluno", "turno": "Turno", "bairro": "Bairro"}, key="ordem_ed")
+                                       "nome": "Aluno", "turno": "Turno", "bairro": "Bairro"}, key=f"ordem_{van_id}")
     if st.button("Salvar ordem"):
-        repo.salvar_ordem(cid, dict(zip(ed["id"].astype(str), ed["ordem_rota"].fillna(0))))
+        repo.salvar_ordem(cid, van_id, dict(zip(ed["id"].astype(str), ed["ordem_rota"].fillna(0))))
         st.toast("Ordem salva.")
         st.rerun()
 
 with st.expander("Frequência do mês"):
     ini = inicio_mes(dia)
-    fr = repo.frequencia(cid, ini, somar_meses(ini, 1))
+    fr = repo.frequencia(cid, ini, somar_meses(ini, 1), van=van_id)
     st.dataframe(fr, hide_index=True, use_container_width=True,
                  column_config={"nome": "Aluno", "presencas": "Presenças (trechos)", "faltas": "Faltas (trechos)"})
     st.caption(f"Contagem de {data_br(ini)} até hoje, por trecho (ida e volta contam separado).")

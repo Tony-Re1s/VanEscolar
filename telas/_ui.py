@@ -76,6 +76,41 @@ def tag(chave: str, texto: str | None = None) -> str:
     return f"<span class='ve-tag ve-{esc(chave)}'>{esc(texto or chave)}</span>"
 
 
+def vans_acessiveis(u: dict) -> list[dict]:
+    """Vans que a pessoa pode operar na rota/chamada: todas da empresa dela (gestor) + as que ela dirige.
+    Cada item: id, nome, placa, cid (empresa dona), empresa, gestor (True se ela é a gestora dessa empresa)."""
+    from core import repo
+    out, vistos = [], set()
+    c = u.get("condutor")
+    if c:
+        for v in repo.vans(c["id"]).itertuples():
+            out.append(dict(id=str(v.id), nome=v.nome, placa=v.placa, cid=c["id"], empresa=c["nome"], gestor=True,
+                            minha=(v.motorista_email or "") == u["email"]))
+            vistos.add(str(v.id))
+    for v in u.get("vans_motorista") or []:
+        if str(v["id"]) not in vistos:
+            out.append(dict(id=str(v["id"]), nome=v["nome"], placa=v.get("placa"), cid=v["condutor_id"],
+                            empresa=v["empresa"], gestor=False, minha=True))
+    out.sort(key=lambda x: (not x["minha"], x["empresa"], x["nome"]))   # a que a pessoa dirige vem primeiro
+    return out
+
+
+def rotulo_van(v: dict, varias_empresas=False) -> str:
+    base = v["nome"] + (f" · {v['placa']}" if v.get("placa") else "")
+    return base + (f" ({v['empresa']})" if varias_empresas else "")
+
+
+def filtro_van(cid, chave: str, label="Van") -> str | None:
+    """Selectbox 'Todas as vans' + vans da empresa (só aparece se houver mais de uma). Devolve van_id ou None."""
+    from core import repo
+    vs = repo.vans(cid)
+    if len(vs) <= 1:
+        return None
+    ids = [None] + [str(x) for x in vs["id"]]
+    nomes = {None: "Todas as vans"} | {str(r.id): r.nome for r in vs.itertuples()}
+    return st.selectbox(label, ids, format_func=nomes.get, key=chave)
+
+
 def exigir_condutor() -> dict:
     u = st.session_state.get("usuario") or {}
     c = u.get("condutor")

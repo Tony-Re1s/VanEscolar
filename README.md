@@ -3,28 +3,28 @@
 App de gestão para **motorista de van escolar**, com área para os **pais**.
 Feito com **Streamlit + Neon (Postgres) + GitHub**, login com Google. Inspirado no SmartVan, do nosso jeito.
 
-## O que tem (versão 1)
+## Quem usa
 
-**Condutor**
+| Perfil | Como entra | O que vê |
+|---|---|---|
+| **Gestor** (dono da empresa) | Cria a empresa no 1º acesso (só nome e WhatsApp) | Tudo: várias vans, motoristas, alunos, mensalidades, financeiro (geral ou por van) |
+| **Motorista** | O gestor cadastra o e-mail do Google dele na van | Só a(s) van(s) que dirige: rota, chamada e os alunos — sem valores |
+| **Responsável** (pais) | O gestor cadastra o e-mail do Google dele no aluno | Carteirinha, embarque do dia, avisar falta, mensalidades e Pix |
+| **Admin** | E-mail em `[app] admins` nos Secrets | Lista de empresas, ativar/desativar |
+
+O gestor pode ser também o motorista de uma das vans ("Eu dirijo esta van").
+
+## Telas do gestor
+
 | Tela | O que faz |
 |---|---|
-| **Hoje** | Lucro e recebido do mês, alunos ativos × lugares, faltas avisadas pelos pais, mensalidades vencidas/vencendo em 7 dias com cobrança no WhatsApp, aniversariantes |
-| **Rota e chamada** | Ida/volta por turno, botões Embarcou / Na escola (Entregue) / Faltou, aviso "a van está chegando" no WhatsApp, rota no Google Maps na ordem de busca (sem quem avisou falta), ordem da rota, frequência do mês |
-| **Mensalidades** | Geradas sozinhas todo mês (dia de vencimento por aluno ou padrão), receber (data, valor, forma), estornar, ajustar valor/vencimento, isentar mês, cobrança pronta no WhatsApp com a chave Pix |
-| **Financeiro** | Despesas por categoria (combustível, manutenção, seguro, IPVA, monitora…), outras receitas (passeios), hodômetro, lucro do mês e gráfico de 12 meses (regime de caixa) |
-| **Alunos e responsáveis** | Escola, turno, endereço, observações (alergias…), contrato (valor, vencimento, início/fim, ida/volta), responsáveis com WhatsApp e e-mail do Google; irmãos compartilham o responsável |
-| **Escolas** | Endereço e horários |
-| **Meu cadastro e van** | Veículo, placa, lugares, chave Pix, vencimento padrão |
-
-**Responsável (pais)** — entra com o Google usando o e-mail cadastrado pelo condutor
-- Carteirinha digital do aluno (escola, turno, condutor, placa, telefone)
-- Status do dia: embarcou / chegou na escola / entregue em casa, com horário
-- **Avisar falta** (ida, volta ou as duas, até 90 dias à frente) — aparece na hora para o condutor
-- Mensalidades e chave Pix do condutor
-
-**Admin** (e-mails em `[app] admins`) — lista de condutores, ativar/desativar.
-
-Vários condutores usam o mesmo app: cada um cria a própria conta no 1º acesso e só vê os próprios dados.
+| **Hoje** | Lucro e recebido do mês, alunos × lugares das vans, faltas avisadas, mensalidades para cobrar, aniversariantes |
+| **Rota e chamada** | Por van: ida/volta, Embarcou / Na escola (Entregue) / Faltou, aviso no WhatsApp, rota no Google Maps, ordem da rota, frequência |
+| **Mensalidades** | Geradas sozinhas todo mês; receber, estornar, ajustar, isentar, cobrar no WhatsApp com Pix; filtro por van |
+| **Financeiro** | Despesas e receitas (de uma van ou gerais), lucro do mês, 12 meses e resultado por van |
+| **Alunos e responsáveis** | Van, escola, turno, endereço, cuidados, contrato, responsáveis |
+| **Vans e motoristas** | Apelido, veículo, placa, lugares e quem dirige (e-mail do Google) |
+| **Escolas** · **Minha empresa** | Endereço/horários · Pix e vencimento padrão |
 
 ## Estrutura
 ```

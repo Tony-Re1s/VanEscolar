@@ -18,13 +18,16 @@ if st.session_state.get("_mens_gerado") != (cid, inicio_mes(h)):
     st.session_state["_mens_gerado"] = (cid, inicio_mes(h))
 
 alunos = repo.passageiros(cid)
+vans = repo.vans(cid)
 if alunos.empty:
-    st.info("**Primeiros passos**\n\n1. Cadastre as **Escolas**\n2. Cadastre os **Alunos** e os responsáveis "
-            "(com o e-mail do Google, para os pais acessarem)\n3. Use **Rota e chamada** todo dia\n"
-            "4. As **Mensalidades** do mês são geradas sozinhas", icon=":material/rocket_launch:")
-    c1, c2 = st.columns(2)
-    c1.page_link("telas/escolas.py", label="Cadastrar escolas", icon=":material/school:")
-    c2.page_link("telas/alunos.py", label="Cadastrar alunos", icon=":material/groups:")
+    st.info("**Primeiros passos**\n\n1. Cadastre as **Vans** e quem dirige cada uma\n2. Cadastre as **Escolas**\n"
+            "3. Cadastre os **Alunos** (com a van) e os responsáveis — com o e-mail do Google, para os pais acessarem\n"
+            "4. Use **Rota e chamada** todo dia\n5. Em **Minha empresa**, coloque a chave Pix e o vencimento padrão; "
+            "as **Mensalidades** do mês são geradas sozinhas", icon=":material/rocket_launch:")
+    c1, c2, c3 = st.columns(3)
+    c1.page_link("telas/vans.py", label="Vans e motoristas", icon=":material/airport_shuttle:")
+    c2.page_link("telas/escolas.py", label="Escolas", icon=":material/school:")
+    c3.page_link("telas/alunos.py", label="Alunos", icon=":material/groups:")
     st.stop()
 
 mens = repo.mensalidades_mes(cid, h, h)
@@ -34,11 +37,12 @@ res = repo.resumo_meses(cid, inicio_mes(h), somar_meses(inicio_mes(h), 1)).iloc[
 lucro = float(res["mensalidades"]) + float(res["outras_receitas"]) - float(res["despesas"])
 _ui.kpis([("Lucro do mês", brl(lucro), mes_label(h)),
           ("Recebido", brl(rec), f"de {brl(prev)} previstos"),
-          ("Alunos ativos", len(alunos), f"{c['capacidade']} lugares na van"),
+          ("Alunos ativos", len(alunos), f"{len(vans)} van(s) · {int(vans['capacidade'].sum()) if len(vans) else 0} lugares"),
           ("Despesas do mês", brl(res["despesas"]))])
 
 # faltas avisadas
-aus = repo.ausencias_condutor(cid, h)
+aus = repo.ausencias_empresa(cid, h)
+varias_vans = len(vans) > 1
 hoje_aus = aus[aus["data"] == h] if not aus.empty else aus
 st.subheader("Hoje")
 if hoje_aus.empty:
@@ -46,7 +50,8 @@ if hoje_aus.empty:
 else:
     for r in hoje_aus.itertuples():
         trechos = " e ".join(t for t, v in (("ida", r.ida), ("volta", r.volta)) if v)
-        st.warning(f"**{r.nome}** não vai ({trechos}){' — ' + r.motivo if r.motivo else ''}",
+        st.warning(f"**{r.nome}**{f' ({r.van})' if varias_vans and r.van else ''} não vai ({trechos})"
+                   f"{' — ' + r.motivo if r.motivo else ''}",
                    icon=":material/event_busy:")
 prox = aus[aus["data"] > h] if not aus.empty else aus
 if not prox.empty:

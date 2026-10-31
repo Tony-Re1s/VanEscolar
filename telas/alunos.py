@@ -13,9 +13,13 @@ cid = c["id"]
 st.title("Alunos e responsáveis")
 
 escolas = repo.escolas(cid)
+vans = repo.vans(cid)
 todos = repo.passageiros(cid, so_ativos=False)
 ativos = todos[todos["ativo"]] if not todos.empty else todos
 
+if vans.empty:
+    st.info("Dica: cadastre as **vans** antes, para escolher em qual van cada aluno vai.",
+            icon=":material/airport_shuttle:")
 if escolas.empty:
     st.info("Dica: cadastre as **escolas** antes, para escolher aqui.", icon=":material/school:")
 
@@ -26,25 +30,34 @@ with aba_lista:
     if todos.empty:
         st.info("Nenhum aluno ainda. Use a aba **Cadastrar / editar**.")
     else:
-        f1, f2, f3 = st.columns([2, 1, 1])
+        f1, f2, f3, f4 = st.columns([2, 1, 1, 1])
         busca = f1.text_input("Buscar", placeholder="nome, bairro, responsável…", label_visibility="collapsed")
         turno_f = f2.selectbox("Turno", ["Todos"] + list(TURNOS.values()), label_visibility="collapsed")
-        ver_inat = f3.toggle("Mostrar inativos")
+        van_nomes = ["Todas as vans"] + list(vans["nome"]) + ["Sem van"] if not vans.empty else ["Todas as vans"]
+        van_f = f3.selectbox("Van", van_nomes, label_visibility="collapsed")
+        ver_inat = f4.toggle("Mostrar inativos")
         df = todos if ver_inat else ativos
+        if van_f == "Sem van":
+            df = df[df["van"].isna()]
+        elif van_f != "Todas as vans":
+            df = df[df["van"] == van_f]
         if turno_f != "Todos":
             df = df[df["turno"].map(TURNOS) == turno_f]
         if busca:
             alvo = df[["nome", "bairro", "responsaveis", "escola"]].fillna("").astype(str).agg(" ".join, axis=1)
             df = df[alvo.str.contains(busca, case=False)]
-        lot = len(ativos)
-        st.caption(f"{lot} aluno(s) ativo(s) · {c['capacidade']} lugares na van · "
+        lugares = int(vans["capacidade"].sum()) if not vans.empty else 0
+        st.caption(f"{len(ativos)} aluno(s) ativo(s) · {len(vans)} van(s) com {lugares} lugares · "
                    f"mensalidades somam {brl(ativos['mensalidade'].astype(float).sum())}/mês")
+        sem_van = int(ativos["van"].isna().sum()) if not ativos.empty else 0
+        if sem_van and not vans.empty:
+            st.warning(f"{sem_van} aluno(s) ativo(s) sem van — não aparecem na rota. Escolha a van no cadastro.")
         vis = df.assign(turno=df["turno"].map(TURNOS), idade=df["data_nasc"].map(idade),
                         whats=df["telefone_resp"].map(lambda t: link_whats(t, "Olá!")))
-        st.dataframe(vis[["nome", "idade", "escola", "turno", "bairro", "mensalidade", "dia_venc", "responsaveis",
-                          "whats", "ativo"]],
+        st.dataframe(vis[["nome", "van", "idade", "escola", "turno", "bairro", "mensalidade", "dia_venc",
+                          "responsaveis", "whats", "ativo"]],
                      hide_index=True, use_container_width=True,
-                     column_config={"nome": "Aluno", "idade": "Idade", "escola": "Escola", "turno": "Turno",
+                     column_config={"nome": "Aluno", "van": "Van", "idade": "Idade", "escola": "Escola", "turno": "Turno",
                                     "bairro": "Bairro",
                                     "mensalidade": st.column_config.NumberColumn("Mensalidade", format="R$ %.2f"),
                                     "dia_venc": "Venc.", "responsaveis": "Responsáveis",
@@ -65,6 +78,11 @@ with aba_edit:
     esc_ids = [None] + [str(x) for x in escolas["id"]] if not escolas.empty else [None]
     esc_nomes = {None: "—"} | ({str(r.id): r.nome for r in escolas.itertuples()} if not escolas.empty else {})
     esc_atual = str(g("escola_id")) if g("escola_id") is not None and str(g("escola_id")) in esc_ids else None
+    van_ids = [None] + [str(x) for x in vans["id"]] if not vans.empty else [None]
+    van_nomes_d = {None: "— sem van —"} | ({str(r.id): f"{r.nome} ({r.alunos}/{r.capacidade})"
+                                           for r in vans.itertuples()} if not vans.empty else {})
+    van_atual = str(g("van_id")) if g("van_id") is not None and str(g("van_id")) in van_ids else \
+        (van_ids[1] if p is None and len(van_ids) == 2 else None)
 
     def _d(v):
         return None if v is None or pd.isna(v) else v
@@ -78,7 +96,9 @@ with aba_edit:
         turnos = list(TURNOS)
         turno = a3.selectbox("Turno", turnos, index=turnos.index(g("turno")) if g("turno") in turnos else 0,
                              format_func=TURNOS.get)
-        escola_id = st.selectbox("Escola", esc_ids, index=esc_ids.index(esc_atual), format_func=esc_nomes.get)
+        v1, v2 = st.columns(2)
+        van_id = v1.selectbox("Van", van_ids, index=van_ids.index(van_atual), format_func=van_nomes_d.get)
+        escola_id = v2.selectbox("Escola", esc_ids, index=esc_ids.index(esc_atual), format_func=esc_nomes.get)
         endereco = st.text_input("Endereço de embarque", value=g("endereco") or "",
                                  help="Rua, número e cidade — usado no link da rota do Google Maps.")
         b1, b2 = st.columns(2)
@@ -107,14 +127,16 @@ with aba_edit:
         if fim and fim < inicio:
             st.error("O fim do contrato é antes do início.")
             st.stop()
-        dados = dict(escola_id=escola_id, nome=nome.strip(), data_nasc=nasc, serie=serie or None, turno=turno,
+        dados = dict(escola_id=escola_id, van_id=van_id, nome=nome.strip(), data_nasc=nasc, serie=serie or None, turno=turno,
                      endereco=endereco or None, bairro=bairro or None, referencia=referencia or None,
                      observacoes=observacoes or None, mensalidade=mensalidade, dia_vencimento=dia_v or None,
                      inicio=inicio, fim=fim, faz_ida=faz_ida, faz_volta=faz_volta, ativo=ativo)
-        if p is None and len(ativos) >= int(c["capacidade"]):
-            st.warning(f"Atenção: a van tem {c['capacidade']} lugares e já há {len(ativos)} alunos ativos "
-                       "(pode ser de turnos diferentes).")
         repo.salvar_passageiro(cid, dados, pid=g("id"))
+        if van_id and str(g("van_id")) != van_id:
+            vv = vans.set_index(vans["id"].astype(str)).loc[van_id]
+            if int(vv["alunos"]) + 1 > int(vv["capacidade"]):
+                st.toast(f"Atenção: {vv['nome']} passou dos {vv['capacidade']} lugares "
+                         "(pode estar ok se forem turnos diferentes).", icon="⚠️")
         st.session_state["aluno_sel"] = nome.strip() + ("" if ativo else " (inativo)")
         st.success("Aluno salvo. Agora cadastre os responsáveis logo abaixo.")
         st.rerun()

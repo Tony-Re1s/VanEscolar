@@ -18,8 +18,9 @@ if st.session_state.get("_mens_gerado") != (cid, inicio_mes(h)):
 
 meses = [somar_meses(inicio_mes(h), i) for i in range(-12, 3)]
 comp = st.select_slider("Mês", options=meses, value=inicio_mes(h), format_func=lambda d: mes_label(d, curto=True))
+van = _ui.filtro_van(cid, "van_mens")
 
-df = repo.mensalidades_mes(cid, comp, h)
+df = repo.mensalidades_mes(cid, comp, h, van=van)
 g1, g2 = st.columns([3, 1])
 if g2.button("Gerar mês", icon=":material/autorenew:", use_container_width=True,
              help="Cria a mensalidade de quem ainda não tem neste mês (alunos ativos com valor)."):
