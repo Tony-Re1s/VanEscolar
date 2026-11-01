@@ -64,7 +64,7 @@ if usuario.get("filhos"):
         st.Page("telas/pais.py", title="Meus filhos", icon=":material/family_restroom:",
                 default=not cond and not vans_mot))
 if usuario.get("admin"):
-    paginas["Administração"] = [st.Page("telas/admin.py", title="Empresas", icon=":material/admin_panel_settings:"),
+    paginas["Administração"] = [st.Page("telas/admin.py", title="Assinantes", icon=":material/admin_panel_settings:"),
                                 st.Page("telas/banco.py", title="Banco e backup", icon=":material/database:")]
 if not cond and not vans_mot and not usuario.get("filhos"):
     paginas.setdefault("Começar", []).append(

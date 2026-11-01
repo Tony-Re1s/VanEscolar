@@ -40,7 +40,7 @@ def atualizar_empresa(cid, d: dict):
 
 def empresas_todas() -> pd.DataFrame:
     return db.ao_vivo("""
-        select c.id, c.nome, u.email, c.telefone, c.ativo, c.criado_em::date as desde,
+        select c.id, c.nome, u.email, c.telefone, c.ativo, c.criado_em::date as desde, c.plano, c.plano_ate,
                (select count(*) from vans v where v.condutor_id = c.id and v.ativo) as vans,
                (select count(*) from passageiros p where p.condutor_id = c.id and p.ativo) as alunos,
                u.ultimo_acesso
