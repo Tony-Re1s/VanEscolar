@@ -164,11 +164,12 @@ def slide(s: dict, i: int, n: int) -> str:
     return pagina(bolhas() + pag + corpo + rodape(), fundo)
 
 
-# ---------------------------------------------------------------- story (9:16) — a figurinha de enquete é colocada no celular
+# ---------------------------------------------------------------- story (9:16)
 def story(s: dict) -> str:
     fundo = s.get("fundo") or "grad"
-    ops = "".join(f"<div class='op'>{fmt(o)}</div>" for o in (s.get("opcoes") or []))
-    enquete = (f"<div class='enquete' style='margin-top:80px'><div class='h3'>{fmt(s.get('pergunta'))}</div>{ops}</div>"
+    # sem botões de enquete desenhados (não seriam clicáveis): a pergunta convida a responder por DM
+    enquete = (f"<div class='enquete' style='margin-top:80px'><div class='h3'>{fmt(s.get('pergunta'))}</div>"
+               f"<div class='op' style='border:0;background:#F4FBFB'>Responde aqui por DM 💬</div></div>"
                if s.get("pergunta") else "")
     corpo = f"""{bolhas()}<div style='position:absolute;left:96px;right:96px;top:250px'>
       {f"<div class='pill'>{fmt(s['selo'])}</div>" if s.get('selo') else ''}

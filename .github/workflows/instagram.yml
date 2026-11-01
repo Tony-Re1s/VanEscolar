@@ -1,0 +1,53 @@
+name: Instagram — post do dia
+
+# Todo dia às 18h40 (Brasília) gera a arte/Reels do próximo post da pauta e publica no @turminha_abordo pela API.
+# As mídias vão para o branch `instagram-midia` (não mexe no main, então o app publicado não reinicia).
+# Secrets: IG_TOKEN (token do Instagram) e NEON_URL (guarda o token renovado). Sem IG_TOKEN, não faz nada.
+on:
+  schedule:
+    - cron: "40 21 * * *"
+  workflow_dispatch:
+    inputs:
+      id:
+        description: "Publicar um post específico da pauta (ex.: 003). Vazio = o do dia."
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: instagram
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Branch das mídias
+        run: |
+          git fetch origin instagram-midia || true
+          if git rev-parse --verify origin/instagram-midia >/dev/null 2>&1; then
+            git worktree add _midia origin/instagram-midia
+            git -C _midia checkout -B instagram-midia origin/instagram-midia
+          else
+            git worktree add --detach _midia
+            git -C _midia checkout --orphan instagram-midia
+            git -C _midia rm -rf --quiet . || true
+          fi
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Dependências
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-color-emoji ffmpeg >/dev/null
+          pip install -q playwright pillow "SQLAlchemy>=2.0" "psycopg[binary]>=3.2" "cryptography>=42"
+          python -m playwright install --with-deps chromium >/dev/null
+      - name: Publicar
+        env:
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
+          NEON_URL: ${{ secrets.NEON_URL }}
+        run: |
+          if [ -z "$IG_TOKEN" ]; then echo "IG_TOKEN não configurado — nada a fazer."; exit 0; fi
+          if [ -n "${{ inputs.id }}" ]; then python marketing/instagram/publicar.py --id "${{ inputs.id }}"; else python marketing/instagram/publicar.py; fi

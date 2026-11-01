@@ -65,15 +65,10 @@
    "maternidade"
   ],
   "story": {
-   "selo": "Enquete",
+   "selo": "Pergunta do dia",
    "emoji": "🤔",
    "titulo": "Você já pediu para ver o selo da *vistoria* da van?",
-   "texto": "Responda aqui embaixo 👇",
-   "pergunta": "Já conferiu o selo?",
-   "opcoes": [
-    "Sim, sempre",
-    "Nunca pensei nisso"
-   ]
+   "pergunta": "Já conferiu o selo?"
   },
   "status": "pendente",
   "publicado_em": null
@@ -135,14 +130,10 @@
    "educacaoinfantil"
   ],
   "story": {
-   "selo": "Quiz",
+   "selo": "Pergunta do dia",
    "emoji": "🚸",
    "titulo": "Por onde a criança deve atravessar depois de descer da van?",
-   "pergunta": "Atravessar por…",
-   "opcoes": [
-    "Atrás da van",
-    "Na frente da van ✅"
-   ]
+   "pergunta": "Já combinou isso com seu filho?"
   },
   "status": "pendente",
   "publicado_em": null
@@ -209,14 +200,10 @@
    "dicasparapais"
   ],
   "story": {
-   "selo": "Enquete",
+   "selo": "Pergunta do dia",
    "emoji": "📋",
    "titulo": "Você sabia que o motorista escolar precisa de *curso especializado*?",
-   "pergunta": "Sabia disso?",
-   "opcoes": [
-    "Sabia!",
-    "Não fazia ideia"
-   ]
+   "pergunta": "Sabia disso?"
   },
   "status": "pendente",
   "publicado_em": null
@@ -275,11 +262,7 @@
    "selo": "Para motoristas",
    "emoji": "🚐",
    "titulo": "Você confere o *fundo da van* no fim de toda rota?",
-   "pergunta": "Confere sempre?",
-   "opcoes": [
-    "Sempre ✅",
-    "Às vezes"
-   ]
+   "pergunta": "Confere sempre?"
   },
   "status": "pendente",
   "publicado_em": null
@@ -343,14 +326,10 @@
    "humor"
   ],
   "story": {
-   "selo": "Enquete",
+   "selo": "Pergunta do dia",
    "emoji": "😂",
    "titulo": "Tio e tia da van: qual é o *pior*?",
-   "pergunta": "O pior é…",
-   "opcoes": [
-    "O atraso",
-    "As mensagens"
-   ]
+   "pergunta": "Qual é o pior pra você?"
   },
   "status": "pendente",
   "publicado_em": null
@@ -413,10 +392,10 @@
    "tioescolar"
   ],
   "story": {
-   "selo": "Caixinha",
+   "selo": "Pergunta do dia",
    "emoji": "📝",
    "titulo": "Qual sua maior *dúvida* sobre contrato de van?",
-   "texto": "Manda que a gente responde nos stories 👇"
+   "texto": "Responde aqui por DM 💬"
   },
   "status": "pendente",
   "publicado_em": null
@@ -446,10 +425,10 @@
    "gratidao"
   ],
   "story": {
-   "selo": "Caixinha",
+   "selo": "Pergunta do dia",
    "emoji": "💛",
    "titulo": "Deixe um recado para o *tio ou a tia* da van do seu filho",
-   "texto": "A gente reposta os mais lindos 👇"
+   "texto": "Responde aqui por DM 💬"
   },
   "status": "pendente",
   "publicado_em": null
@@ -511,14 +490,10 @@
    "maternidade"
   ],
   "story": {
-   "selo": "Enquete",
+   "selo": "Pergunta do dia",
    "emoji": "🚸",
    "titulo": "Seu filho espera o *sinal do motorista* para descer?",
-   "pergunta": "Espera o sinal?",
-   "opcoes": [
-    "Sim 👍",
-    "Preciso conversar"
-   ]
+   "pergunta": "Espera o sinal?"
   },
   "status": "pendente",
   "publicado_em": null
@@ -571,14 +546,10 @@
    "transporteescolarsp"
   ],
   "story": {
-   "selo": "Enquete",
+   "selo": "Pergunta do dia",
    "emoji": "📍",
    "titulo": "Pais: vocês gostariam de *ver a van no mapa*?",
-   "pergunta": "Ver a van no mapa?",
-   "opcoes": [
-    "Quero!",
-    "Não precisa"
-   ]
+   "pergunta": "Ver a van no mapa?"
   },
   "status": "pendente",
   "publicado_em": null
@@ -633,14 +604,10 @@
    "maternidade"
   ],
   "story": {
-   "selo": "Enquete",
+   "selo": "Pergunta do dia",
    "emoji": "🪑",
    "titulo": "Você achava que a cadeirinha era *obrigatória* na van?",
-   "pergunta": "Achava que era?",
-   "opcoes": [
-    "Sim",
-    "Não"
-   ]
+   "pergunta": "Achava que era?"
   },
   "status": "pendente",
   "publicado_em": null
@@ -711,11 +678,7 @@
    "selo": "Para motoristas",
    "emoji": "📒",
    "titulo": "Como você faz a *chamada* hoje?",
-   "pergunta": "A chamada é…",
-   "opcoes": [
-    "No caderno",
-    "No celular"
-   ]
+   "pergunta": "Como é a sua chamada hoje?"
   },
   "status": "pendente",
   "publicado_em": null
@@ -773,14 +736,10 @@
    "humor"
   ],
   "story": {
-   "selo": "Enquete",
+   "selo": "Pergunta do dia",
    "emoji": "😂",
    "titulo": "Seu filho na van é o que *dorme* ou o *repórter*?",
-   "pergunta": "Meu filho é…",
-   "opcoes": [
-    "O que dorme 😴",
-    "O repórter 🗣️"
-   ]
+   "pergunta": "Qual é o seu filho?"
   },
   "status": "pendente",
   "publicado_em": null
@@ -833,14 +792,10 @@
    "maternidade"
   ],
   "story": {
-   "selo": "Enquete",
+   "selo": "Pergunta do dia",
    "emoji": "🔐",
    "titulo": "Você já passou para a van a *lista* de quem pode buscar seu filho?",
-   "pergunta": "Já passou?",
-   "opcoes": [
-    "Já ✅",
-    "Ainda não"
-   ]
+   "pergunta": "Já passou?"
   },
   "status": "pendente",
   "publicado_em": null
@@ -870,10 +825,10 @@
    "gratidao"
   ],
   "story": {
-   "selo": "Caixinha",
+   "selo": "Pergunta do dia",
    "emoji": "💬",
    "titulo": "Conta pra gente: há quanto tempo seu filho vai de *van*?",
-   "texto": "Responda aqui 👇"
+   "texto": "Responde aqui por DM 💬"
   },
   "status": "pendente",
   "publicado_em": null
