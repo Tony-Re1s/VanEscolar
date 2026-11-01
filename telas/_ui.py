@@ -284,7 +284,7 @@ def vans_acessiveis(u: dict) -> list[dict]:
     Cada item: id, nome, placa, cid (empresa dona), empresa, gestor (True se ela é a gestora dessa empresa)."""
     from core import repo
     out, vistos = [], set()
-    c = u.get("condutor")
+    c = None if st.session_state.get("ver_como_motorista") else u.get("condutor")
     if c:
         for v in repo.vans(c["id"]).itertuples():
             out.append(dict(id=str(v.id), nome=v.nome, placa=v.placa, cid=c["id"], empresa=c["nome"], gestor=True,

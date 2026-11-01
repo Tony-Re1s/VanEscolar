@@ -102,7 +102,8 @@ elif cond and (cond.get("modo") or "completo") == "facil":
         st.Page("telas/indicacao.py", title="Indique e ganhe", icon=":material/redeem:"),
     ]
 elif cond:
-    paginas["Dia a dia"] = [st.Page("telas/hoje.py", title="Hoje", icon=":material/today:", default=True)] + (
+    paginas["Dia a dia"] = [st.Page("telas/hoje.py", title="Hoje", icon=":material/today:", default=True),
+                            st.Page("telas/operacao.py", title="Operação", icon=":material/radar:")] + (
         [] if EM_PAUSA else [st.Page("telas/chamada.py", title="Rota e chamada", icon=":material/fact_check:")]) + [
         st.Page("telas/avisos.py", title="Avisos", icon=":material/notifications:")]
     paginas["Dinheiro"] = [
@@ -122,10 +123,6 @@ elif vans_mot:   # motorista contratado: só a(s) van(s) dele
         st.Page("telas/chamada.py", title="Rota e chamada", icon=":material/fact_check:", default=True),
         st.Page("telas/motorista_alunos.py", title="Meus alunos", icon=":material/groups:"),
     ]
-if cond and usuario.get("admin") and any(str(v["condutor_id"]) == str(cond["id"]) for v in vans_mot):
-    # admin testando: é motorista de uma van da própria empresa (dados de demonstração) — vê a tela do motorista
-    paginas["Ver como"] = [st.Page("telas/motorista_alunos.py", title="Motorista: meus alunos",
-                                   icon=":material/badge:")]
 if usuario.get("filhos"):
     paginas.setdefault("Família", []).append(
         st.Page("telas/pais.py", title="Meus filhos", icon=":material/family_restroom:",
@@ -171,9 +168,24 @@ elif usuario.get("admin"):
 
 paginas["Sobre"] = [PRIVACIDADE, TERMOS]
 
-nav = st.navigation(paginas, expanded=True)
+# gestor que também dirige (ou é monitor de) uma van da própria empresa: pode ver o app como o motorista vê
+PODE_VER_MOT = bool(cond) and any(str(v["condutor_id"]) == str(cond["id"]) for v in vans_mot)
+VER_MOT = PODE_VER_MOT and bool(st.session_state.get("ver_como_motorista"))
+if VER_MOT:
+    paginas = {"Visão do motorista": [
+        st.Page("telas/chamada.py", title="Rota e chamada", icon=":material/fact_check:", default=True),
+        st.Page("telas/motorista_alunos.py", title="Meus alunos", icon=":material/groups:")],
+        "Sobre": [PRIVACIDADE, TERMOS]}
 
-if cond and not usuario.get("bloqueado"):
+nav = st.navigation(paginas, expanded=True)
+if VER_MOT:
+    v1, v2 = st.columns([3, 1], vertical_alignment="center")
+    v1.info("👁️ Você está vendo o app **como o motorista / monitor(a)** vê.", icon=":material/visibility:")
+    if v2.button("Voltar à visão do gestor", icon=":material/arrow_back:", width="stretch"):
+        st.session_state["ver_como_motorista"] = False
+        st.rerun()
+
+if cond and not usuario.get("bloqueado") and not VER_MOT:
     # botão no topo: modo fácil × completo (só muda o que aparece; os dados são os mesmos)
     _, topo = st.columns([3, 2])
     modo_atual = cond.get("modo") or "completo"
@@ -195,6 +207,11 @@ with st.sidebar:
         st.caption(f"🏢 {cond['nome']} · gestor")
     for v in vans_mot:
         st.caption(f"🚐 {v['nome']} · {v.get('placa') or 'sem placa'}" + ("" if cond else f" · {v['empresa']}"))
+    if PODE_VER_MOT and not VER_MOT:
+        if st.button("Ver como motorista", icon=":material/visibility:", width="stretch",
+                     help="Mostra o app exatamente como o motorista / monitor(a) vê (a mesma visão para os dois)."):
+            st.session_state["ver_como_motorista"] = True
+            st.rerun()
     st.button("Sair", icon=":material/logout:", on_click=auth.sair, width="stretch")
 
 nav.run()
