@@ -43,6 +43,7 @@ def empresas_todas() -> pd.DataFrame:
     return db.ao_vivo("""
         select c.id, c.nome, u.email, c.telefone, c.ativo, c.criado_em::date as desde, c.plano, c.plano_ate, c.plano_tipo, c.periodo, c.preco_mensal, c.desconto_origem,
                c.desconto_ate, c.preco_combinado, c.vip, c.pedido, c.meses_gratis, c.indicacoes_pagas,
+               c.asaas_assinatura,
                (select count(*) from vans v where v.condutor_id = c.id and v.ativo) as vans,
                (select count(*) from passageiros p where p.condutor_id = c.id and p.ativo) as alunos,
                u.ultimo_acesso
@@ -722,51 +723,12 @@ def definir_preco_combinado(cid, valor: float | None):
               v=valor if valor else None, cid=str(cid))
 
 
-def _contar_indicacao(s, emp: dict):
-    """1º pagamento de quem foi indicado: soma 1 para quem indicou e, a cada meta, dá os meses grátis."""
-    if not emp.get("indicado_por") or emp.get("indicacao_contada"):
-        return
-    from core import planos as pl
-    cfg = pl.config("indicacao")
-    meta, premio = max(1, int(cfg.get("meta") or 10)), int(cfg.get("premio_meses") or 0)
-    s.execute(text("update condutores set indicacao_contada = true where id = cast(:i as uuid)"), dict(i=str(emp["id"])))
-    s.execute(text(f"""update condutores set indicacoes_pagas = indicacoes_pagas + 1,
-                         meses_gratis = meses_gratis + case when (indicacoes_pagas + 1) % {meta} = 0
-                                                            then {premio} else 0 end
-                       where id = cast(:i as uuid)"""), dict(i=str(emp["indicado_por"])))
-
-
 def registrar_pagamento(cid, hoje: date, pedido: dict | None = None) -> date:
-    """Confirma um pagamento. Com `pedido`, aplica o plano/preço pedido; sem, renova o plano atual
-    (1 mês, ou 12 no anual). Também conta a indicação no 1º pagamento."""
-    from core import planos as pl
+    """Confirma um pagamento (regra em core/cobranca.py, a mesma usada pela sincronização com o Asaas)."""
+    from core import cobranca
     emp = empresa(cid)
-    plano = (pedido or {}).get("plano") or emp["plano"]
-    periodo = (pedido or {}).get("periodo") or emp.get("periodo") or "mensal"
-    meses = 12 if periodo == "anual" else 1
-    renovando = emp["plano"] == plano and pl.tipo_da_empresa(emp) == "pago" and emp.get("plano_ate")
-    base = max(emp["plano_ate"], hoje) if renovando else hoje
-    ate = somar_meses(base, meses)
     with db.transacao() as s:
-        if pedido:
-            dur = pedido.get("duracao_meses")
-            s.execute(text("""update condutores set plano=:plano, plano_tipo='pago', plano_ate=:ate, periodo=:periodo,
-                                preco_mensal=:preco, desconto_origem=:origem, desconto_ate=:dat,
-                                vip = vip or :vip, cupom_id = coalesce(cast(:cupom as uuid), cupom_id), pedido = null
-                              where id = cast(:cid as uuid)"""),
-                      dict(plano=plano, ate=ate, periodo=periodo, preco=pedido.get("preco"),
-                           origem=pedido.get("origem"), dat=somar_meses(hoje, int(dur)) if dur else None,
-                           vip=bool(pedido.get("vip_novo") or pedido.get("origem") == "vip"),
-                           cupom=pedido.get("cupom_id"), cid=str(cid)))
-            if pedido.get("cupom_id"):
-                s.execute(text("""insert into cupons_usos (cupom_id, condutor_id)
-                                  values (cast(:c as uuid), cast(:cid as uuid)) on conflict do nothing"""),
-                          dict(c=str(pedido["cupom_id"]), cid=str(cid)))
-        else:
-            s.execute(text("""update condutores set plano_tipo='pago', plano_ate=:ate, periodo=:periodo
-                              where id = cast(:cid as uuid)"""), dict(ate=ate, periodo=periodo, cid=str(cid)))
-        _contar_indicacao(s, emp)
-    return ate
+        return cobranca.aplicar_pagamento(s, emp, hoje, pedido)
 
 
 def usar_mes_gratis(cid, hoje: date) -> date | None:
@@ -1000,3 +962,16 @@ def posicao_publica(token: str) -> dict | None:
                        from vans v join condutores c on c.id = v.condutor_id
                        where v.loc_token = :t""", t=token)
     return df.iloc[0].to_dict() if len(df) else None
+
+
+
+# ------------------------------------------------------------------ Asaas (dados locais)
+def salvar_documento(cid, doc: str):
+    db.gravar("update condutores set documento = :d where id = cast(:cid as uuid)", d=doc, cid=str(cid))
+
+
+def cobrancas_asaas(cid, assinatura: str | None = None) -> list[dict]:
+    df = db.ao_vivo("""select id, assinatura, valor, status, vencimento, link from asaas_pagamentos
+                       where condutor_id = cast(:cid as uuid) and (cast(:a as text) is null or assinatura = :a)
+                       order by vencimento desc""", cid=str(cid), a=assinatura)
+    return df.to_dict("records")

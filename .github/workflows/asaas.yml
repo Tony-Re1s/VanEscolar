@@ -1,0 +1,28 @@
+name: Asaas — sincronizar pagamentos
+
+# A cada 30 min: libera/renova o plano de quem pagou no Asaas (o Streamlit não recebe webhook).
+# Secrets do repositório: NEON_URL, ASAAS_API_KEY e ASAAS_AMBIENTE (sandbox | producao).
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "SQLAlchemy>=2.0" "psycopg[binary]>=3.2" "cryptography>=42"
+      - name: Sincronizar
+        env:
+          NEON_URL: ${{ secrets.NEON_URL }}
+          ASAAS_API_KEY: ${{ secrets.ASAAS_API_KEY }}
+          ASAAS_AMBIENTE: ${{ secrets.ASAAS_AMBIENTE }}
+        run: python scripts/asaas_sync.py

@@ -364,3 +364,37 @@ def _enviar_posicao(cid, van_id: str):
                    "Atualiza a cada 30 s enquanto este app estiver aberto.")
     else:
         st.caption("📍 Localização ao vivo ligada — pegando a posição do celular…")
+
+
+# ---------------------------------------------------------------- Asaas
+def asaas_api():
+    """Cliente do Asaas a partir dos Secrets ([asaas] api_key/ambiente), ou None se não configurado."""
+    try:
+        c = st.secrets["asaas"]
+    except Exception:  # noqa: BLE001
+        return None
+    if not c.get("api_key"):
+        return None
+    from core.asaas import Asaas
+    return Asaas(str(c["api_key"]), str(c.get("ambiente", "sandbox")), c.get("base_url"))
+
+
+def sincronizar_asaas(cid=None, forcar: bool = False) -> dict | None:
+    """Consulta o Asaas (no máximo 1x por minuto por tela, a não ser que `forcar`). Devolve o resumo ou None."""
+    import time
+    from core import asaas, db
+    from core.fmt import hoje
+    api = asaas_api()
+    if not api:
+        return None
+    chave = f"_asaas_sync_{cid or 'todos'}"
+    if not forcar and time.time() - st.session_state.get(chave, 0) < 60:
+        return None
+    st.session_state[chave] = time.time()
+    try:
+        res = asaas.sincronizar(api, db.conexao(db.banco_ativo()).engine, hoje(), str(cid) if cid else None)
+    except asaas.AsaasErro as e:
+        return {"erros": [str(e)], "pagamentos_novos": 0, "empresas": 0, "valores_atualizados": 0}
+    if res["pagamentos_novos"] or res["valores_atualizados"]:
+        db._mudou()
+    return res

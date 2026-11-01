@@ -381,3 +381,21 @@ alter table vans add column if not exists loc_lng double precision;
 alter table vans add column if not exists loc_precisao double precision;
 alter table vans add column if not exists loc_em timestamptz;         -- hora da última posição
 alter table vans add column if not exists loc_ate timestamptz;        -- o link vale até aqui
+
+-- v12 — Asaas: assinatura recorrente do gestor (Pix, boleto ou cartão). O app consulta o Asaas (Streamlit não
+-- recebe webhook): ao abrir Meu plano, pelo botão no painel e a cada 30 min pelo GitHub Actions.
+alter table condutores add column if not exists documento text;            -- CPF ou CNPJ de quem paga
+alter table condutores add column if not exists asaas_cliente text;
+alter table condutores add column if not exists asaas_assinatura text;
+alter table condutores add column if not exists asaas_valor numeric(10,2);  -- valor por cobrança hoje no Asaas
+create table if not exists asaas_pagamentos (
+  id            text primary key,              -- id da cobrança no Asaas (pay_...)
+  condutor_id   uuid not null references condutores(id) on delete cascade,
+  assinatura    text,
+  valor         numeric(10,2),
+  status        text,
+  vencimento    date,
+  link          text,                           -- invoiceUrl (página de pagamento)
+  processado    boolean not null default false, -- já liberou o plano
+  atualizado_em timestamptz not null default now()
+);
