@@ -12,6 +12,16 @@ if not st.session_state["usuario"].get("admin"):
     st.stop()
 
 st.title("Assinantes")
+if _ui.asaas_api():
+    s1, s2 = st.columns([3, 2], vertical_alignment="center")
+    s1.caption("💳 Pagamentos pelo **Asaas** ligados: o app confere sozinho a cada 30 min (e quando o gestor abre "
+               "Meu plano).")
+    if s2.button("Sincronizar com o Asaas agora", icon=":material/sync:", width="stretch"):
+        r = _ui.sincronizar_asaas(forcar=True) or {}
+        st.toast(f"{r.get('empresas', 0)} assinatura(s) conferida(s) · {r.get('pagamentos_novos', 0)} pagamento(s) "
+                 f"novo(s) · {r.get('valores_atualizados', 0)} valor(es) atualizado(s)")
+        for e in r.get("erros") or []:
+            st.error(e)
 df = repo.empresas_todas()
 if df.empty:
     st.info("Nenhuma empresa cadastrada ainda.")
@@ -132,6 +142,8 @@ for r in sel:
         extras = ""
         if r.get("vip"):
             extras += " " + _ui.tag("vence_logo", "💎 VIP")
+        if r.get("asaas_assinatura"):
+            extras += " " + _ui.tag("embarcou", "💳 Asaas")
         if int(r.get("meses_gratis") or 0):
             extras += " " + _ui.tag("embarcou", f"🎁 {int(r['meses_gratis'])} mês(es) grátis")
         vig = pl.preco_vigente(r, HOJE, cat)
@@ -151,6 +163,9 @@ for r in sel:
                     + (f" · por {ped['duracao_meses']} mês(es)" if ped.get("duracao_meses") else "")),
                     icon=":material/shopping_cart:")
             p1, p2 = st.container(key=f"linha_p_{r['id']}").columns(2)
+            if ped.get("asaas_assinatura"):
+                st.caption("Cobrança gerada no Asaas — o plano libera sozinho quando o pagamento cair. "
+                           "Use “Confirmar pagamento” só se ele pagou por fora.")
             if p1.button("Confirmar pagamento", key=f"conf_{r['id']}", type="primary", icon=":material/check:",
                          width="stretch"):
                 ate_ = repo.registrar_pagamento(r["id"], HOJE, ped)

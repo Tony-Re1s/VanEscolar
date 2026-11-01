@@ -12,8 +12,8 @@ import streamlit as st
 def _recarregar_codigo_novo():
     """O Streamlit Cloud atualiza os arquivos a cada publicação, mas guarda na memória os módulos já importados
     (core/*, telas/_ui). Recarrega os que mudaram desde a última execução — assim não precisa de Reboot."""
-    for nome in ("core.fmt", "core.db", "core.planos", "core.contrato", "core.repo", "core.backup", "core.auth",
-                 "telas._ui"):
+    for nome in ("core.fmt", "core.db", "core.planos", "core.contrato", "core.cobranca", "core.asaas", "core.repo",
+                 "core.backup", "core.auth", "telas._ui"):
         m = sys.modules.get(nome)
         arq = getattr(m, "__file__", None)
         if not arq:

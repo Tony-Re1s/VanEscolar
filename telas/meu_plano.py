@@ -1,12 +1,18 @@
 """Meu plano: plano em vigor, uso (vans/alunos), promoções (cupom, anual, campanha, VIP) e pedido de assinatura."""
 import streamlit as st
 
-from core import auth, planos as pl, repo
+from core import asaas, auth, db, planos as pl, repo
 from core.fmt import agora, data_br, hoje, link_whats
 from telas import _ui
 from telas._ui import exigir_condutor
 
 c = exigir_condutor()
+API = _ui.asaas_api()          # None = Asaas não configurado: assinatura pelo WhatsApp e o admin libera
+if API:
+    _sync = _ui.sincronizar_asaas(c["id"])
+    if _sync and _sync.get("pagamentos_novos"):
+        auth.perfil(st.session_state["usuario"])
+        st.toast("Pagamento confirmado! Seu plano está liberado. 🎉")
 emp = repo.empresa(c["id"])
 HOJE = hoje()
 cat = pl.catalogo()
@@ -101,12 +107,57 @@ if pedido:
                     "  \n<span class='ve-sub'>Assim que o pagamento for confirmado, o plano é liberado aqui.</span>"),
                     unsafe_allow_html=True)
         x1, x2 = st.container(key="linha_pedido").columns(2)
-        lk = link_whats(contato, pedido.get("mensagem", "")) if contato else None
-        if lk:
-            x1.link_button("Enviar no WhatsApp", lk, icon=":material/send:", width="stretch")
-        if x2.button("Cancelar pedido", icon=":material/close:", width="stretch"):
-            repo.salvar_pedido(c["id"], None)
-            st.rerun()
+        if pedido.get("asaas_assinatura") and API:
+            cob = repo.cobrancas_asaas(c["id"], pedido["asaas_assinatura"])
+            pend = [x for x in cob if x["status"] not in asaas.PAGO and x.get("link")]
+            if pend:
+                x1.link_button("Pagar agora (Pix, boleto ou cartão)", pend[0]["link"], icon=":material/payments:",
+                               type="primary", width="stretch")
+            if x2.button("Já paguei — verificar", icon=":material/refresh:", width="stretch"):
+                r = _ui.sincronizar_asaas(c["id"], forcar=True)
+                if r and r.get("erros"):
+                    st.error("; ".join(r["erros"]))
+                elif not (r and r.get("pagamentos_novos")):
+                    st.info("Ainda não chegou a confirmação. Pix costuma cair em segundos; boleto em até 3 dias "
+                            "úteis. O app confere sozinho a cada 30 minutos.")
+                else:
+                    auth.perfil(st.session_state["usuario"])
+                    st.rerun()
+            if st.button("Cancelar pedido", icon=":material/close:", type="tertiary"):
+                asaas.cancelar_assinatura(API, db.conexao(db.banco_ativo()).engine, emp)
+                db._mudou()
+                st.rerun()
+        else:
+            lk = link_whats(contato, pedido.get("mensagem", "")) if contato else None
+            if lk:
+                x1.link_button("Enviar no WhatsApp", lk, icon=":material/send:", width="stretch")
+            if x2.button("Cancelar pedido", icon=":material/close:", width="stretch"):
+                repo.salvar_pedido(c["id"], None)
+                st.rerun()
+elif API and emp.get("asaas_assinatura"):
+    # assinatura automática ativa: últimas cobranças e cancelar
+    with st.container(border=True, key="card_asaas"):
+        anual = (emp.get("periodo") or "mensal") == "anual"
+        st.markdown(_ui.sem_formula(f"**Assinatura automática ativa** · {pl.brl(float(emp.get('asaas_valor') or 0))}"
+                    f"{'/ano' if anual else '/mês'}  \n<span class='ve-sub'>O Asaas manda a cobrança por e-mail "
+                    "antes de cada vencimento (Pix, boleto ou cartão).</span>"), unsafe_allow_html=True)
+        for x in repo.cobrancas_asaas(c["id"], emp["asaas_assinatura"])[:4]:
+            pago = x["status"] in asaas.PAGO
+            linha = (f"{x['vencimento']:%d/%m/%Y} · {pl.brl(float(x['valor'] or 0))} · "
+                     f"{asaas.STATUS.get(x['status'], x['status'].lower())}")
+            if not pago and x.get("link"):
+                st.markdown(_ui.sem_formula(f"{linha} · [pagar]({x['link']})"))
+            else:
+                st.caption(("✅ " if pago else "") + linha)
+        with st.expander("Cancelar assinatura"):
+            st.caption("O plano continua até o fim do período já pago; depois disso o acesso é bloqueado até assinar "
+                       "de novo. Nada é apagado.")
+            if st.checkbox("Quero cancelar a cobrança automática", key="conf_cancel_asaas") and \
+                    st.button("Cancelar assinatura", icon=":material/cancel:"):
+                asaas.cancelar_assinatura(API, db.conexao(db.banco_ativo()).engine, emp)
+                db._mudou()
+                st.toast("Assinatura cancelada.")
+                st.rerun()
 
 # ---------------------------------------------------------------- assinar
 st.subheader("Assinar")
@@ -173,16 +224,35 @@ with st.container(border=True, key="card_assinar"):
             linha += f"<br><span class='ve-sub'>Pagamento anual: {pl.brl(pr.total)} por 12 meses</span>"
         st.markdown(_ui.sem_formula(linha), unsafe_allow_html=True)
 
+        if API:
+            doc = st.text_input("CPF ou CNPJ de quem paga", value=emp.get("documento") or "",
+                                help="O Asaas exige para emitir a cobrança (Pix, boleto ou cartão).")
         if st.button("Assinar", type="primary", icon=":material/workspace_premium:"):
             msg = (f"Olá! Quero assinar o Pequenos a Bordo: plano {cat[escolha]['nome']} "
                    f"{pl.PERIODOS[periodo].lower()}, {pl.brl(pr.final)}/mês"
                    + (f" ({pr.rotulo})" if pr.tem_desconto else "")
                    + (f", total {pl.brl(pr.total)}" if periodo == "anual" else "")
                    + f". Empresa: {c['nome']} ({st.session_state['usuario']['email']}).")
-            repo.salvar_pedido(c["id"], dict(
-                plano=escolha, periodo=periodo, preco=pr.final, base=pr.base, total=pr.total, origem=pr.origem,
-                rotulo=pr.rotulo if pr.tem_desconto else "", duracao_meses=pr.duracao_meses,
-                cupom_id=str(pr.cupom["id"]) if pr.cupom else None, vip_novo=pr.vip_novo,
-                em=agora().isoformat(timespec="minutes"), mensagem=msg))
+            novo_pedido = dict(
+                plano=escolha, plano_nome=cat[escolha]["nome"], periodo=periodo, preco=pr.final, base=pr.base,
+                total=pr.total, origem=pr.origem, rotulo=pr.rotulo if pr.tem_desconto else "",
+                duracao_meses=pr.duracao_meses, cupom_id=str(pr.cupom["id"]) if pr.cupom else None,
+                vip_novo=pr.vip_novo, em=agora().isoformat(timespec="minutes"), mensagem=msg)
+            if API:
+                if not asaas.documento_valido(doc):
+                    st.error("Digite um CPF ou CNPJ válido.")
+                    st.stop()
+                repo.salvar_documento(c["id"], asaas.so_digitos(doc))
+                try:
+                    asaas.assinar(API, db.conexao(db.banco_ativo()).engine, repo.empresa(c["id"]),
+                                  st.session_state["usuario"]["email"], novo_pedido, HOJE)
+                except asaas.AsaasErro as e:
+                    db._mudou()
+                    st.error(f"O Asaas recusou: {e}")
+                    st.stop()
+                db._mudou()
+            else:
+                repo.salvar_pedido(c["id"], novo_pedido)
             st.rerun()
-    st.caption("Pagamento por Pix, boleto ou cartão. Assim que confirmado, o plano é liberado na sua conta.")
+    st.caption("Pagamento por Pix, boleto ou cartão. Assim que confirmado, o plano é liberado na sua conta."
+               + (" A cobrança se repete sozinha a cada período — dá para cancelar quando quiser." if API else ""))
