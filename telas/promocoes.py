@@ -356,22 +356,33 @@ with abas[5]:
 # ================================================================ divulgadores (Exclusivo): comissão e textos
 with abas[6]:
     from core import comissao
-    cfg = pl.config("comissao")
-    st.markdown("Os parceiros **Exclusivos** divulgam o app. Ao chegar à meta de indicados **pagando ao mesmo tempo**, "
-                "destravam a comissão (fica destravada) e passam a receber a % sobre o que os indicados **ativos** "
-                "pagam no mês, até a data final. Exclusivo **não** ganha os meses grátis da indicação. "
-                "Você paga por Pix e marca como pago aqui.")
-    with st.form("com_form"):
-        a, b, cc, d = st.columns(4)
-        ativo_c = a.checkbox("Comissão ligada", value=bool(cfg.get("ativo")))
-        meta_c = b.number_input("Meta (indicados pagando)", min_value=1, step=1, value=int(cfg.get("meta") or 100))
-        pct_c = cc.number_input("Comissão (%)", min_value=0.0, max_value=100.0, step=1.0,
-                                value=float(cfg.get("pct") or 10))
-        ate_c = d.date_input("Vale até", value=pd.Timestamp(cfg.get("ate") or HOJE.replace(year=HOJE.year + 1)).date(),
-                             format="DD/MM/YYYY")
-        if st.form_submit_button("Salvar comissão", type="primary"):
-            repo.salvar_config("comissao", dict(ativo=ativo_c, meta=int(meta_c), pct=float(pct_c),
-                                                ate=ate_c.isoformat()))
+    cfg = comissao.regra()
+    st.markdown("Os parceiros **Exclusivos** divulgam o app e ganham comissão por **faixas** de indicados **pagando "
+                "ao mesmo tempo** (ex.: 50 → 10%, 100 → 20%). A **maior faixa alcançada fica** (chegou a 100 e caiu "
+                "para 80 → continua 20%), mas a % é sempre sobre o que os indicados **ativos** pagam no mês. "
+                "Exclusivo **não** ganha os meses grátis da indicação. Você paga por Pix e marca como pago aqui.")
+
+    def _editor_faixas(faixas, chave):
+        df_f = pd.DataFrame(faixas or [], columns=["min", "pct"])
+        return st.data_editor(df_f, hide_index=True, num_rows="dynamic", key=chave, width="stretch",
+                              column_config={"min": st.column_config.NumberColumn("A partir de (pagantes ativos)",
+                                                                                  min_value=1, step=1, required=True),
+                                             "pct": st.column_config.NumberColumn("Comissão (%)", min_value=0.0,
+                                                                                  max_value=100.0, step=0.5,
+                                                                                  required=True)})
+
+    st.markdown("**Regra geral**")
+    a, d = st.columns(2)
+    ativo_c = a.checkbox("Comissão ligada", value=bool(cfg.get("ativo")), key="com_ativo")
+    ate_c = d.date_input("Vale até", value=pd.Timestamp(cfg.get("ate") or HOJE.replace(year=HOJE.year + 1)).date(),
+                         format="DD/MM/YYYY", key="com_ate")
+    fx_ed = _editor_faixas(cfg["faixas"], "ed_faixas_geral")
+    if st.button("Salvar regra geral", type="primary", icon=":material/save:"):
+        fx = comissao.faixas_validas(fx_ed.to_dict("records"))
+        if not fx:
+            st.error("Coloque pelo menos uma faixa.")
+        else:
+            repo.salvar_config("comissao", dict(ativo=ativo_c, ate=ate_c.isoformat(), faixas=fx))
             st.toast("Comissão salva.")
             st.rerun()
 
@@ -382,11 +393,38 @@ with abas[6]:
     else:
         st.dataframe(pd.DataFrame({
             "Divulgador": dv["nome"], "Código": dv["codigo_indicacao"], "Indicados": dv["indicados"],
-            "Pagando agora": dv["ativos"],
-            "Destravou": [data_br(x) if x else "—" for x in dv["comissao_desde"]],
+            "Pagando agora": dv["ativos"], "Maior marca": dv["pico"],
+            "Faixa": [f"{x:g}%" if x else "—" for x in dv["pct"]],
+            "Regra": ["própria" if r else "geral" for r in dv["comissao_regra"]],
             "Comissão do mês": [pl.brl(v) for v in dv["mes"]],
             "A pagar": [pl.brl(v) for v in dv["a_pagar"]], "Já pago": [pl.brl(float(v)) for v in dv["ja_pago"]],
             "Chave Pix": dv["chave_pix"].fillna("—")}), hide_index=True, width="stretch")
+        with st.expander("Regra própria de um divulgador (faixas ou data diferentes)", icon=":material/tune:"):
+            ids = [str(x) for x in dv["id"]]
+            esc = st.selectbox("Divulgador", ids, key="div_regra",
+                               format_func=lambda i: dv.loc[dv["id"].astype(str) == i, "nome"].iloc[0])
+            emp_d = dv[dv["id"].astype(str) == esc].iloc[0].to_dict()
+            rd = comissao.regra(emp_d)
+            st.caption("Usando a regra **própria**." if rd["propria"] else
+                       "Usando a regra **geral** — edite abaixo para criar uma só para ele.")
+            fx_d = _editor_faixas(rd["faixas"], f"ed_faixas_{esc}")
+            ate_d = st.date_input("Vale até (para ele)", value=pd.Timestamp(rd["ate"] or HOJE).date(),
+                                  format="DD/MM/YYYY", key=f"ate_{esc}")
+            b1, b2 = st.columns(2)
+            if b1.button("Salvar regra própria", type="primary", key=f"salva_regra_{esc}", width="stretch"):
+                fx = comissao.faixas_validas(fx_d.to_dict("records"))
+                if not fx:
+                    st.error("Coloque pelo menos uma faixa.")
+                else:
+                    comissao.salvar_regra_propria(esc, fx, ate_d)
+                    comissao.situacao(esc, HOJE)
+                    st.toast("Regra própria salva.")
+                    st.rerun()
+            if rd["propria"] and b2.button("Voltar para a regra geral", key=f"geral_{esc}", width="stretch"):
+                comissao.salvar_regra_propria(esc, None, None)
+                comissao.situacao(esc, HOJE)
+                st.toast("Voltou para a regra geral.")
+                st.rerun()
         for r in dv[dv["a_pagar"] > 0].itertuples():
             pend = comissao.pendentes(r.id)
             with st.container(border=True, key=f"card_pagar_{r.id}"):

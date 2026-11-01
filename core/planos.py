@@ -33,7 +33,8 @@ CONFIG_PADRAO = {
     "vip": {"ativo": True, "vagas": 200, "ate": None},
     "indicacao": {"ativo": True, "meta": 10, "premio_meses": 2, "plano_degustacao": "pro", "dias_degustacao": 30},
     "degustacao": {"ativo": True, "plano": "pro", "dias": 30},
-    "comissao": {"ativo": True, "meta": 100, "pct": 10, "ate": "2027-12-31"},
+    "comissao": {"ativo": True, "ate": "2027-12-31",
+                 "faixas": [{"min": 50, "pct": 10}, {"min": 100, "pct": 20}]},
     "laboratorio": {},
     "divulgacao": {"textos": [
         {"titulo": "Convite curto (WhatsApp)",

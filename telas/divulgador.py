@@ -78,26 +78,35 @@ if not emp:
     st.caption("A comissão aparece aqui para cada parceiro Exclusivo.")
 else:
     s = comissao.situacao(emp["id"], HOJE)
-    if not s["ativo"]:
+    if not s["ativo"] or not s["faixas"]:
         st.info("A comissão está pausada no momento.")
     else:
-        pct = f"{s['pct']:g}%"
-        st.markdown(f"Ao chegar a **{s['meta']} indicados pagando ao mesmo tempo**, você destrava **{pct} todo mês** "
-                    f"sobre o que os seus indicados **ativos** pagam" +
-                    (f", até **{data_br(pd.Timestamp(s['ate']).date())}**." if s["ate"] else ".") +
-                    " Se algum sair, a comissão é sobre os que continuam.")
+        st.markdown("Quanto mais indicados **pagando ao mesmo tempo**, maior a sua % — e a maior faixa que você "
+                    "alcançar **fica sua**. Todo mês você recebe a % sobre o que os indicados **ativos** pagam "
+                    "(se algum sair, a conta é sobre os que continuam)" +
+                    (f", até **{data_br(pd.Timestamp(s['ate']).date())}**." if s["ate"] else "."))
+        with st.container(key="faixas_div"):
+            cols = st.columns(len(s["faixas"]))
+            for col, f in zip(cols, s["faixas"]):
+                ok = s["pico"] >= f["min"]
+                col.markdown(f"<div class='ve-faixa'>{'✅' if ok else '🎯'} <b>{f['min']}</b> pagantes → "
+                             f"<b>{f['pct']:g}%</b></div>", unsafe_allow_html=True)
+        _ui.kpis([("Indicados pagando agora", str(s["ativos"])),
+                  ("Eles pagam por mês", pl.brl(s["base"])),
+                  ("Sua faixa", f"{s['pct']:g}%" if s["pct"] else "—"),
+                  (f"Sua comissão ({s['competencia']:%m/%Y})", pl.brl(s["valor"]))], destaque=3)
         if s["desde"]:
-            _ui.kpis([("Indicados pagando agora", str(s["ativos"])),
-                      ("Eles pagam por mês", pl.brl(s["base"])),
-                      (f"Sua comissão ({s['competencia']:%m/%Y})", pl.brl(s["valor"]))], destaque=2)
             st.success(f"Comissão destravada em {data_br(s['desde'])}. ✅", icon=":material/lock_open:")
-            if not s["vigente"]:
-                st.caption("O período da comissão terminou.")
-        else:
-            _ui.kpis([("Indicados pagando agora", str(s["ativos"])), ("Meta", str(s["meta"])),
-                      ("Faltam", str(s["faltam"]))])
-            st.progress(min(1.0, s["ativos"] / max(1, s["meta"])),
-                        text=f"{s['ativos']} de {s['meta']} — faltam {s['faltam']} para destravar a comissão")
+        if s["proxima"]:
+            px = s["proxima"]
+            ini = max([f["min"] for f in s["faixas"] if f["min"] <= s["pico"]], default=0)
+            st.progress(min(1.0, max(0.0, (s["ativos"] - ini) / max(1, px["min"] - ini))),
+                        text=f"{s['ativos']} de {px['min']} — faltam {s['faltam']} para "
+                             f"{'destravar' if not s['pct'] else 'subir para'} {px['pct']:g}%")
+        elif s["vigente"]:
+            st.caption("Você está na faixa máxima. 🏆")
+        if not s["vigente"]:
+            st.caption("O período da comissão terminou.")
         with st.form("pix_div"):
             pix = st.text_input("Chave Pix para receber a comissão", value=emp.get("chave_pix") or "")
             if st.form_submit_button("Salvar chave Pix"):
@@ -111,6 +120,7 @@ else:
                 "Mês": [f"{m:%m/%Y}" for m in h["competencia"]],
                 "Indicados ativos": h["ativos"],
                 "Base": [pl.brl(v) for v in h["base"]],
+                "%": [f"{float(x):g}%" if x is not None else "—" for x in h["pct"]],
                 "Comissão": [pl.brl(v) for v in h["valor"]],
                 "Situação": ["pago em " + data_br(p) if p else "a receber" for p in h["pago_em"]],
             }), hide_index=True, width="stretch")

@@ -439,3 +439,18 @@ insert into config (chave, valor) values
   ('comissao', '{"ativo": true, "meta": 100, "pct": 10, "ate": "2027-12-31"}'),
   ('laboratorio', '{}')
 on conflict (chave) do nothing;
+
+-- v16 — comissão por faixas (ex.: 50 pagantes → 10%, 100 → 20%), a maior faixa alcançada fica;
+--       regra própria por divulgador (faixas/data) — vazia = usa a regra geral
+alter table condutores add column if not exists comissao_pico int not null default 0;   -- maior nº de ativos já alcançado
+alter table condutores add column if not exists comissao_regra jsonb;                   -- regra própria (opcional)
+alter table comissoes add column if not exists pct numeric(5,2);
+do $$
+begin
+  if not exists (select 1 from config where chave = 'mig_v16_faixas') then
+    update config set valor = (valor - 'meta' - 'pct')
+                              || '{"faixas": [{"min": 50, "pct": 10}, {"min": 100, "pct": 20}]}'::jsonb
+     where chave = 'comissao';
+    insert into config (chave, valor) values ('mig_v16_faixas', 'true');
+  end if;
+end $$;
