@@ -62,7 +62,7 @@ _ui.kpis([("Alunos no trecho", len(df)), ("Embarcaram", int(n_emb)), ("Desembarc
 # iniciar rota: registra a saída (os pais veem no app) e lista uma mensagem pronta no WhatsApp para o
 # responsável de cada criança que vai hoje, na ordem da rota (o WhatsApp comum não permite envio automático em massa)
 inicio = repo.rota_iniciada(van_id, dia, trecho)
-apelido = repo.apelido_motorista(van_id)
+apelido = repo.apelido_motorista(van_id, u["email"])
 link_mapa = None
 if inicio is None:
     if dia == hoje() and st.button(f"Iniciar rota — {'ida' if trecho == 'ida' else 'volta'}", type="primary",
@@ -177,18 +177,19 @@ for r in df.itertuples():
                       help="Cadastre o endereço do aluno.")
 
 st.divider()
-with st.expander("Ordem da rota"):
-    st.caption("Defina a ordem de busca (1 = primeiro). Vale para a ida; a volta usa a ordem inversa.")
-    todos = repo.passageiros(cid, van=van_id)
-    ed = st.data_editor(todos[["id", "ordem_rota", "nome", "turno", "bairro"]].assign(turno=todos["turno"].map(TURNOS)),
-                        hide_index=True, width="stretch", disabled=["nome", "turno", "bairro"],
-                        column_order=["ordem_rota", "nome", "turno", "bairro"],
-                        column_config={"ordem_rota": st.column_config.NumberColumn("Ordem", min_value=0, step=1),
-                                       "nome": "Aluno", "turno": "Turno", "bairro": "Bairro"}, key=f"ordem_{van_id}")
-    if st.button("Salvar ordem"):
-        repo.salvar_ordem(cid, van_id, dict(zip(ed["id"].astype(str), ed["ordem_rota"].fillna(0))))
-        st.toast("Ordem salva.")
-        st.rerun()
+if van["gestor"]:   # motorista/monitor só opera a rota; a ordem é cadastro do gestor
+    with st.expander("Ordem da rota"):
+        st.caption("Defina a ordem de busca (1 = primeiro). Vale para a ida; a volta usa a ordem inversa.")
+        todos = repo.passageiros(cid, van=van_id)
+        ed = st.data_editor(todos[["id", "ordem_rota", "nome", "turno", "bairro"]].assign(turno=todos["turno"].map(TURNOS)),
+                            hide_index=True, width="stretch", disabled=["nome", "turno", "bairro"],
+                            column_order=["ordem_rota", "nome", "turno", "bairro"],
+                            column_config={"ordem_rota": st.column_config.NumberColumn("Ordem", min_value=0, step=1),
+                                           "nome": "Aluno", "turno": "Turno", "bairro": "Bairro"}, key=f"ordem_{van_id}")
+        if st.button("Salvar ordem"):
+            repo.salvar_ordem(cid, van_id, dict(zip(ed["id"].astype(str), ed["ordem_rota"].fillna(0))))
+            st.toast("Ordem salva.")
+            st.rerun()
 
 with st.expander("Frequência do mês"):
     ini = inicio_mes(dia)

@@ -40,13 +40,16 @@ def atualizar_empresa(cid, d: dict):
                  dia_vencimento=:dia_vencimento, apelido=:apelido where id=:cid""", cid=cid, **d)
 
 
-def apelido_motorista(van_id) -> str | None:
-    """Como as famílias chamam quem dirige esta van: o apelido da van; se for o próprio gestor, o apelido dele."""
-    r = db.um("""select coalesce(v.motorista_apelido,
+def apelido_motorista(van_id, email: str | None = None) -> str | None:
+    """Como as famílias chamam quem está mandando a mensagem: se for o(a) monitor(a) da van, o apelido dele(a);
+    senão o de quem dirige (o da van; se o próprio gestor dirige, o apelido dele)."""
+    r = db.um("""select case when :e <> '' and lower(v.monitor_email) = :e
+                             then coalesce(v.monitor_apelido, split_part(v.monitor_nome, ' ', 1)) end as monitor,
+                        coalesce(v.motorista_apelido,
                                  case when lower(v.motorista_email) = lower(u.email) then c.apelido end) as apelido
                  from vans v join condutores c on c.id = v.condutor_id left join usuarios u on u.id = c.usuario_id
-                 where v.id = cast(:v as uuid)""", v=str(van_id))
-    return (r or {}).get("apelido")
+                 where v.id = cast(:v as uuid)""", v=str(van_id), e=(email or "").strip().lower())
+    return (r or {}).get("monitor") or (r or {}).get("apelido")
 
 
 def empresas_todas() -> pd.DataFrame:
@@ -73,7 +76,8 @@ def vans(cid, so_ativas=True) -> pd.DataFrame:
 
 
 _CAMPOS_V = ["nome", "veiculo", "placa", "capacidade", "motorista_nome", "motorista_email", "motorista_telefone",
-             "motorista_cnh", "motorista_apelido", "ativo"]
+             "motorista_cnh", "motorista_apelido", "monitor_nome", "monitor_email", "monitor_telefone",
+             "monitor_apelido", "ativo"]
 
 
 def salvar_van(cid, d: dict, vid=None):
@@ -81,6 +85,8 @@ def salvar_van(cid, d: dict, vid=None):
     d["motorista_email"] = (d.get("motorista_email") or "").strip().lower() or None
     d["placa"] = (d.get("placa") or "").strip().upper() or None
     d["motorista_apelido"] = " ".join((d.get("motorista_apelido") or "").split()) or None
+    d["monitor_email"] = (d.get("monitor_email") or "").strip().lower() or None
+    d["monitor_apelido"] = " ".join((d.get("monitor_apelido") or "").split()) or None
     if vid:
         db.gravar(f"update vans set {', '.join(f'{k}=:{k}' for k in _CAMPOS_V)} where id=:vid and condutor_id=:cid",
                   cid=cid, vid=vid, **d)
@@ -90,12 +96,14 @@ def salvar_van(cid, d: dict, vid=None):
 
 
 def vans_do_motorista(email: str) -> pd.DataFrame:
-    """Vans (de qualquer empresa ativa) em que este e-mail é o motorista."""
+    """Vans (de qualquer empresa ativa) em que este e-mail é o motorista ou o(a) monitor(a)."""
     return db.ao_vivo("""
         select v.id, v.nome, v.placa, v.veiculo, v.capacidade, v.condutor_id, c.nome as empresa,
-               c.telefone as empresa_tel
+               c.telefone as empresa_tel,
+               case when lower(v.motorista_email) = :e then 'motorista' else 'monitor' end as papel
         from vans v join condutores c on c.id = v.condutor_id
-        where lower(v.motorista_email) = :e and v.ativo and c.ativo order by c.nome, v.nome""", e=email)
+        where (lower(v.motorista_email) = :e or lower(v.monitor_email) = :e) and v.ativo and c.ativo
+        order by c.nome, v.nome""", e=email)
 
 
 # ------------------------------------------------------------------ escolas
@@ -375,7 +383,7 @@ def filhos(pids: list[str]) -> pd.DataFrame:
                e.nome as escola, c.nome as condutor, c.chave_pix, c.id as condutor_id,
                coalesce(v.motorista_nome, c.nome) as motorista,
                coalesce(v.motorista_telefone, c.telefone) as condutor_tel,
-               v.placa, v.veiculo, v.nome as van,
+               v.placa, v.veiculo, v.nome as van, v.monitor_nome, v.monitor_telefone,
                coalesce(v.motorista_apelido, case when lower(v.motorista_email) = lower(u.email) then c.apelido end)
                  as apelido,
                case when v.loc_ate > now() then v.loc_token end as loc_token

@@ -288,7 +288,7 @@ def vans_acessiveis(u: dict) -> list[dict]:
     if c:
         for v in repo.vans(c["id"]).itertuples():
             out.append(dict(id=str(v.id), nome=v.nome, placa=v.placa, cid=c["id"], empresa=c["nome"], gestor=True,
-                            minha=(v.motorista_email or "") == u["email"]))
+                            minha=u["email"] in ((v.motorista_email or ""), (v.monitor_email or ""))))
             vistos.add(str(v.id))
     for v in u.get("vans_motorista") or []:
         if str(v["id"]) not in vistos:

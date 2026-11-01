@@ -58,7 +58,7 @@ vao = df[~df["avisou"] & (df["status"] != "faltou")]
 faltas = df[df["avisou"] | (df["status"] == "faltou")]
 st.subheader(f"Avisar as famílias ({len(vao)})")
 st.caption("Cada botão abre o WhatsApp do responsável com a mensagem pronta — é só enviar.")
-apelido = repo.apelido_motorista(van_id)
+apelido = repo.apelido_motorista(van_id, u["email"])
 if not apelido:
     st.caption("💡 Diga como as famílias te chamam (ex.: **Tio Jô**) em **Minha empresa** — aí a mensagem fica "
                "\"O tio Jô está a caminho para buscar…\".")

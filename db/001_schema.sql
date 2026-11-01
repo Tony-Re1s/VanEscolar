@@ -499,3 +499,9 @@ create table if not exists avisos (
   ate            date
 );
 create index if not exists ix_avisos_condutor on avisos(condutor_id, criado_em);
+
+-- v21 — monitor(a) da van (opcional): entra com o Google e tem a mesma visão do motorista (rota, chamada, avisar pais)
+alter table vans add column if not exists monitor_nome text;
+alter table vans add column if not exists monitor_email text;
+alter table vans add column if not exists monitor_telefone text;
+alter table vans add column if not exists monitor_apelido text;

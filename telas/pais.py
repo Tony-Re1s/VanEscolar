@@ -150,6 +150,7 @@ for aba, f in zip(abas, filhos.itertuples()):
             <div class='r'>🏫 {_ui.esc(f.escola or '—')}</div>
             <div class='r'>🚐 {_ui.esc(f.van or f.condutor)} · {_ui.esc(f.veiculo or '')} {_ui.esc(f.placa or '')}</div>
             <div class='r'>👤 Motorista: {_ui.esc(f.motorista)} · 📞 {_ui.esc(f.condutor_tel or '—')}</div>
+            {"<div class='r'>🧡 Monitor(a): " + _ui.esc(f.monitor_nome) + (" · 📞 " + _ui.esc(f.monitor_telefone) if f.monitor_telefone else "") + "</div>" if f.monitor_nome else ""}
             <div class='r'>🏢 {_ui.esc(f.condutor)}</div></div>""", unsafe_allow_html=True)
         zap = link_whats(f.condutor_tel, f"Olá! Sou responsável por {f.nome}.")
         if zap:

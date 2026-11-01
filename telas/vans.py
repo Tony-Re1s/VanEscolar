@@ -9,14 +9,14 @@ c = exigir_condutor()
 u = st.session_state["usuario"]
 cid = c["id"]
 st.title("Vans e motoristas")
-st.caption("O motorista entra com o **e-mail do Google** cadastrado aqui e vê **só a van dele**: rota, chamada e os "
-           "alunos (sem mensalidades nem financeiro).")
+st.caption("O motorista e o(a) monitor(a) entram com o **e-mail do Google** cadastrado aqui e veem **só a van "
+           "deles**: rota, chamada, avisar os pais e os alunos — sem cadastros, mensalidades nem financeiro.")
 
 df = repo.vans(cid, so_ativas=False)
 
 from core.fmt import link_whats
 
-ac = repo.acessos(list(df["motorista_email"].dropna())) if not df.empty else {}
+ac = repo.acessos(list(df["motorista_email"].dropna()) + list(df["monitor_email"].dropna())) if not df.empty else {}
 for v in df.itertuples():
     eu = (v.motorista_email or "") == u["email"]
     quem = "você" if eu else (v.motorista_nome or "sem motorista")
@@ -38,6 +38,19 @@ for v in df.itertuples():
                 st.link_button("Convidar no WhatsApp", lk, icon=":material/send:")
             else:
                 st.caption("Cadastre o WhatsApp do motorista para enviar o convite.")
+        if v.monitor_nome or v.monitor_email:
+            st.markdown(f"<span class='ve-sub'>🧡 monitor(a): {_ui.esc(v.monitor_nome or v.monitor_email)}"
+                        + (f" ({_ui.esc(v.monitor_email)})" if v.monitor_email and v.monitor_nome else "") + "</span> "
+                        + (_ui.selo_acesso(v.monitor_email, ac) if v.monitor_email else ""), unsafe_allow_html=True)
+            if v.monitor_email and v.monitor_email != u["email"]:
+                msg_m = (f"Olá, {(v.monitor_nome or '').split(' ')[0] or 'tudo bem'}! Você foi cadastrado(a) como "
+                         f"monitor(a) da {v.nome} no app Turminha a Bordo ({c['nome']}). Acesse {_ui.APP_URL} e clique "
+                         f"em \"Entrar com Google\" usando o e-mail {v.monitor_email}. Lá você vê a rota, faz a "
+                         "chamada e avisa os pais. 🚐")
+                lk_m = link_whats(v.monitor_telefone, msg_m)
+                if lk_m:
+                    st.link_button("Convidar monitor(a) no WhatsApp", lk_m, icon=":material/send:",
+                                   key=f"conv_mon_{v.id}")
 
 NOVA = "➕ Nova van"
 opcoes = [NOVA] + [r.nome for r in df.itertuples()]
@@ -69,6 +82,17 @@ with st.form("van", clear_on_submit=v is None):
     mot_apelido = st.text_input("Como as famílias chamam quem dirige", value=g("motorista_apelido") or "",
                                 placeholder="Tio Jô, Tia Rose…" + (" (vazio = o seu, de Minha empresa)" if eu_dirijo else ""),
                                 help="Vai nas mensagens da rota: \"O tio Jô está a caminho para buscar a Helena\".")
+    st.markdown("**Monitor(a)** <span class='ve-sub'>— opcional: acompanha as crianças e também usa a rota e a "
+                "chamada</span>", unsafe_allow_html=True)
+    n1, n2 = st.columns(2)
+    mon_nome = n1.text_input("Nome do(a) monitor(a)", value=g("monitor_nome") or "")
+    mon_email = n2.text_input("E-mail do Google do(a) monitor(a)", value=g("monitor_email") or "",
+                              placeholder="nome@gmail.com")
+    n3, n4 = st.columns(2)
+    mon_tel = n3.text_input("WhatsApp do(a) monitor(a)", value=g("monitor_telefone") or "")
+    mon_apelido = n4.text_input("Como as famílias chamam o(a) monitor(a)", value=g("monitor_apelido") or "",
+                                placeholder="Tia Rose…",
+                                help="Quando o(a) monitor(a) manda o aviso, a mensagem sai com esse nome.")
     ativo = st.checkbox("Van ativa", value=bool(g("ativo") if v else True))
     ok = st.form_submit_button("Salvar van", type="primary")
 
@@ -79,11 +103,16 @@ if ok:
     if not eu_dirijo and mot_email and "@" not in mot_email:
         st.error("E-mail do motorista inválido.")
         st.stop()
+    if mon_email and "@" not in mon_email:
+        st.error("E-mail do(a) monitor(a) inválido.")
+        st.stop()
     dados = dict(nome=nome.strip(), veiculo=veiculo or None, placa=placa, capacidade=int(capacidade),
                  motorista_nome=(c["nome"] if eu_dirijo else (mot_nome or None)),
                  motorista_email=(u["email"] if eu_dirijo else (mot_email or None)),
                  motorista_telefone=(mot_tel or (c.get("telefone") if eu_dirijo else None)) or None,
-                 motorista_cnh=mot_cnh or None, motorista_apelido=mot_apelido or None, ativo=ativo)
+                 motorista_cnh=mot_cnh or None, motorista_apelido=mot_apelido or None,
+                 monitor_nome=mon_nome or None, monitor_email=mon_email or None, monitor_telefone=mon_tel or None,
+                 monitor_apelido=mon_apelido or None, ativo=ativo)
     if ativo and (not v or not bool(g("ativo"))) and not _ui.checar_limite(c, "vans"):
         st.stop()
     repo.salvar_van(cid, dados, vid=g("id"))
