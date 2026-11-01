@@ -132,3 +132,43 @@ with st.form("rest"):
             _testar.clear()
             st.success(f"Backup de {dados.get('gerado_em', '?')[:16].replace('T', ' ')} UTC restaurado em "
                        f"{_nome(destino_r)}: {sum(feitos.values())} registros.", icon=":material/check_circle:")
+
+# ---------------------------------------------------------------- dados de demonstração (para testar)
+st.divider()
+st.subheader("Dados de demonstração")
+from core import demo  # noqa: E402
+from core.fmt import hoje as _hoje  # noqa: E402
+
+_u = st.session_state["usuario"]
+_c = _u.get("condutor")
+if not _c:
+    st.caption("Crie a sua empresa primeiro — os dados de teste entram nela.")
+else:
+    _ex = demo.existe(_c["id"])
+    if _ex:
+        st.success(f"Sua empresa tem dados de demonstração: {len(_ex.get('vans', []))} vans, "
+                   f"{len(_ex.get('passageiros', []))} alunos, {len(_ex.get('responsaveis', []))} responsáveis "
+                   f"e {len(_ex.get('escolas', []))} escolas.", icon=":material/science:")
+        st.caption("Você é o motorista da **Van Amarela** (menu *Ver como → Motorista*) e o responsável da "
+                   "**Helena Martins** (menu *Família → Meus filhos*). Todo WhatsApp vai para o seu número.")
+        if st.button("Apagar os dados de demonstração", icon=":material/delete:"):
+            demo.apagar(_c["id"])
+            st.session_state["_recarregar_perfil"] = True
+            st.toast("Dados de demonstração apagados (o resto da sua empresa ficou igual).")
+            st.rerun()
+    else:
+        st.caption("Cria na **sua** empresa 2 escolas, 3 vans com motorista (você é o motorista de uma), 9 alunos com "
+                   "responsáveis (você é o responsável de uma aluna) e as mensalidades do mês (1 em cada 3 paga). "
+                   "Todos os telefones são o seu — os WhatsApp de teste chegam em você. Dá para apagar tudo depois "
+                   "com um clique, sem mexer no que é seu.")
+        with st.form("demo_form"):
+            tel = st.text_input("Seu WhatsApp (vai em todos os cadastros de teste)", value=_c.get("telefone") or "")
+            if st.form_submit_button("Criar dados de demonstração", type="primary", icon=":material/science:"):
+                from core.fmt import so_digitos
+                if len(so_digitos(tel)) < 10:
+                    st.error("Digite o WhatsApp com DDD.")
+                else:
+                    r = demo.criar(_c["id"], tel, _u["email"], _hoje())
+                    st.session_state["_recarregar_perfil"] = True
+                    st.toast(f"Criados: {r['vans']} vans, {r['passageiros']} alunos, {r['responsaveis']} responsáveis.")
+                    st.rerun()

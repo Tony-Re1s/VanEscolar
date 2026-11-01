@@ -13,7 +13,7 @@ def _recarregar_codigo_novo():
     """O Streamlit Cloud atualiza os arquivos a cada publicação, mas guarda na memória os módulos já importados
     (core/*, telas/_ui). Recarrega os que mudaram desde a última execução — assim não precisa de Reboot."""
     for nome in ("core.fmt", "core.db", "core.planos", "core.contrato", "core.cobranca", "core.asaas", "core.repo",
-                 "core.cobranca_pais", "core.comissao",
+                 "core.cobranca_pais", "core.comissao", "core.demo",
                  "core.backup", "core.auth", "telas._ui"):
         m = sys.modules.get(nome)
         arq = getattr(m, "__file__", None)
@@ -119,6 +119,10 @@ elif vans_mot:   # motorista contratado: só a(s) van(s) dele
         st.Page("telas/chamada.py", title="Rota e chamada", icon=":material/fact_check:", default=True),
         st.Page("telas/motorista_alunos.py", title="Meus alunos", icon=":material/groups:"),
     ]
+if cond and usuario.get("admin") and any(str(v["condutor_id"]) == str(cond["id"]) for v in vans_mot):
+    # admin testando: é motorista de uma van da própria empresa (dados de demonstração) — vê a tela do motorista
+    paginas["Ver como"] = [st.Page("telas/motorista_alunos.py", title="Motorista: meus alunos",
+                                   icon=":material/badge:")]
 if usuario.get("filhos"):
     paginas.setdefault("Família", []).append(
         st.Page("telas/pais.py", title="Meus filhos", icon=":material/family_restroom:",
