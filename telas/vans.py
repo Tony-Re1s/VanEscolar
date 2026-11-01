@@ -20,7 +20,7 @@ ac = repo.acessos(list(df["motorista_email"].dropna())) if not df.empty else {}
 for v in df.itertuples():
     eu = (v.motorista_email or "") == u["email"]
     quem = "você" if eu else (v.motorista_nome or "sem motorista")
-    with st.container(border=True):
+    with st.container(border=True, key=f"card_{v.id}"):
         st.markdown(f"**{_ui.esc(v.nome)}** {'' if v.ativo else '· 🔴 inativa'}  \n"
                     f"<span class='ve-sub'>{_ui.esc(v.veiculo or 'veículo não informado')} · "
                     f"{_ui.esc(v.placa or 'sem placa')} · {v.capacidade} lugares · {v.alunos} aluno(s) · "

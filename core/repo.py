@@ -462,7 +462,8 @@ def cancelar_contrato(cid, contrato_id):
 def contratos_empresa(cid, ano: int) -> pd.DataFrame:
     return db.ao_vivo("""
         select p.id as passageiro_id, p.nome as aluno, v.nome as van, c.id as contrato_id, c.responsavel_nome,
-               c.responsavel_assinou_em, c.contratada_assinou_em,
+               c.responsavel_assinou_em, c.contratada_assinou_em, c.texto, c.codigo, c.responsavel_email,
+               c.contratada_por, c.ano,
                c.servico,
                case when c.id is null then 'preparar'
                     when c.responsavel_assinou_em is null then 'pendente'

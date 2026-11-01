@@ -21,7 +21,7 @@ for v in vans:
         st.caption("Nenhum aluno nesta van ainda.")
         continue
     for r in df.itertuples():
-        with st.container(border=True):
+        with st.container(border=True, key=f"card_{r.id}"):
             st.markdown(f"**{_ui.esc(r.nome)}** <span class='ve-sub'>· {idade(r.data_nasc) or '—'} anos · "
                         f"{TURNOS.get(r.turno, '')} · {_ui.esc(r.escola or 'sem escola')}</span>  \n"
                         f"<span class='ve-sub'>📍 {_ui.esc(', '.join(x for x in (r.endereco, r.bairro) if x) or 'sem endereço')}"

@@ -1,9 +1,18 @@
 [theme]
 base = "light"
-primaryColor = "#1D3557"
+primaryColor = "#0A9C97"            # verde Tiffany (escurecido para o texto branco dos botões ser legível)
+backgroundColor = "#F4FBFB"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#16324F"
+font = "Nunito:https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap"
+headingFont = "Nunito:https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap"
+baseRadius = "large"
+borderColor = "#D3E9E8"
+showWidgetBorder = true
+
+[theme.sidebar]
 backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F4F6FA"
-textColor = "#1F2937"
+secondaryBackgroundColor = "#EEF8F8"
 
 [client]
 toolbarMode = "minimal"

@@ -71,8 +71,8 @@ with aba_mes:
         cats = repo.despesas_por_categoria(cid, comp, prox, van=van)
         if not cats.empty:
             cats["valor"] = cats["valor"].astype(float)
-            st.altair_chart(alt.Chart(cats).mark_bar(cornerRadiusEnd=4, color="#1D3557").encode(
-                x=alt.X("valor:Q", title=None, axis=alt.Axis(format=",.0f")),
+            st.altair_chart(alt.Chart(cats).mark_bar(cornerRadiusEnd=6, color="#0ABAB5").encode(
+                x=alt.X("valor:Q", title=None, axis=alt.Axis(labelExpr="replace(format(datum.value, ',.0f'), ',', '.')")),
                 y=alt.Y("categoria:N", sort="-x", title=None),
                 tooltip=[alt.Tooltip("categoria:N", title="Categoria"),
                          alt.Tooltip("valor:Q", title="R$", format=",.2f")]).properties(height=36 * len(cats) + 20),
@@ -98,12 +98,12 @@ with aba_ano:
     ordem = list(res["mes_txt"])
     barras = alt.Chart(longo).mark_bar().encode(
         x=alt.X("mes_txt:N", sort=ordem, title=None), xOffset="tipo:N",
-        y=alt.Y("v:Q", title=None, axis=alt.Axis(format=",.0f")),
-        color=alt.Color("tipo:N", scale=alt.Scale(domain=["receitas", "despesas"], range=["#2A9D8F", "#D62839"]),
+        y=alt.Y("v:Q", title=None, axis=alt.Axis(labelExpr="replace(format(datum.value, ',.0f'), ',', '.')")),
+        color=alt.Color("tipo:N", scale=alt.Scale(domain=["receitas", "despesas"], range=["#0ABAB5", "#FF8A80"]),
                         legend=alt.Legend(orient="top", title=None)),
         tooltip=[alt.Tooltip("mes_txt:N", title="Mês"), alt.Tooltip("tipo:N", title=""),
                  alt.Tooltip("v:Q", title="R$", format=",.2f")])
-    linha = alt.Chart(res).mark_line(point=True, color="#1D3557").encode(
+    linha = alt.Chart(res).mark_line(point=True, color="#3FA9D6", strokeWidth=3).encode(
         x=alt.X("mes_txt:N", sort=ordem), y="lucro:Q",
         tooltip=[alt.Tooltip("mes_txt:N", title="Mês"), alt.Tooltip("lucro:Q", title="Lucro R$", format=",.2f")])
     st.altair_chart(barras + linha, use_container_width=True)

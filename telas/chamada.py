@@ -106,7 +106,7 @@ st.divider()
 BOT = {"ida": [("embarcou", "Embarcou"), ("desembarcou", "Na escola"), ("faltou", "Faltou")],
        "volta": [("embarcou", "Embarcou"), ("desembarcou", "Entregue"), ("faltou", "Faltou")]}
 for r in df.itertuples():
-    with st.container(border=True):
+    with st.container(border=True, key=f"card_{r.id}"):
         st_atual = r.status if isinstance(r.status, str) else None
         etiqueta = (_ui.tag(st_atual, _ui.ROTULO_CHAM[st_atual]) if st_atual
                     else _ui.tag("aviso", "Avisou falta") if r.avisou else "")

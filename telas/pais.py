@@ -35,7 +35,7 @@ def _contrato(f, pid):
                                                     else "enviado, aguardando a contratada"), expanded=False):
             st.caption(f"Enviado por {c['responsavel_nome']} em {data_br(c['responsavel_assinou_em'].astimezone(TZ))}"
                        f" · código {c['codigo']}")
-            st.download_button("Baixar contrato (PDF)", ct.gerar_pdf(c, emp), file_name=f"contrato_{ano}_{pid[:8]}.pdf",
+            st.download_button("Baixar contrato (PDF)", ct.pdf_cache(c, emp), file_name=f"contrato_{ano}_{pid[:8]}.pdf",
                                mime="application/pdf", icon=":material/download:", key=f"pdf_{pid}")
         return
 

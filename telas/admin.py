@@ -15,7 +15,7 @@ if df.empty:
 
 st.caption(f"{len(df)} empresa(s) · {int(df['vans'].sum())} van(s) · {int(df['alunos'].sum())} alunos ativos no total")
 for r in df.itertuples():
-    with st.container(border=True):
+    with st.container(border=True, key=f"card_{r.id}"):
         a, b = st.columns([4, 1])
         a.markdown(f"**{r.nome}** {'' if r.ativo else '· 🔴 desativada'}  \n"
                    f"<span class='ve-sub'>{r.email} · {r.telefone or 'sem telefone'} · {r.vans} van(s) · "

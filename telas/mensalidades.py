@@ -75,7 +75,7 @@ def _tela_mes():
 
 
     for r in df.itertuples():
-        with st.container(border=True):
+        with st.container(border=True, key=f"card_{r.id}"):
             a, b = st.container(key=f"lp_{r.id}").columns([3, 2])
             a.markdown(f"**{_ui.esc(r.aluno)}** {_ui.tag(r.situacao, _ui.ROTULO_MENS[r.situacao])}  \n"
                        f"<span class='ve-sub'>vence {data_br(r.vencimento)} · {_ui.esc(r.responsavel or 'sem responsável')}"
@@ -166,15 +166,15 @@ with aba_painel:
         longo = se.melt(id_vars=["mes_txt"], value_vars=["previsto", "recebido"], var_name="tipo", value_name="v")
         barras = alt.Chart(longo).mark_bar(cornerRadiusEnd=3).encode(
             x=alt.X("mes_txt:N", sort=ordem, title=None), xOffset="tipo:N",
-            y=alt.Y("v:Q", title=None, axis=alt.Axis(format=",.0f")),
-            color=alt.Color("tipo:N", scale=alt.Scale(domain=["previsto", "recebido"], range=["#C7D2E0", "#2A9D8F"]),
+            y=alt.Y("v:Q", title=None, axis=alt.Axis(labelExpr="replace(format(datum.value, ',.0f'), ',', '.')")),
+            color=alt.Color("tipo:N", scale=alt.Scale(domain=["previsto", "recebido"], range=["#BFE4F7", "#0ABAB5"]),
                             legend=alt.Legend(orient="top", title=None)),
             tooltip=[alt.Tooltip("mes_txt:N", title="Mês"), alt.Tooltip("tipo:N", title=""),
                      alt.Tooltip("v:Q", title="R$", format=",.2f")])
         st.markdown("**Previsto × recebido** (por mês de competência)")
         st.altair_chart(barras, use_container_width=True)
         se["inad"] = (se["vencido"] / se["previsto"].where(se["previsto"] > 0) * 100).fillna(0)
-        linha = alt.Chart(se).mark_line(point=True, color="#D62839").encode(
+        linha = alt.Chart(se).mark_line(point=True, color="#FF8A80", strokeWidth=3).encode(
             x=alt.X("mes_txt:N", sort=ordem, title=None), y=alt.Y("inad:Q", title=None, axis=alt.Axis(format=".0f")),
             tooltip=[alt.Tooltip("mes_txt:N", title="Mês"), alt.Tooltip("inad:Q", title="% vencido", format=".1f")])
         st.markdown("**Inadimplência por mês** (% do previsto que está vencido e não pago)")

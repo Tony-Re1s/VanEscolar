@@ -158,6 +158,20 @@ def _quando(ts) -> str:
     return ts.astimezone(TZ).strftime("%d/%m/%Y às %H:%M")
 
 
+def pdf_cache(c: dict, empresa: dict) -> bytes:
+    """gerar_pdf guardado em memória: o mesmo contrato (código + assinatura da contratada) não é refeito a cada clique."""
+    import streamlit as st
+
+    @st.cache_data(max_entries=500, show_spinner=False)
+    def _pdf(codigo, contratada_em, texto, resp_nome, resp_email, resp_em, contr_por, ano, razao, nome):
+        return gerar_pdf(dict(codigo=codigo, contratada_assinou_em=contratada_em, texto=texto,
+                              responsavel_nome=resp_nome, responsavel_email=resp_email, responsavel_assinou_em=resp_em,
+                              contratada_por=contr_por, ano=ano), dict(razao_social=razao, nome=nome))
+    return _pdf(c["codigo"], c.get("contratada_assinou_em"), c["texto"], c["responsavel_nome"], c["responsavel_email"],
+                c["responsavel_assinou_em"], c.get("contratada_por"), c["ano"], empresa.get("razao_social"),
+                empresa.get("nome"))
+
+
 def gerar_pdf(c: dict, empresa: dict) -> bytes:
     """PDF do contrato assinado (c = linha da tabela contratos)."""
     from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY

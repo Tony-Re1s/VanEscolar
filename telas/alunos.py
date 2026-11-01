@@ -151,7 +151,7 @@ with aba_edit:
         resp = repo.responsaveis_do(cid, p["id"])
         ac = repo.acessos(list(resp["email"].dropna())) if not resp.empty else {}
         for r in resp.itertuples():
-            with st.container(border=True):
+            with st.container(border=True, key=f"card_resp_{r.id}"):
                 x1, x2 = st.columns([4, 1])
                 x1.markdown(f"**{_ui.esc(r.nome)}** {('· ' + _ui.esc(r.parentesco)) if r.parentesco else ''}"
                             f"{' · 💰 financeiro' if r.financeiro else ''} "
@@ -283,7 +283,7 @@ with aba_ct:
         rot = {"ok": ("pago", "Assinado ✅"), "assinar": ("vence_logo", "Assine você"),
                "pendente": ("aberto", "Com o responsável"), "preparar": ("vencido", "Preparar")}
         for r in cts.itertuples():
-            with st.container(border=True):
+            with st.container(border=True, key=f"card_ct_{r.passageiro_id}"):
                 cls, txt = rot[r.situacao]
                 st.markdown(f"**{_ui.esc(r.aluno)}** {_ui.tag(cls, txt)}"
                             f"{' <span class=ve-sub>· ' + _ui.esc(r.van) + '</span>' if r.van else ''}",
@@ -318,14 +318,14 @@ with aba_ct:
                            f"{r.responsavel_assinou_em.astimezone(TZ).strftime('%d/%m/%Y %H:%M')}"
                            + (f" · contratada em {r.contratada_assinou_em.astimezone(TZ).strftime('%d/%m/%Y %H:%M')}"
                               if r.contratada_assinou_em else ""))
-                c_full = repo.contrato_do_aluno(r.passageiro_id, ano)
+                c_full = r._asdict()
                 x1, x2, x3 = st.container(key=f"linha_ct_{r.contrato_id}").columns(3)
                 if r.situacao == "assinar":
                     if x1.button("Assinar", key=f"ass_{r.contrato_id}", type="primary", icon=":material/draw:",
                                  use_container_width=True):
                         repo.assinar_contrato_contratada(cid, r.contrato_id, eu_nome)
                         st.rerun()
-                x2.download_button("PDF", ct.gerar_pdf(c_full, emp), file_name=f"contrato_{ano}_{r.aluno}.pdf",
+                x2.download_button("PDF", ct.pdf_cache(c_full, emp), file_name=f"contrato_{ano}_{r.aluno}.pdf",
                                    mime="application/pdf", icon=":material/download:", key=f"pdfg_{r.contrato_id}",
                                    use_container_width=True)
                 with x3.popover("Descartar", icon=":material/delete:", use_container_width=True):

@@ -10,14 +10,30 @@ from pathlib import Path
 
 import pandas as pd
 import streamlit as st
-from sqlalchemy import text
+from sqlalchemy import exc, text
 
 _SCHEMA = Path(__file__).resolve().parent.parent / "db" / "001_schema.sql"
 
 
 def _conn():
-    # pool_pre_ping: o Neon "dorme" após 5 min sem uso; isso refaz a conexão sozinho
-    return st.connection("neon", type="sql", pool_pre_ping=True, pool_recycle=240)
+    # Sem pool_pre_ping (custava 1 ida ao banco a mais por consulta). Conexão que o Neon derrubou é
+    # refeita pelo _tentar() abaixo; pool_recycle troca as conexões antigas antes do Neon fechá-las.
+    return st.connection("neon", type="sql", pool_pre_ping=False, pool_recycle=240,
+                         connect_args={"prepare_threshold": None})   # pooler do Neon: sem prepared statements
+
+
+def _tentar(fn):
+    """Roda fn(); se a conexão tinha caído (Neon dormiu/reiniciou), descarta o pool e tenta mais uma vez."""
+    try:
+        return fn()
+    except exc.OperationalError:
+        _conn().engine.dispose()
+        return fn()
+    except exc.DBAPIError as e:
+        if not e.connection_invalidated:
+            raise
+        _conn().engine.dispose()
+        return fn()
 
 
 # Leituras guardadas em memória por 2 min; qualquer gravação feita pelo app apaga o que estava guardado.
@@ -31,6 +47,10 @@ def _mudou():
 @contextmanager
 def transacao():
     """Bloco com commit no fim (ou rollback se der erro)."""
+    try:                                    # acorda/valida a conexão antes de gravar (1 ida a mais só nas gravações)
+        _tentar(lambda: _ler("select 1", {}))
+    except Exception:  # noqa: BLE001
+        pass
     with _conn().session as s:
         try:
             yield s
@@ -41,10 +61,15 @@ def transacao():
             raise
 
 
-def _ler(sql: str, params: dict):
-    with _conn().session as s:
-        res = s.execute(text(sql), params)
+def _ler_uma_vez(sql: str, params: dict):
+    # AUTOCOMMIT: leitura numa ida só (sem BEGIN/ROLLBACK em volta)
+    with _conn().engine.connect().execution_options(isolation_level="AUTOCOMMIT") as c:
+        res = c.execute(text(sql), params)
         return list(res.keys()), [tuple(r) for r in res.all()]
+
+
+def _ler(sql: str, params: dict):
+    return _tentar(lambda: _ler_uma_vez(sql, params))
 
 
 @st.cache_data(ttl=120, max_entries=3000, show_spinner=False)
