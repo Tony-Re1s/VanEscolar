@@ -36,6 +36,11 @@ _ui.css()
 st.logo(str(_ST / "logo.svg"), size="large", icon_image=str(_ST / "van.svg"))
 
 db.migrar(db.banco_ativo(), db.versao_schema())
+if st.query_params.get("contrato"):     # link do contrato assinado (WhatsApp/e-mail) — baixa sem login
+    st.navigation([st.Page("telas/contrato_link.py", title="Contrato", icon=":material/description:")],
+                  position="hidden").run()
+    st.stop()
+
 if st.query_params.get("van"):          # link "ver a van no mapa" que os pais recebem — abre sem login
     st.navigation([st.Page("telas/van_mapa.py", title="Onde está a van", icon=":material/location_on:")],
                   position="hidden").run()

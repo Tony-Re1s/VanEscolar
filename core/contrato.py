@@ -224,6 +224,13 @@ def gerar_pdf(c: dict, empresa: dict) -> bytes:
     out.append(Paragraph(escape(
         f"Documento assinado eletronicamente no app Pequenos a Bordo, com identificação das partes por login "
         f"Google. Código de conferência: {c['codigo']}. Contrato {c['ano']}."), peq))
+    out.append(Paragraph(escape(
+        "Validade jurídica: as partes reconhecem esta assinatura eletrônica como válida e eficaz, nos termos da "
+        "Lei nº 14.063/2020 (assinatura eletrônica simples) e do art. 10, § 2º, da Medida Provisória nº 2.200-2/2001, "
+        "que admite outros meios de comprovação da autoria e da integridade de documentos eletrônicos aceitos pelas "
+        "partes. Ficam registrados no sistema o e-mail e o nome de cada signatário, a data e a hora de cada "
+        "assinatura, o endereço IP do(a) CONTRATANTE e o código de conferência acima, que identifica o texto "
+        "assinado e permite verificar que ele não foi alterado."), peq))
     from reportlab.platypus import KeepTogether
     out = out[:ini_assin - 1] + [KeepTogether(out[ini_assin - 1:])]   # assinaturas nunca ficam sozinhas na página
     doc.build(out)

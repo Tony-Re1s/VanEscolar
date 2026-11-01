@@ -37,6 +37,8 @@ def _contrato(f, pid):
                        f" · código {c['codigo']}")
             st.download_button("Baixar contrato (PDF)", ct.pdf_cache(c, emp), file_name=f"contrato_{ano}_{pid[:8]}.pdf",
                                mime="application/pdf", icon=":material/download:", key=f"pdf_{pid}")
+            st.caption("Guardar uma cópia:")
+            _ui.botoes_enviar_contrato(c, f.nome, (c.get("dados") or {}).get("telefone"), u["email"], "", f"p_{pid}")
         return
 
     sv = dict(c["servico"])
@@ -86,6 +88,9 @@ def _contrato(f, pid):
             local = st.text_input("Local da assinatura *", value=v("local", emp.get("cidade") or ""))
             aceite = st.checkbox("Li e concordo com todas as cláusulas e condições deste contrato. Entendo que este "
                                  "aceite, feito com o meu login Google, vale como minha assinatura eletrônica.")
+            st.caption("Assinatura eletrônica com validade jurídica (Lei nº 14.063/2020 e art. 10, § 2º, da MP nº "
+                       "2.200-2/2001). Ficam registrados seu e-mail, data, hora e IP, e o contrato recebe um código "
+                       "de conferência.")
             enviar = st.form_submit_button("Assinar e enviar", type="primary", width="stretch")
         if enviar:
             obrig = (("nome", nome), ("CPF", cpf), ("telefone", tel), ("CEP", cep), ("rua", rua), ("número", numero),

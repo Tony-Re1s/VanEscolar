@@ -399,3 +399,6 @@ create table if not exists asaas_pagamentos (
   processado    boolean not null default false, -- já liberou o plano
   atualizado_em timestamptz not null default now()
 );
+
+-- v13 — link seguro para baixar o contrato assinado (enviado por WhatsApp/e-mail)
+alter table contratos add column if not exists link_token text unique;

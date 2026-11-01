@@ -335,5 +335,8 @@ with aba_ct:
                     if st.button("Confirmar descarte", key=f"desc_{r.contrato_id}"):
                         repo.cancelar_contrato(cid, r.contrato_id)
                         st.rerun()
+                tel_r = todos.loc[todos["id"] == r.passageiro_id, "telefone_resp"].squeeze() if not todos.empty else None
+                _ui.botoes_enviar_contrato(c_full, r.aluno, tel_r if isinstance(tel_r, str) else None,
+                                           r.responsavel_email, "ao responsável", f"g_{r.contrato_id}")
                 with st.expander("Ver contrato"):
                     st.text(c_full["texto"] or "")

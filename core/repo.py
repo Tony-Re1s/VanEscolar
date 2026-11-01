@@ -975,3 +975,24 @@ def cobrancas_asaas(cid, assinatura: str | None = None) -> list[dict]:
                        where condutor_id = cast(:cid as uuid) and (cast(:a as text) is null or assinatura = :a)
                        order by vencimento desc""", cid=str(cid), a=assinatura)
     return df.to_dict("records")
+
+
+# ------------------------------------------------------------------ contrato: link seguro para baixar
+def token_contrato(contrato_id) -> str:
+    import secrets
+    r = db.um("select link_token from contratos where id = cast(:i as uuid)", i=str(contrato_id))
+    if r and r.get("link_token"):
+        return r["link_token"]
+    tok = secrets.token_urlsafe(18)
+    db.gravar("update contratos set link_token = :t where id = cast(:i as uuid) and link_token is null",
+              t=tok, i=str(contrato_id))
+    return (db.ao_vivo("select link_token from contratos where id = cast(:i as uuid)", i=str(contrato_id))
+            .iloc[0]["link_token"])
+
+
+def contrato_por_token(tok: str) -> dict | None:
+    if not tok or len(tok) > 40:
+        return None
+    df = db.ao_vivo("""select c.*, p.nome as aluno from contratos c join passageiros p on p.id = c.passageiro_id
+                       where c.link_token = :t and c.responsavel_assinou_em is not null""", t=tok)
+    return df.iloc[0].to_dict() if len(df) else None

@@ -398,3 +398,23 @@ def sincronizar_asaas(cid=None, forcar: bool = False) -> dict | None:
     if res["pagamentos_novos"] or res["valores_atualizados"]:
         db._mudou()
     return res
+
+
+# ---------------------------------------------------------------- enviar contrato assinado
+def botoes_enviar_contrato(contrato: dict, aluno: str, telefone: str | None, email: str | None, para_quem: str,
+                           chave: str):
+    """WhatsApp e/ou e-mail com o link seguro para baixar o PDF do contrato assinado."""
+    import urllib.parse
+    from core import repo
+    from core.fmt import link_whats
+    link = f"{APP_URL}/?contrato={repo.token_contrato(contrato['id'] if 'id' in contrato else contrato['contrato_id'])}"
+    ano = contrato.get("ano")
+    msg = (f"Olá! Segue o contrato de transporte escolar de {aluno} ({ano}), assinado eletronicamente pelo app "
+           f"Pequenos a Bordo. Para baixar o PDF: {link}")
+    assunto = f"Contrato de transporte escolar — {aluno} ({ano})"
+    w = link_whats(telefone, msg) if telefone else f"https://wa.me/?text={urllib.parse.quote(msg)}"
+    m = (f"mailto:{urllib.parse.quote(email or '')}?subject={urllib.parse.quote(assunto)}"
+         f"&body={urllib.parse.quote(msg)}")
+    a, b = st.container(key=f"linha_env_{chave}").columns(2)
+    a.link_button(f"WhatsApp {para_quem}".strip(), w, icon=":material/chat:", width="stretch")
+    b.link_button(f"E-mail {para_quem}".strip(), m, icon=":material/mail:", width="stretch")
