@@ -19,6 +19,27 @@ if not (u.get("admin") or pl.liberada(emp, hoje())):
     st.stop()
 
 ENG = _ui.motor()
+
+# respostas prontas: resolvem as dúvidas comuns na hora
+from core.faq import FAQ  # noqa: E402
+st.markdown("**Dúvidas rápidas** <span class='ve-sub'>— toque para ver a resposta na hora</span>",
+            unsafe_allow_html=True)
+tit = st.pills("Dúvidas rápidas", [f["titulo"] for f in FAQ], key="faq_sel", label_visibility="collapsed")
+if tit:
+    f = next(x for x in FAQ if x["titulo"] == tit)
+    facil = (emp.get("modo") or "completo") == "facil"
+    with st.container(border=True, key="card_faq"):
+        st.markdown(f"**{tit}**")
+        st.markdown(_ui.sem_formula(f["texto"].strip()))
+        destino = f.get("pagina_facil") if facil and f.get("pagina_facil") else f.get("pagina")
+        if destino:
+            try:
+                st.page_link(destino, label="Abrir essa tela", icon=":material/arrow_forward:")
+            except Exception:  # noqa: BLE001 — tela que não existe neste modo/plano
+                pass
+        st.caption("Não resolveu? Escreva abaixo que a gente responde.")
+
+st.divider()
 st.caption("Escreva sua dúvida, sugestão ou problema. A gente responde por aqui mesmo — normalmente no mesmo dia. "
            f"Se preferir, mande um e-mail para {_ui.EMAIL_CONTATO}.")
 
