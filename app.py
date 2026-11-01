@@ -2,12 +2,32 @@
 
 Rodar local:  streamlit run app.py
 """
+import importlib
+import sys
+from pathlib import Path
+
 import streamlit as st
 
-from core import auth, db
-from telas import _ui
 
-from pathlib import Path
+def _recarregar_codigo_novo():
+    """O Streamlit Cloud atualiza os arquivos a cada publicação, mas guarda na memória os módulos já importados
+    (core/*, telas/_ui). Recarrega os que mudaram desde a última execução — assim não precisa de Reboot."""
+    for nome in ("core.fmt", "core.db", "core.planos", "core.contrato", "core.repo", "core.backup", "core.auth",
+                 "telas._ui"):
+        m = sys.modules.get(nome)
+        arq = getattr(m, "__file__", None)
+        if not arq:
+            continue
+        mtime = Path(arq).stat().st_mtime
+        if getattr(m, "_mtime", None) != mtime:
+            importlib.reload(m)
+            m._mtime = mtime
+
+
+_recarregar_codigo_novo()
+
+from core import auth, db  # noqa: E402
+from telas import _ui  # noqa: E402
 
 _ST = Path(__file__).parent / "static"
 st.set_page_config(page_title="Pequenos a Bordo", page_icon=str(_ST / "favicon.png"), layout="wide",
