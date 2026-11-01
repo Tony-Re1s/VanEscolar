@@ -15,7 +15,7 @@ st.set_page_config(page_title="Pequenos a Bordo", page_icon=str(_ST / "favicon.p
 _ui.css()
 st.logo(str(_ST / "logo.svg"), size="large", icon_image=str(_ST / "van.svg"))
 
-db.migrar(db.banco_ativo())
+db.migrar(db.banco_ativo(), db.versao_schema())
 PRIVACIDADE = st.Page("telas/privacidade.py", title="Privacidade", icon=":material/shield_lock:")
 TERMOS = st.Page("telas/termos.py", title="Termos de uso", icon=":material/gavel:")
 

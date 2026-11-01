@@ -152,8 +152,14 @@ def gravar(sql: str, **params) -> dict | None:
         return dict(row) if row else None
 
 
+def versao_schema() -> str:
+    """Muda quando o db/001_schema.sql muda — assim o migrar() roda de novo sem precisar de Reboot."""
+    import hashlib
+    return hashlib.sha1(_SCHEMA.read_bytes()).hexdigest()[:12]
+
+
 @st.cache_resource(show_spinner="Preparando o banco…")
-def migrar(banco: str = "") -> bool:
+def migrar(banco: str = "", versao: str = "") -> bool:
     """Cria as tabelas na 1ª vez (idempotente). Roda uma vez por processo do servidor e por banco
     (ao virar o switch para o reserva, ele também é preparado)."""
     with _conn().session as s:

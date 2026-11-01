@@ -40,7 +40,7 @@ def atualizar_empresa(cid, d: dict):
 
 def empresas_todas() -> pd.DataFrame:
     return db.ao_vivo("""
-        select c.id, c.nome, u.email, c.telefone, c.ativo, c.criado_em::date as desde, c.plano, c.plano_ate,
+        select c.id, c.nome, u.email, c.telefone, c.ativo, c.criado_em::date as desde, c.plano, c.plano_ate, c.plano_tipo,
                (select count(*) from vans v where v.condutor_id = c.id and v.ativo) as vans,
                (select count(*) from passageiros p where p.condutor_id = c.id and p.ativo) as alunos,
                u.ultimo_acesso
@@ -566,5 +566,7 @@ def uso_empresa(cid) -> dict:
     return {"vans": int(df.iloc[0]["vans"]), "alunos": int(df.iloc[0]["alunos"])}
 
 
-def definir_plano(cid, plano: str, ate):
-    db.gravar("update condutores set plano = :p, plano_ate = :a where id = :cid", p=plano, a=ate, cid=cid)
+def definir_plano(cid, plano: str, ate, tipo: str = "pago"):
+    """tipo: pago | teste (degustação, volta ao Grátis em `ate`) | cortesia (sem cobrar; `ate` opcional)."""
+    db.gravar("update condutores set plano = :p, plano_ate = :a, plano_tipo = :t where id = :cid",
+              p=plano, a=ate, t=("pago" if plano == "gratis" else tipo), cid=cid)

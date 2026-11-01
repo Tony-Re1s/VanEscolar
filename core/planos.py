@@ -24,6 +24,10 @@ PLANOS = {
 }
 ORDEM = ["gratis", "basico", "pro", "frota"]
 
+# Como o plano foi liberado
+TIPOS = {"pago": "Pago", "teste": "Degustação", "cortesia": "Cortesia"}
+DIAS_TESTE = [7, 15, 30]
+
 
 def plano_da_empresa(empresa: dict, hoje: date) -> str:
     """Plano em vigor: o contratado, ou Grátis se a assinatura venceu."""
@@ -32,6 +36,11 @@ def plano_da_empresa(empresa: dict, hoje: date) -> str:
     if p != "gratis" and ate and ate < hoje:
         return "gratis"
     return p if p in PLANOS else "gratis"
+
+
+def tipo_da_empresa(empresa: dict) -> str:
+    t = (empresa or {}).get("plano_tipo") or "pago"
+    return t if t in TIPOS else "pago"
 
 
 def limite(plano: str, recurso: str):

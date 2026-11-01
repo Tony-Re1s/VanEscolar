@@ -20,15 +20,36 @@ def _uso(n, lim):
 
 
 venc = emp.get("plano_ate")
-_ui.kpis([("Plano atual", p["nome"], ("até " + data_br(venc)) if venc and atual != "gratis" else pl.preco_txt(p) +
-           ("/mês" if p["preco"] else "")),
+contratado = emp.get("plano") or "gratis"
+tipo = pl.tipo_da_empresa(emp) if contratado != "gratis" else "pago"
+if atual == "gratis":
+    sub = pl.preco_txt(p)
+elif tipo == "teste":
+    sub = "degustação até " + data_br(venc)
+elif tipo == "cortesia":
+    sub = "cortesia" + (" até " + data_br(venc) if venc else "")
+else:
+    sub = ("até " + data_br(venc)) if venc else pl.preco_txt(p) + "/mês"
+if contratado != atual:
+    situacao = "Degustação acabou" if tipo == "teste" else "Venceu → Grátis"
+else:
+    situacao = {"teste": "Degustação", "cortesia": "Cortesia"}.get(tipo, "Ativo")
+_ui.kpis([("Plano atual", p["nome"], sub),
           ("Vans", _uso(uso['vans'], p['vans'])),
           ("Alunos ativos", _uso(uso['alunos'], p['alunos'])),
-          ("Situação", "Ativo" if atual == (emp.get("plano") or "gratis") else "Venceu → Grátis")])
+          ("Situação", situacao)])
 
-if (emp.get("plano") or "gratis") != atual:
+if contratado != atual and tipo == "teste":
+    st.warning(f"Sua degustação do plano {pl.PLANOS[contratado]['nome']} terminou e a conta voltou ao plano Grátis. "
+               "Nada foi apagado — assine para continuar com tudo liberado.", icon=":material/info:")
+elif contratado != atual:
     st.warning("Sua assinatura venceu e a conta voltou ao plano Grátis. Nada foi apagado — renove para voltar a "
                "cadastrar acima do limite.", icon=":material/info:")
+elif tipo == "teste" and venc:
+    faltam = (venc - hoje()).days
+    st.info(f"Você está experimentando o plano **{p['nome']}** de graça até **{data_br(venc)}** "
+            f"({'hoje é o último dia' if faltam <= 0 else 'falta 1 dia' if faltam == 1 else f'faltam {faltam} dias'}). Para continuar depois disso, "
+            "assine abaixo — nada do que você cadastrou se perde.", icon=":material/celebration:")
 for rec, nome in (("vans", "vans"), ("alunos", "alunos")):
     lim = p[rec]
     if lim is not None and uso[rec] >= lim:
@@ -39,10 +60,11 @@ _ui.cartoes_planos(atual)
 
 st.markdown("")
 contato = auth.cfg("contato_whatsapp")
-opcoes = [k for k in pl.ORDEM if k != atual and k != "gratis"]
+# em degustação, o próprio plano também aparece para assinar
+opcoes = [k for k in pl.ORDEM if k != "gratis" and (k != atual or tipo == "teste")]
 if opcoes:
     a, b = st.columns([2, 1])
-    escolha = a.selectbox("Quero mudar para", opcoes, format_func=lambda k: f"{pl.PLANOS[k]['nome']} — "
+    escolha = a.selectbox("Quero assinar", opcoes, index=opcoes.index(atual) if atual in opcoes else 0, format_func=lambda k: f"{pl.PLANOS[k]['nome']} — "
                           f"{pl.preco_txt(pl.PLANOS[k])}/mês", label_visibility="collapsed")
     msg = (f"Olá! Quero assinar o plano {pl.PLANOS[escolha]['nome']} ({pl.preco_txt(pl.PLANOS[escolha])}/mês) do "
            f"Pequenos a Bordo para a empresa {c['nome']} ({st.session_state['usuario']['email']}).")
