@@ -221,6 +221,8 @@ def tag(chave: str, texto: str | None = None) -> str:
 
 APP_URL = "https://turminhaabordo.streamlit.app"
 EMAIL_CONTATO = "contato@turminhaabordo.com.br"
+INSTAGRAM = "turminha_abordo"
+INSTAGRAM_URL = f"https://www.instagram.com/{INSTAGRAM}/"
 
 
 # ---------------------------------------------------------------- Fale conosco (Telegram)
@@ -576,3 +578,9 @@ def api_do_gestor(emp: dict):
     except Exception:  # noqa: BLE001
         pass
     return Asaas(chave, emp.get("asaas_gestor_ambiente") or "producao", base)
+
+
+def instagram(texto: str = "Siga no Instagram", chave: str = "insta"):
+    """Link para o Instagram do app (abre o app do Instagram no celular)."""
+    st.link_button(f"{texto} @{INSTAGRAM}", INSTAGRAM_URL, icon=":material/photo_camera:", width="stretch",
+                   key=chave)

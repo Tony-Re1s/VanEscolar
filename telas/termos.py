@@ -2,7 +2,7 @@
 import streamlit as st
 
 RESPONSAVEL = "José Anthony Reis Lopes"
-CONTATO = "joseareislopes@gmail.com"
+CONTATO = "contato@turminhaabordo.com.br"
 ATUALIZADO = "01/11/2026"
 
 st.title("Termos de Uso")

@@ -244,3 +244,11 @@ for aba, f in zip(abas, filhos.itertuples()):
             pago = f" · pago em {data_br(r.pago_em)}" if r.pago_em else ""
             st.markdown(f"{mes_label(r.competencia)} — **{brl(r.valor)}** · vence {data_br(r.vencimento)}{pago} "
                         f"{_ui.tag(r.situacao, _ui.ROTULO_MENS[r.situacao])}", unsafe_allow_html=True)
+
+# Instagram do app (engajamento das famílias)
+st.divider()
+with st.container(border=True, key="card_insta_pais"):
+    st.markdown("**📸 O Turminha a Bordo está no Instagram!**  \n"
+                "<span class='ve-sub'>Dicas de segurança no transporte escolar e as novidades do app.</span>",
+                unsafe_allow_html=True)
+    _ui.instagram("Seguir", chave="insta_pais")

@@ -212,6 +212,7 @@ with st.sidebar:
                      help="Mostra o app exatamente como o motorista / monitor(a) vê (a mesma visão para os dois)."):
             st.session_state["ver_como_motorista"] = True
             st.rerun()
+    _ui.instagram(chave="insta_sidebar")
     st.button("Sair", icon=":material/logout:", on_click=auth.sair, width="stretch")
 
 nav.run()
