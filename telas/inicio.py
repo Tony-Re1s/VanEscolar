@@ -46,7 +46,9 @@ if _deg.get("ativo") and _deg.get("plano") in _pl.catalogo():
     st.caption(f"Experimente {_deg['dias']} dias do plano {_pl.catalogo()[_deg['plano']]['nome']} de graça ao criar sua "
                "conta — sem cartão.")
 
+_ui.instagram("Siga no Instagram", chave="insta_inicio")
 st.markdown("<div class='ve-rodape'>Turminha a Bordo · São Paulo/SP · "
             f"<a href='{_ui.link_contato()}'>{_ui.EMAIL_CONTATO}</a> · "
+            f"<a href='{_ui.INSTAGRAM_URL}' target='_blank'>Instagram @{_ui.INSTAGRAM}</a> · "
             "<a href='/privacidade' target='_self'>Política de Privacidade</a> · "
             "<a href='/termos' target='_self'>Termos de Uso</a></div>", unsafe_allow_html=True)
