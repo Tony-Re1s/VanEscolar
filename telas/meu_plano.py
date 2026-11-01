@@ -12,6 +12,7 @@ MP = _ui.mp_api()              # cliente do Mercado Pago (None = não configurad
 GW = _ui.gateway_ativo()       # quem recebe as NOVAS assinaturas; None = nenhum: pedido pelo WhatsApp e o admin libera
 GW_NOME = _ui.GATEWAYS.get(GW or "", "")
 STATUS_PAG = {**asaas.STATUS, **mercadopago.STATUS}
+ANDROID = _ui.app_android()    # app da Play Store: não vende lá dentro (o gestor assina pelo site)
 METODOS = {"cartao": "Cartão de crédito — renova sozinho", "avulso": "Pix ou boleto — paga a cada período"}
 if API or MP:
     _sync = _ui.sincronizar_pagamentos(c["id"])
@@ -131,7 +132,7 @@ _prazo = pl.prazo_dados(emp, HOJE) if p is None and not st.session_state["usuari
 if _prazo:
     st.warning(f"🗂️ Seus dados ficam guardados até **{data_br(_prazo)}**. Depois dessa data, alunos, mensalidades, "
                "contratos e o resto do cadastro são **apagados** e não dá para recuperar.", icon=":material/delete_forever:")
-if p is None and contratado in cat and pl.pode_pausar(emp, HOJE):
+if p is None and contratado in cat and pl.pode_pausar(emp, HOJE) and not ANDROID:
     with st.container(border=True, key="card_pausa_oferta"):
         st.markdown(f"**Está nas férias? Pause por {PAUSA_TXT}/mês** em vez de perder tudo  \n"
                     f"<span class='ve-sub'>Por até {int(FID.get('pausa_dias') or 60)} dias: seus dados e seu preço "
@@ -197,7 +198,7 @@ if pedido:
         if pedido.get("asaas_assinatura") and API:
             cob = repo.cobrancas_asaas(c["id"], pedido["asaas_assinatura"])
             pend = [x for x in cob if x["status"] not in asaas.PAGO and x.get("link")]
-            if pend:
+            if pend and not ANDROID:
                 x1.link_button("Pagar agora (Pix, boleto ou cartão)", pend[0]["link"], icon=":material/payments:",
                                type="primary", width="stretch")
             if x2.button("Já paguei — verificar", icon=":material/refresh:", width="stretch"):
@@ -216,7 +217,7 @@ if pedido:
                 st.rerun()
         elif pedido.get("gateway") == "mercadopago" and MP:
             cartao = bool(pedido.get("mp_assinatura"))
-            if pedido.get("mp_link"):
+            if pedido.get("mp_link") and not ANDROID:
                 x1.link_button("Cadastrar o cartão e pagar" if cartao else "Pagar agora (Pix, boleto ou cartão)",
                                pedido["mp_link"], icon=":material/payments:", type="primary", width="stretch")
             if x2.button("Já paguei — verificar", icon=":material/refresh:", width="stretch", key="mp_verificar"):
@@ -276,7 +277,9 @@ elif MP and emp.get("gateway") == "mercadopago" and tipo == "pago" and venc and 
                     f"**{data_br(venc)}**  \n<span class='ve-sub'>A partir de 7 dias antes do vencimento aparece "
                     "aqui o botão para pagar o próximo período.</span>"), unsafe_allow_html=True)
         valor_ren = asaas._valor_esperado(emp, HOJE, cat)
-        if faltam <= 7 and valor_ren:
+        if faltam <= 7 and valor_ren and ANDROID:
+            _ui.aviso_assinar_pelo_site()
+        elif faltam <= 7 and valor_ren:
             chave_lk = f"_mp_ren_{c['id']}"
             if st.button(f"Pagar o próximo período · {pl.brl(valor_ren)}", type="primary",
                          icon=":material/payments:", key="mp_renovar"):
@@ -322,92 +325,96 @@ if p and tipo == "pago" and not emp.get("cancelado_em") and not pedido:
 
 # ---------------------------------------------------------------- assinar
 st.subheader("Assinar")
-pagos = list(cat)
-with st.container(border=True, key="card_assinar"):
-    a, b = st.columns([3, 2])
-    padrao = atual if atual in pagos else contratado if contratado in pagos else pagos[0]
-    escolha = a.selectbox("Plano", pagos, index=pagos.index(padrao),
-                          format_func=lambda k: f"{cat[k]['nome']} — {pl.preco_txt(cat[k])}/mês")
-    anual_max = max(float(cat[k]["anual_desconto"] or 0) for k in pagos)
-    rotulos = {"mensal": "Mensal", "anual": f"Anual (-{anual_max:.0f}%)" if anual_max else "Anual"}
-    b.segmented_control("Período", list(rotulos), format_func=rotulos.get, key="mp_periodo", default="mensal")
+if ANDROID:
+    _ui.aviso_assinar_pelo_site()
+else:
+    pagos = list(cat)
+    with st.container(border=True, key="card_assinar"):
+        a, b = st.columns([3, 2])
+        padrao = atual if atual in pagos else contratado if contratado in pagos else pagos[0]
+        escolha = a.selectbox("Plano", pagos, index=pagos.index(padrao),
+                              format_func=lambda k: f"{cat[k]['nome']} — {pl.preco_txt(cat[k])}/mês")
+        anual_max = max(float(cat[k]["anual_desconto"] or 0) for k in pagos)
+        rotulos = {"mensal": "Mensal", "anual": f"Anual (-{anual_max:.0f}%)" if anual_max else "Anual"}
+        b.segmented_control("Período", list(rotulos), format_func=rotulos.get, key="mp_periodo", default="mensal")
 
-    # cupom
-    if cupom:
-        cc1, cc2 = st.columns([3, 1])
-        cc1.success(f"Cupom **{cupom['codigo']}** aplicado: " + (
-            f"{cupom['valor']:g}% de desconto" if cupom["tipo"] == "pct" else
-            f"{pl.brl(cupom['valor'])} de desconto" if cupom["tipo"] == "valor" else
-            f"{int(cupom['valor'])} dias grátis") +
-            (f" por {cupom['duracao_meses']} mês(es)" if cupom["tipo"] != "dias" and cupom.get("duracao_meses") else ""),
-            icon=":material/sell:")
-        if cc2.button("Remover", key="rm_cupom", width="stretch"):
-            st.session_state.pop("mp_cupom", None)
-            st.rerun()
-    else:
-        with st.form("cupom", border=False):
-            cc1, cc2 = st.columns([3, 1], vertical_alignment="bottom")
-            codigo = cc1.text_input("Cupom de desconto", placeholder="Tem um cupom? Digite aqui")
-            if cc2.form_submit_button("Aplicar", width="stretch"):
-                ok, erro = repo.validar_cupom(codigo, c["id"], HOJE)
-                if ok:
-                    st.session_state["mp_cupom"] = ok["codigo"]
-                    st.session_state.pop("mp_cupom_erro", None)
-                    st.rerun()
-                st.session_state["mp_cupom_erro"] = erro
-        if st.session_state.get("mp_cupom_erro"):
-            st.error(st.session_state["mp_cupom_erro"])
-
-    # cupom de dias grátis: libera degustação na hora
-    if cupom and cupom["tipo"] == "dias":
-        plano_cupom = (cupom.get("planos") or [pl.config("degustacao").get("plano") or pagos[0]])[0]
-        plano_cupom = plano_cupom if plano_cupom in cat else pagos[0]
-        if tipo == "pago" and atual is not None:
-            st.info("Esse cupom é de dias grátis e vale para quem ainda não é assinante.")
-        elif st.button(f"Ativar {int(cupom['valor'])} dias grátis do {cat[plano_cupom]['nome']}", type="primary",
-                       icon=":material/celebration:"):
-            pl_, ate = repo.ativar_cupom_dias(c["id"], cupom, HOJE)
-            st.session_state.pop("mp_cupom", None)
-            st.toast(f"Pronto! {cat[pl_]['nome']} liberado até {data_br(ate)}.")
-            st.rerun()
-    else:
-        if cupom and not pl.cupom_vale_para(cupom, escolha):
-            st.warning(f"O cupom {cupom['codigo']} não vale para o plano {cat[escolha]['nome']}.")
-        pr = precos[escolha]
-        if pr.tem_desconto:
-            linha = (f"<span style='text-decoration:line-through;color:#8A9BAA'>{pl.brl(pr.base)}</span> "
-                     f"por <b style='font-size:1.25rem'>{pl.brl(pr.final)}/mês</b> · {_ui.esc(pr.rotulo)}")
-            if pr.duracao_meses:
-                linha += f" — por {pr.duracao_meses} mês(es), depois {pl.brl(pr.base)}"
+        # cupom
+        if cupom:
+            cc1, cc2 = st.columns([3, 1])
+            cc1.success(f"Cupom **{cupom['codigo']}** aplicado: " + (
+                f"{cupom['valor']:g}% de desconto" if cupom["tipo"] == "pct" else
+                f"{pl.brl(cupom['valor'])} de desconto" if cupom["tipo"] == "valor" else
+                f"{int(cupom['valor'])} dias grátis") +
+                (f" por {cupom['duracao_meses']} mês(es)" if cupom["tipo"] != "dias" and cupom.get("duracao_meses") else ""),
+                icon=":material/sell:")
+            if cc2.button("Remover", key="rm_cupom", width="stretch"):
+                st.session_state.pop("mp_cupom", None)
+                st.rerun()
         else:
-            linha = f"<b style='font-size:1.25rem'>{pl.brl(pr.final)}/mês</b>"
-        if periodo == "anual":
-            linha += f"<br><span class='ve-sub'>Pagamento anual: {pl.brl(pr.total)} por 12 meses</span>"
-        st.markdown(_ui.sem_formula(linha), unsafe_allow_html=True)
+            with st.form("cupom", border=False):
+                cc1, cc2 = st.columns([3, 1], vertical_alignment="bottom")
+                codigo = cc1.text_input("Cupom de desconto", placeholder="Tem um cupom? Digite aqui")
+                if cc2.form_submit_button("Aplicar", width="stretch"):
+                    ok, erro = repo.validar_cupom(codigo, c["id"], HOJE)
+                    if ok:
+                        st.session_state["mp_cupom"] = ok["codigo"]
+                        st.session_state.pop("mp_cupom_erro", None)
+                        st.rerun()
+                    st.session_state["mp_cupom_erro"] = erro
+            if st.session_state.get("mp_cupom_erro"):
+                st.error(st.session_state["mp_cupom_erro"])
 
-        doc, metodo = _campos_pagamento("assinar")
-        if st.button("Assinar", type="primary", icon=":material/workspace_premium:"):
-            msg = (f"Olá! Quero assinar o Turminha a Bordo: plano {cat[escolha]['nome']} "
-                   f"{pl.PERIODOS[periodo].lower()}, {pl.brl(pr.final)}/mês"
-                   + (f" ({pr.rotulo})" if pr.tem_desconto else "")
-                   + (f", total {pl.brl(pr.total)}" if periodo == "anual" else "")
-                   + f". Empresa: {c['nome']} ({st.session_state['usuario']['email']}).")
-            novo_pedido = dict(
-                plano=escolha, plano_nome=cat[escolha]["nome"], periodo=periodo, preco=pr.final, base=pr.base,
-                total=pr.total, origem=pr.origem, rotulo=pr.rotulo if pr.tem_desconto else "",
-                duracao_meses=pr.duracao_meses, cupom_id=str(pr.cupom["id"]) if pr.cupom else None,
-                vip_novo=pr.vip_novo, em=agora().isoformat(timespec="minutes"), mensagem=msg)
-            if GW:
-                if not _criar_online(novo_pedido, doc, metodo):
-                    st.stop()
+        # cupom de dias grátis: libera degustação na hora
+        if cupom and cupom["tipo"] == "dias":
+            plano_cupom = (cupom.get("planos") or [pl.config("degustacao").get("plano") or pagos[0]])[0]
+            plano_cupom = plano_cupom if plano_cupom in cat else pagos[0]
+            if tipo == "pago" and atual is not None:
+                st.info("Esse cupom é de dias grátis e vale para quem ainda não é assinante.")
+            elif st.button(f"Ativar {int(cupom['valor'])} dias grátis do {cat[plano_cupom]['nome']}", type="primary",
+                           icon=":material/celebration:"):
+                pl_, ate = repo.ativar_cupom_dias(c["id"], cupom, HOJE)
+                st.session_state.pop("mp_cupom", None)
+                st.toast(f"Pronto! {cat[pl_]['nome']} liberado até {data_br(ate)}.")
+                st.rerun()
+        else:
+            if cupom and not pl.cupom_vale_para(cupom, escolha):
+                st.warning(f"O cupom {cupom['codigo']} não vale para o plano {cat[escolha]['nome']}.")
+            pr = precos[escolha]
+            if pr.tem_desconto:
+                linha = (f"<span style='text-decoration:line-through;color:#8A9BAA'>{pl.brl(pr.base)}</span> "
+                         f"por <b style='font-size:1.25rem'>{pl.brl(pr.final)}/mês</b> · {_ui.esc(pr.rotulo)}")
+                if pr.duracao_meses:
+                    linha += f" — por {pr.duracao_meses} mês(es), depois {pl.brl(pr.base)}"
             else:
-                repo.salvar_pedido(c["id"], novo_pedido)
-            st.rerun()
-    st.caption("Pagamento por Pix, boleto ou cartão. Assim que confirmado, o plano é liberado na sua conta."
-               + (" A cobrança se repete sozinha a cada período — dá para cancelar quando quiser." if GW == "asaas"
-                  else " No cartão, a cobrança se repete sozinha; no Pix ou boleto, perto do vencimento aparece aqui "
-                       "o botão para pagar o próximo período. Dá para cancelar quando quiser."
-                  if GW == "mercadopago" else ""))
+                linha = f"<b style='font-size:1.25rem'>{pl.brl(pr.final)}/mês</b>"
+            if periodo == "anual":
+                linha += f"<br><span class='ve-sub'>Pagamento anual: {pl.brl(pr.total)} por 12 meses</span>"
+            st.markdown(_ui.sem_formula(linha), unsafe_allow_html=True)
+
+            doc, metodo = _campos_pagamento("assinar")
+            if st.button("Assinar", type="primary", icon=":material/workspace_premium:"):
+                msg = (f"Olá! Quero assinar o Turminha a Bordo: plano {cat[escolha]['nome']} "
+                       f"{pl.PERIODOS[periodo].lower()}, {pl.brl(pr.final)}/mês"
+                       + (f" ({pr.rotulo})" if pr.tem_desconto else "")
+                       + (f", total {pl.brl(pr.total)}" if periodo == "anual" else "")
+                       + f". Empresa: {c['nome']} ({st.session_state['usuario']['email']}).")
+                novo_pedido = dict(
+                    plano=escolha, plano_nome=cat[escolha]["nome"], periodo=periodo, preco=pr.final, base=pr.base,
+                    total=pr.total, origem=pr.origem, rotulo=pr.rotulo if pr.tem_desconto else "",
+                    duracao_meses=pr.duracao_meses, cupom_id=str(pr.cupom["id"]) if pr.cupom else None,
+                    vip_novo=pr.vip_novo, em=agora().isoformat(timespec="minutes"), mensagem=msg)
+                if GW:
+                    if not _criar_online(novo_pedido, doc, metodo):
+                        st.stop()
+                else:
+                    repo.salvar_pedido(c["id"], novo_pedido)
+                st.rerun()
+        st.caption("Pagamento por Pix, boleto ou cartão. Assim que confirmado, o plano é liberado na sua conta."
+                   + (" A cobrança se repete sozinha a cada período — dá para cancelar quando quiser." if GW == "asaas"
+                      else " No cartão, a cobrança se repete sozinha; no Pix ou boleto, perto do vencimento aparece aqui "
+                           "o botão para pagar o próximo período. Dá para cancelar quando quiser."
+                      if GW == "mercadopago" else ""))
+
 
 if st.session_state["usuario"].get("bloqueado"):
     st.caption(f"Dúvidas sobre a assinatura? Escreva para [{_ui.EMAIL_CONTATO}]({_ui.link_contato('Assinatura — Turminha a Bordo')}).")

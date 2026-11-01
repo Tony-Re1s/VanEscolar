@@ -123,6 +123,7 @@ button[data-testid="stBaseButton-secondary"]:hover, .stLinkButton > a:hover {bor
 [class*="st-key-card_falta"] {opacity: .55;}
 [class*="st-key-card_falta"]:hover {opacity: .85;}
 .st-key-tela_ligada {display: none !important;}
+.st-key-marca_android {display: none !important;}
 /* rota do motorista: botões grandes e por cor — amarelo = mensagem, verde = embarcou/entregue,
    vermelho = faltou, azul = caminho. Lê de relance, toca sem errar. */
 [class*="st-key-zap_"] button, [class*="st-key-zap_"] a, [class*="st-key-ok_"] button,
@@ -437,6 +438,36 @@ pedir();document.addEventListener('visibilitychange',pedir);document.addEventLis
 try{if(w.__tbLock&&!w.__tbLock.released)w.__tbLock.release();}catch(e){}})();</script>"""
     with st.container(key="tela_ligada"):
         st.html(js_on if ligar else js_off, unsafe_allow_javascript=True)
+
+
+# ---------------------------------------------------------------- app da Play Store (não vende dentro do app)
+def app_android() -> bool:
+    """Aberto pelo app Android da Play Store? (ele abre com ?origem=android). Lá dentro o app não vende —
+    regra do Google Play para assinatura digital; o gestor assina pelo site. Vale até o navegador fechar
+    (cookie de sessão), assim continua valendo depois do login com o Google, que recarrega a página."""
+    if st.session_state.get("_android"):
+        return True
+    try:
+        cookie = st.context.cookies.get("turminha_android") == "1"
+    except Exception:  # noqa: BLE001
+        cookie = False
+    if st.query_params.get("origem") == "android" or cookie:
+        st.session_state["_android"] = True
+        return True
+    return False
+
+
+def marcar_android():
+    """Grava o cookie de sessão que lembra que é o app Android (chamado quando chega ?origem=android)."""
+    with st.container(key="marca_android"):
+        st.html("<script>document.cookie='turminha_android=1; path=/; SameSite=Lax; Secure';</script>",
+                unsafe_allow_javascript=True)
+
+
+def aviso_assinar_pelo_site():
+    st.info("Para **assinar, renovar ou mudar de plano**, acesse **turminhaabordo.com.br** pelo navegador do "
+            "celular ou do computador. Assim que o pagamento cair, o plano é liberado aqui no app.",
+            icon=":material/open_in_browser:")
 
 
 @st.fragment(run_every=30)

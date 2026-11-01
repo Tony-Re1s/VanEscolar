@@ -53,6 +53,9 @@ TERMOS = st.Page("telas/termos.py", title="Termos de uso", icon=":material/gavel
 if st.query_params.get("indicacao"):          # link "Indique e ganhe": guarda o código para o cadastro
     st.session_state["_indicacao"] = str(st.query_params["indicacao"]).strip().upper()[:20]
 
+if st.query_params.get("origem") == "android" and _ui.app_android():   # aberto pelo app da Play Store
+    _ui.marcar_android()
+
 usuario = auth.usuario_logado()
 if usuario is None:
     # visitante: página inicial (com o botão de entrar), privacidade e termos — sem login
