@@ -222,7 +222,7 @@ def gerar_pdf(c: dict, empresa: dict) -> bytes:
         out.append(Paragraph("Aguardando assinatura da contratada.", corpo))
     out.append(Spacer(1, 14))
     out.append(Paragraph(escape(
-        f"Documento assinado eletronicamente no app Pequenos a Bordo, com identificação das partes por login "
+        f"Documento assinado eletronicamente no app Turminha a Bordo, com identificação das partes por login "
         f"Google. Código de conferência: {c['codigo']}. Contrato {c['ano']}."), peq))
     out.append(Paragraph(escape(
         "Validade jurídica: as partes reconhecem esta assinatura eletrônica como válida e eficaz, nos termos da "

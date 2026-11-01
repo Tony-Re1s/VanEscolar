@@ -6,7 +6,7 @@ from core.fmt import data_br, hoje
 
 u = st.session_state["usuario"]
 
-st.title("Bem-vindo ao Pequenos a Bordo")
+st.title("Bem-vindo ao Turminha a Bordo")
 
 if not u.get("filhos"):
     st.info("**É pai, mãe ou responsável?** Peça a quem cuida da van para cadastrar o seu e-mail "

@@ -6,12 +6,12 @@ CONTATO = "joseareislopes@gmail.com"
 ATUALIZADO = "01/11/2026"
 
 st.title("Termos de Uso")
-st.caption(f"Pequenos a Bordo · atualizados em {ATUALIZADO}")
+st.caption(f"Turminha a Bordo · atualizados em {ATUALIZADO}")
 
 st.markdown(f"""<div class='ve-doc'>
 
 #### 1. O serviço
-O **Pequenos a Bordo** é um aplicativo para gestão de transporte escolar (rotas, chamada, mensalidades, contrato
+O **Turminha a Bordo** é um aplicativo para gestão de transporte escolar (rotas, chamada, mensalidades, contrato
 digital, financeiro e área da família), oferecido por **{RESPONSAVEL}** ({CONTATO}). Ao entrar no app, você
 concorda com estes Termos e com a Política de Privacidade.
 
@@ -27,7 +27,7 @@ cadastrar os dados dos alunos; usa o app de acordo com a LGPD; e cumpre as exig�
 obrigações.
 
 #### 4. Contrato entre gestor e família
-O contrato de transporte assinado no app é celebrado **entre o gestor e o responsável**. O Pequenos a Bordo apenas
+O contrato de transporte assinado no app é celebrado **entre o gestor e o responsável**. O Turminha a Bordo apenas
 fornece o meio para preencher, assinar eletronicamente e guardar o documento, e não é parte dele. O gestor é
 responsável pelo conteúdo das cláusulas.
 
@@ -49,7 +49,7 @@ ininterrupto. O app pode ficar fora do ar por manutenção ou por falhas de forn
 Google). Mensagens de WhatsApp dependem do aplicativo do próprio usuário.
 
 #### 8. Responsabilidade
-Na medida permitida pela lei, o Pequenos a Bordo não responde por decisões tomadas com base nas informações
+Na medida permitida pela lei, o Turminha a Bordo não responde por decisões tomadas com base nas informações
 cadastradas pelos usuários, por falhas de terceiros ou por danos indiretos. Nada nestes Termos limita direitos
 garantidos pelo Código de Defesa do Consumidor.
 

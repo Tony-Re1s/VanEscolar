@@ -43,7 +43,7 @@ class Asaas:
         dados = json.dumps(corpo).encode() if corpo is not None else None
         req = urllib.request.Request(url, data=dados, method=metodo, headers={
             "access_token": self.key, "Content-Type": "application/json", "Accept": "application/json",
-            "User-Agent": "PequenosABordo/1.0"})
+            "User-Agent": "TurminhaABordo/1.0"})
         try:
             with urllib.request.urlopen(req, timeout=25) as r:
                 txt = r.read().decode() or "{}"
@@ -165,7 +165,7 @@ def assinar(api: Asaas, engine, emp: dict, email: str, pedido: dict, hoje: date)
                            "where id = cast(:cid as uuid)"), dict(cid=cid))
     anual = pedido["periodo"] == "anual"
     valor = pedido["total"] if anual else pedido["preco"]
-    desc = f"Pequenos a Bordo — plano {pedido.get('plano_nome', pedido['plano'])} " + ("anual" if anual else "mensal")
+    desc = f"Turminha a Bordo — plano {pedido.get('plano_nome', pedido['plano'])} " + ("anual" if anual else "mensal")
     sub = api.criar_assinatura(cliente, valor, "YEARLY" if anual else "MONTHLY", hoje, desc, cid)
     pedido = dict(pedido, asaas_assinatura=sub["id"])
     with engine.begin() as s:

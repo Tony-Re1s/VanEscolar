@@ -40,7 +40,7 @@ def _checar_configuracao():
     exigidos = [("connections", db.banco_ativo(), "url")] + ([] if cfg("dev_email") else EXIGIDOS_AUTH)
     faltando = [".".join(c) for c in exigidos if not _segredo(*c)]
     if faltando:
-        st.title("Pequenos a Bordo — falta configurar")
+        st.title("Turminha a Bordo — falta configurar")
         st.warning("O app está no ar, mas faltam itens nos **Secrets** (Manage app → ⋮ → Settings → Secrets):")
         st.markdown("\n".join(f"- `{f}`" for f in faltando))
         st.stop()

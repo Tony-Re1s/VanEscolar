@@ -6,18 +6,18 @@ CONTATO = "joseareislopes@gmail.com"
 ATUALIZADA = "01/11/2026"
 
 st.title("Política de Privacidade")
-st.caption(f"Pequenos a Bordo · atualizada em {ATUALIZADA}")
+st.caption(f"Turminha a Bordo · atualizada em {ATUALIZADA}")
 
 st.markdown(f"""<div class='ve-doc'>
 
 #### 1. Quem somos
-O **Pequenos a Bordo** (pequenosabordo.streamlit.app) é um aplicativo de gestão de transporte escolar. O
+O **Turminha a Bordo** (turminhaabordo.streamlit.app) é um aplicativo de gestão de transporte escolar. O
 responsável pelo aplicativo é **{RESPONSAVEL}**, contato: **{CONTATO}**.
 
 Cada empresa ou motorista de transporte escolar que usa o app (o **gestor**) decide quais alunos, responsáveis e
-motoristas cadastra. Em relação a esses dados, **o gestor é o controlador** e o Pequenos a Bordo atua como
+motoristas cadastra. Em relação a esses dados, **o gestor é o controlador** e o Turminha a Bordo atua como
 **operador**, tratando os dados em nome dele e conforme esta política. Em relação aos dados de conta dos próprios
-gestores, o Pequenos a Bordo é o controlador.
+gestores, o Turminha a Bordo é o controlador.
 
 #### 2. Quais dados tratamos
 - **Login com Google:** nome, e-mail e foto da conta Google. Não temos acesso à sua senha nem a outros dados do Google.

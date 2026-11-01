@@ -1,4 +1,4 @@
-# 🚐 Pequenos a Bordo
+# 🚐 Turminha a Bordo
 
 App de gestão para **motorista de van escolar**, com área para os **pais**.
 Feito com **Streamlit + Neon (Postgres) + GitHub**, login com Google. Inspirado no SmartVan, do nosso jeito.

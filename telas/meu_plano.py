@@ -228,7 +228,7 @@ with st.container(border=True, key="card_assinar"):
             doc = st.text_input("CPF ou CNPJ de quem paga", value=emp.get("documento") or "",
                                 help="O Asaas exige para emitir a cobrança (Pix, boleto ou cartão).")
         if st.button("Assinar", type="primary", icon=":material/workspace_premium:"):
-            msg = (f"Olá! Quero assinar o Pequenos a Bordo: plano {cat[escolha]['nome']} "
+            msg = (f"Olá! Quero assinar o Turminha a Bordo: plano {cat[escolha]['nome']} "
                    f"{pl.PERIODOS[periodo].lower()}, {pl.brl(pr.final)}/mês"
                    + (f" ({pr.rotulo})" if pr.tem_desconto else "")
                    + (f", total {pl.brl(pr.total)}" if periodo == "anual" else "")

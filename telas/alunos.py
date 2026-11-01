@@ -34,7 +34,7 @@ with aba_lista:
             st.caption("Responsáveis que ainda não acessaram. Reenvie o convite — abre o WhatsApp da pessoa ou o "
                        "seu e-mail com a mensagem pronta, é só enviar.")
             for r in nao_entraram.itertuples():
-                msg = (f"Olá, {r.nome.split(' ')[0]}! Lembrete do app Pequenos a Bordo, da van de {r.alunos}. "
+                msg = (f"Olá, {r.nome.split(' ')[0]}! Lembrete do app Turminha a Bordo, da van de {r.alunos}. "
                        f"Acesse {_ui.APP_URL} e clique em \"Entrar com Google\" usando o e-mail {r.email}. Lá você "
                        "vê a carteirinha, acompanha o embarque, avisa faltas, vê as mensalidades e assina o "
                        "contrato. 🚐")
@@ -48,7 +48,7 @@ with aba_lista:
                     else:
                         k1.button("Reenviar no WhatsApp", key=f"rw_{r.id}", disabled=True, width="stretch",
                                   icon=":material/send:", help="Cadastre o telefone do responsável.")
-                    k2.link_button("Reenviar por e-mail", link_email(r.email, "Convite — Pequenos a Bordo", msg),
+                    k2.link_button("Reenviar por e-mail", link_email(r.email, "Convite — Turminha a Bordo", msg),
                                    icon=":material/mail:", width="stretch")
     if todos.empty:
         st.info("Nenhum aluno ainda. Use a aba **Cadastrar / editar**.")
@@ -187,11 +187,11 @@ with aba_edit:
                     st.rerun()
                 if r.email:
                     msg = (f"Olá, {r.nome.split(' ')[0]}! {c['nome']} cadastrou você como responsável de "
-                           f"{p['nome']} no app Pequenos a Bordo. Acesse {_ui.APP_URL} e clique em \"Entrar com "
+                           f"{p['nome']} no app Turminha a Bordo. Acesse {_ui.APP_URL} e clique em \"Entrar com "
                            f"Google\" usando o e-mail {r.email}. Lá você vê a carteirinha, acompanha o embarque, avisa "
                            "faltas, vê as mensalidades e assina o contrato. 🚐")
                     lk = link_whats(r.telefone, msg)
-                    lm = link_email(r.email, "Convite — Pequenos a Bordo", msg)
+                    lm = link_email(r.email, "Convite — Turminha a Bordo", msg)
                     k1, k2 = st.container(key=f"linha_conv_{r.id}").columns(2)
                     if lk:
                         k1.link_button("Convidar no WhatsApp", lk, icon=":material/send:", key=f"conv_{r.id}",
@@ -328,7 +328,7 @@ with aba_ct:
                             tel = todos.loc[todos["id"] == r.passageiro_id, "telefone_resp"].squeeze() \
                                 if not todos.empty else None
                             msg = (f"Olá! O contrato de transporte escolar de {r.aluno} ({ano}) já está no app "
-                                   "Pequenos a Bordo: https://pequenosabordo.streamlit.app — entre com o seu Google, "
+                                   "Turminha a Bordo: " + _ui.APP_URL + " — entre com o seu Google, "
                                    "confira as condições, preencha seus dados e clique em Assinar e enviar. Obrigado!")
                             lk = _lw(tel if isinstance(tel, str) else None, msg)
                             lm = link_email(r.email_resp, f"Contrato da van escolar — {r.aluno} ({ano})", msg)

@@ -1,4 +1,4 @@
-"""Planos, preços e promoções do Pequenos a Bordo (cobrança por nº de vans).
+"""Planos, preços e promoções do Turminha a Bordo (cobrança por nº de vans).
 
 Os planos e as configurações ficam no banco (tabelas config_planos e config) e se ajustam na tela
 Administração → Promoções. Os valores abaixo são só o padrão (usados se o banco ainda não tiver nada).
@@ -38,11 +38,11 @@ CONFIG_PADRAO = {
     "laboratorio": {},
     "divulgacao": {"textos": [
         {"titulo": "Convite curto (WhatsApp)",
-         "texto": "Oi! 🚐 Conhece o Pequenos a Bordo? Rota, chamada, mensalidades e contrato da van escolar, tudo no "
+         "texto": "Oi! 🚐 Conhece o Turminha a Bordo? Rota, chamada, mensalidades e contrato da van escolar, tudo no "
                   "celular. Os primeiros assinantes viram *Passageiro VIP* e pagam menos para sempre — restam só "
                   "*{vagas} vagas*. Entre pelo meu link e ganhe {dias} dias grátis: {link}"},
         {"titulo": "Grupo de transportadores",
-         "texto": "Pessoal da van escolar 👋 Estou usando o Pequenos a Bordo para organizar a rota, avisar os pais no "
+         "texto": "Pessoal da van escolar 👋 Estou usando o Turminha a Bordo para organizar a rota, avisar os pais no "
                   "WhatsApp e controlar as mensalidades. Quem assinar agora entra como Passageiro VIP: Básico por "
                   "{vip_basico} e Pro por {vip_pro} por mês, preço travado para sempre. Faltam {vagas} vagas! "
                   "Teste {dias} dias grátis: {link} (código {codigo})"},

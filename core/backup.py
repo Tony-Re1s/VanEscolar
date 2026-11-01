@@ -58,7 +58,7 @@ def _colunas(c, tabela: str) -> list[str]:
 
 def exportar(engine) -> dict:
     """Lê todas as tabelas numa transação só leitura (foto consistente)."""
-    dados = {"app": "Pequenos a Bordo", "versao": 1,
+    dados = {"app": "Turminha a Bordo", "versao": 1,
              "gerado_em": datetime.now(timezone.utc).isoformat(timespec="seconds"), "tabelas": {}}
     with engine.connect() as c:
         c.execute(text("set transaction isolation level repeatable read read only"))
@@ -125,7 +125,7 @@ def cifrar(dados: dict, senha: str) -> bytes:
 
 def decifrar(arquivo: bytes, senha: str) -> dict:
     if not arquivo.startswith(MAGICO):
-        raise ValueError("Este arquivo não é um backup do Pequenos a Bordo.")
+        raise ValueError("Este arquivo não é um backup do Turminha a Bordo.")
     sal, token = arquivo[4:20], arquivo[20:]
     try:
         bruto = Fernet(_chave(senha, sal)).decrypt(token)
@@ -136,4 +136,4 @@ def decifrar(arquivo: bytes, senha: str) -> dict:
 
 def nome_arquivo(quando: datetime | None = None) -> str:
     quando = quando or datetime.now(timezone.utc)
-    return f"pequenos-a-bordo-{quando:%Y-%m-%d-%H%M}.pab"
+    return f"turminha-a-bordo-{quando:%Y-%m-%d-%H%M}.pab"

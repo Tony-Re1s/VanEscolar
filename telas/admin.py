@@ -107,22 +107,22 @@ def _mensagem(r) -> str | None:
     primeiro = (r["nome"] or "").split(" ")[0]
     p = cat.get(r["plano"])
     if p is None:
-        return (f"Olá, {primeiro}! Sua conta no Pequenos a Bordo está sem plano e o acesso está pausado (nada foi "
+        return (f"Olá, {primeiro}! Sua conta no Turminha a Bordo está sem plano e o acesso está pausado (nada foi "
                 "apagado). Quer que eu te ajude a escolher um plano para voltar a usar? 🚐")
     valor = pl.brl(pl.preco_vigente(dict(r, plano_ate=HOJE), HOJE, cat) or p["preco"])
     if r["sit"] == "vence":
-        return (f"Olá, {primeiro}! Sua assinatura do plano {p['nome']} do Pequenos a Bordo vence em "
+        return (f"Olá, {primeiro}! Sua assinatura do plano {p['nome']} do Turminha a Bordo vence em "
                 f"{data_br(r['plano_ate'])}. Quer que eu envie o Pix de {valor} para renovar? 🚐")
     if r["sit"] == "vencido":
-        return (f"Olá, {primeiro}! Sua assinatura do plano {p['nome']} do Pequenos a Bordo venceu em "
+        return (f"Olá, {primeiro}! Sua assinatura do plano {p['nome']} do Turminha a Bordo venceu em "
                 f"{data_br(r['plano_ate'])} e a conta voltou o acesso foi pausado (nada foi apagado). Quer renovar por "
                 f"{valor}/mês? 🚐")
     if r["sit"] == "teste" and r["plano_ate"]:
-        return (f"Olá, {primeiro}! Sua degustação do plano {p['nome']} do Pequenos a Bordo vai até "
+        return (f"Olá, {primeiro}! Sua degustação do plano {p['nome']} do Turminha a Bordo vai até "
                 f"{data_br(r['plano_ate'])}. Está gostando? Para continuar com tudo liberado depois disso, é "
                 f"{pl.preco_txt(p)}/mês. Posso te mandar o Pix? 🚐")
     if r["sit"] == "acabou":
-        return (f"Olá, {primeiro}! Sua degustação do plano {p['nome']} do Pequenos a Bordo terminou e "
+        return (f"Olá, {primeiro}! Sua degustação do plano {p['nome']} do Turminha a Bordo terminou e "
                 f"o acesso foi pausado (nada foi apagado). Quer continuar no {p['nome']} por {pl.preco_txt(p)}/mês? 🚐")
     return None
 

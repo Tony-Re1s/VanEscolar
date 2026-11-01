@@ -79,7 +79,7 @@ else:
             nome1 = r.nome.split()[0]
             if trecho == "ida":
                 msg = (f"{saud}! 🚐 A van saiu agora para a ida. {nome1} é o {pos}º da rota — "
-                       f"deixe-o(a) pronto(a), por favor. Se não for hoje, avise pelo app Pequenos a Bordo.")
+                       f"deixe-o(a) pronto(a), por favor. Se não for hoje, avise pelo app Turminha a Bordo.")
             else:
                 msg = f"{saud}! 🚐 A van saiu da escola agora e está levando {nome1} para casa."
             if link_mapa:

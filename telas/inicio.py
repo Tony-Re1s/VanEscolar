@@ -5,7 +5,7 @@ from core import auth
 from telas import _ui
 
 st.markdown(f"""<div class='ve-hero'><div class='logo'>{auth.VAN_SVG}</div>
-<h1>Pequenos a Bordo</h1>
+<h1>Turminha a Bordo</h1>
 <p>O app do transporte escolar: rota e chamada, mensalidades, contrato digital e uma área para os pais
 acompanharem tudo — no celular.</p></div>""", unsafe_allow_html=True)
 
@@ -46,6 +46,6 @@ if _deg.get("ativo") and _deg.get("plano") in _pl.catalogo():
     st.caption(f"Experimente {_deg['dias']} dias do plano {_pl.catalogo()[_deg['plano']]['nome']} de graça ao criar sua "
                "conta — sem cartão.")
 
-st.markdown("<div class='ve-rodape'>Pequenos a Bordo · São Paulo/SP · "
+st.markdown("<div class='ve-rodape'>Turminha a Bordo · São Paulo/SP · "
             "<a href='/privacidade' target='_self'>Política de Privacidade</a> · "
             "<a href='/termos' target='_self'>Termos de Uso</a></div>", unsafe_allow_html=True)

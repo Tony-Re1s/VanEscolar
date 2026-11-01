@@ -14,7 +14,7 @@ c = u.get("condutor")
 HOJE = hoje()
 emp = repo.empresa(c["id"]) if c else None
 if not (u.get("admin") or (emp and pl.eh_exclusivo(emp, HOJE))):
-    st.warning("Esta área é dos parceiros **Exclusivos** do Pequenos a Bordo.")
+    st.warning("Esta área é dos parceiros **Exclusivos** do Turminha a Bordo.")
     st.stop()
 
 if emp:

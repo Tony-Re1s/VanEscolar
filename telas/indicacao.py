@@ -37,7 +37,7 @@ _ui.kpis([("Seu código", codigo), ("Indicados que assinaram", str(pagas)),
 st.progress(no_ciclo / meta, text=f"Faltam {meta - no_ciclo} assinante(s) para ganhar mais {premio} mês(es) grátis")
 
 st.subheader("Compartilhe")
-msg = (f"Oi! Uso o Pequenos a Bordo para organizar minha van escolar: rota, chamada, mensalidades e contrato, "
+msg = (f"Oi! Uso o Turminha a Bordo para organizar minha van escolar: rota, chamada, mensalidades e contrato, "
        f"tudo no celular 🚐 Entrando pelo meu link você ganha {dias_d} dias do plano {plano_d} grátis: {link} "
        f"(ou use o código {codigo} ao criar a conta).")
 st.code(link, language=None)

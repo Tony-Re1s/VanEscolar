@@ -1,4 +1,4 @@
-"""Pequenos a Bordo — ponto de entrada.
+"""Turminha a Bordo — ponto de entrada.
 
 Rodar local:  streamlit run app.py
 """
@@ -31,7 +31,7 @@ from core import auth, db  # noqa: E402
 from telas import _ui  # noqa: E402
 
 _ST = Path(__file__).parent / "static"
-st.set_page_config(page_title="Pequenos a Bordo", page_icon=str(_ST / "favicon.png"), layout="wide",
+st.set_page_config(page_title="Turminha a Bordo", page_icon=str(_ST / "favicon.png"), layout="wide",
                    initial_sidebar_state="auto")
 _ui.css()
 st.logo(str(_ST / "logo.svg"), size="large", icon_image=str(_ST / "van.svg"))
@@ -76,7 +76,7 @@ if not st.session_state.get("_comissao_ok"):     # 1x por sessão (e no máx. 1x
 cond = usuario.get("condutor")          # empresa da qual a pessoa é gestora
 vans_mot = usuario.get("vans_motorista") or []   # vans que a pessoa dirige (de qualquer empresa)
 if cond and not cond.get("ativo", True):
-    st.error("O cadastro da sua empresa está desativado. Fale com o administrador do Pequenos a Bordo.")
+    st.error("O cadastro da sua empresa está desativado. Fale com o administrador do Turminha a Bordo.")
     st.button("Sair", on_click=auth.sair)
     st.stop()
 

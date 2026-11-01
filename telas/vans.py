@@ -30,7 +30,7 @@ for v in df.itertuples():
                     unsafe_allow_html=True)
         if not eu and v.motorista_email:
             msg = (f"Olá, {(v.motorista_nome or '').split(' ')[0] or 'tudo bem'}! Você foi cadastrado(a) como motorista "
-                   f"da {v.nome} no app Pequenos a Bordo ({c['nome']}). Acesse {_ui.APP_URL} e clique em "
+                   f"da {v.nome} no app Turminha a Bordo ({c['nome']}). Acesse {_ui.APP_URL} e clique em "
                    f"\"Entrar com Google\" usando o e-mail {v.motorista_email}. Lá você vê a rota, faz a chamada, "
                    "inicia a rota e avisa os pais. 🚐")
             lk = link_whats(v.motorista_telefone, msg)

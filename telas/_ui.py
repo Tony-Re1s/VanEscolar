@@ -183,7 +183,7 @@ def tag(chave: str, texto: str | None = None) -> str:
     return f"<span class='ve-tag ve-{esc(chave)}'>{esc(texto or chave)}</span>"
 
 
-APP_URL = "https://pequenosabordo.streamlit.app"
+APP_URL = "https://turminhaabordo.streamlit.app"
 
 
 def selo_acesso(email: str | None, acessos: dict) -> str:
@@ -427,7 +427,7 @@ def botoes_enviar_contrato(contrato: dict, aluno: str, telefone: str | None, ema
     link = f"{APP_URL}/?contrato={repo.token_contrato(contrato['id'] if 'id' in contrato else contrato['contrato_id'])}"
     ano = contrato.get("ano")
     msg = (f"Olá! Segue o contrato de transporte escolar de {aluno} ({ano}), assinado eletronicamente pelo app "
-           f"Pequenos a Bordo. Para baixar o PDF: {link}")
+           f"Turminha a Bordo. Para baixar o PDF: {link}")
     assunto = f"Contrato de transporte escolar — {aluno} ({ano})"
     w = link_whats(telefone, msg) if telefone else f"https://wa.me/?text={urllib.parse.quote(msg)}"
     m = (f"mailto:{urllib.parse.quote(email or '')}?subject={urllib.parse.quote(assunto)}"
