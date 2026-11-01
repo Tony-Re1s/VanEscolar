@@ -50,8 +50,9 @@ consentimento específico dos pais ou responsáveis para dados de crianças.
 Não vendemos dados. Usamos fornecedores para operar o app, que só tratam os dados para isso:
 **Google** (login), **Streamlit / Snowflake** (hospedagem do app), **Neon** (banco de dados) e **GitHub** (código e
 cópias de segurança criptografadas). Mensagens de WhatsApp só são enviadas quando o próprio usuário toca no botão e
-envia pelo aplicativo dele. Quando houver planos pagos, o processador de pagamentos (ex.: Asaas) receberá os dados
-necessários à cobrança do gestor. Também podemos compartilhar dados por ordem judicial ou exigência legal.
+envia pelo aplicativo dele. O **Asaas** (processador de pagamentos) recebe os dados necessários para cobrar a
+assinatura do gestor e, **se o gestor conectar a conta Asaas dele** para cobrar as mensalidades, o nome, CPF, e-mail e
+telefone do responsável financeiro, para emitir Pix e boleto em nome do gestor. Também podemos compartilhar dados por ordem judicial ou exigência legal.
 Alguns fornecedores ficam fora do Brasil; nesses casos a transferência segue o art. 33 da LGPD.
 
 #### 6. Por quanto tempo guardamos

@@ -605,8 +605,9 @@ def salvar_config_planos(linhas: list[dict]):
         for r in linhas:
             s.execute(text("""update config_planos set nome=:nome, preco=:preco, preco_vip=:preco_vip,
                                 anual_desconto=:anual_desconto, vans=:vans, alunos=:alunos, destaque=:destaque,
-                                itens=cast(:itens as jsonb) where plano=:plano"""),
-                      dict(r, itens=_json.dumps(r["itens"], ensure_ascii=False)))
+                                itens=cast(:itens as jsonb), cobranca_auto=:cobranca_auto where plano=:plano"""),
+                      dict(r, itens=_json.dumps(r["itens"], ensure_ascii=False),
+                           cobranca_auto=bool(r.get("cobranca_auto"))))
 
 
 def salvar_config(chave: str, valor: dict):
@@ -785,10 +786,10 @@ def ranking_indicacoes() -> pd.DataFrame:
 # ------------------------------------------------------------------ planos: criar, excluir, preço antigo × novo
 def criar_plano(d: dict):
     db.gravar("""insert into config_planos (plano, nome, preco, preco_vip, anual_desconto, vans, alunos, destaque, itens,
-                                            ordem)
+                                            cobranca_auto, ordem)
                  values (:plano, :nome, :preco, :preco_vip, :anual_desconto, :vans, :alunos, :destaque,
-                         cast(:itens as jsonb), coalesce((select max(ordem) from config_planos), 0) + 1)""",
-              **dict(d, itens=_json.dumps(d["itens"], ensure_ascii=False)))
+                         cast(:itens as jsonb), :cobranca_auto, coalesce((select max(ordem) from config_planos), 0) + 1)""",
+              **dict(d, itens=_json.dumps(d["itens"], ensure_ascii=False), cobranca_auto=bool(d.get("cobranca_auto"))))
 
 
 def gestores_no_plano(plano: str, hoje: date) -> pd.DataFrame:
@@ -996,3 +997,13 @@ def contrato_por_token(tok: str) -> dict | None:
     df = db.ao_vivo("""select c.*, p.nome as aluno from contratos c join passageiros p on p.id = c.passageiro_id
                        where c.link_token = :t and c.responsavel_assinou_em is not null""", t=tok)
     return df.iloc[0].to_dict() if len(df) else None
+
+
+# ------------------------------------------------------------------ Asaas do gestor (cobrança dos pais)
+def conectar_asaas_gestor(cid, chave_cifrada: str, ambiente: str):
+    db.gravar("update condutores set asaas_gestor_chave = :k, asaas_gestor_ambiente = :a where id = cast(:cid as uuid)",
+              k=chave_cifrada, a=ambiente, cid=str(cid))
+
+
+def desconectar_asaas_gestor(cid):
+    db.gravar("update condutores set asaas_gestor_chave = null where id = cast(:cid as uuid)", cid=str(cid))

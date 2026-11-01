@@ -2,7 +2,8 @@
 import altair as alt
 import streamlit as st
 
-from core import repo
+from core import cobranca_pais as cp, repo
+from core.asaas import STATUS as ST_ASAAS, AsaasErro
 from core.fmt import FORMAS, brl, data_br, hoje, inicio_mes, link_whats, mes_label, somar_meses
 from telas import _ui
 from telas._ui import exigir_condutor
@@ -17,6 +18,53 @@ if st.session_state.get("_mens_gerado") != (cid, inicio_mes(h)):
     repo.gerar_mensalidades(cid, h)
     st.session_state["_mens_gerado"] = (cid, inicio_mes(h))
 
+# cobrança mista: com a conta Asaas do gestor conectada, confere pagamentos e gera os Pix/boletos do mês
+API = _ui.api_do_gestor(repo.empresa(cid))
+if API:
+    import time as _t
+    if _t.time() - st.session_state.get("_sync_pais", 0) > 60:
+        st.session_state["_sync_pais"] = _t.time()
+        _r = cp.sincronizar(API, cid, h)
+        if _r["pagas"] or _r["geradas"]:
+            st.toast(f"Asaas: {_r['pagas']} pagamento(s) recebido(s) · {_r['geradas']} cobrança(s) gerada(s).")
+        for _e in _r["erros"][:3]:
+            st.warning(_e, icon=":material/warning:")
+    with st.expander("Como cada aluno paga (Asaas ou manual)", icon=":material/tune:"):
+        st.caption("Misture como quiser: **Manual** = você cobra e dá baixa; **Pix/boleto todo mês** = o app gera a "
+                   "cobrança uns dias antes do vencimento e dá baixa sozinho; **Assinatura automática** = o Asaas "
+                   "cobra todo mês (aceita cartão). O Asaas exige o CPF do responsável.")
+        import pandas as _pd
+        lst = cp.alunos_cobranca(cid)
+        if lst:
+            base_df = _pd.DataFrame(lst)
+            ed = st.data_editor(
+                base_df[["nome", "cobranca", "cpf"]], hide_index=True, width="stretch", num_rows="fixed",
+                disabled=["nome"], key="ed_cobranca",
+                column_config={"nome": "Aluno",
+                               "cobranca": st.column_config.SelectboxColumn("Cobrança", options=list(cp.MODOS),
+                                                                            required=True),
+                               "cpf": st.column_config.TextColumn("CPF do responsável")})
+            st.caption("Opções: manual · asaas (Pix/boleto todo mês) · recorrente (assinatura automática).")
+            if st.button("Salvar formas de cobrança", icon=":material/save:"):
+                erros = []
+                for i, row in ed.iterrows():
+                    o = base_df.loc[i]
+                    if (row["cpf"] or "") != (o["cpf"] or ""):
+                        cp.salvar_cpf(cid, o["id"], row["cpf"] or "")
+                    if row["cobranca"] != o["cobranca"]:
+                        try:
+                            e = cp.definir_modo(API, cid, o["id"], row["cobranca"], h)
+                        except AsaasErro as ex:
+                            e = f"{o['nome']}: {ex}"
+                        if e:
+                            erros.append(e)
+                for e in erros:
+                    st.error(e)
+                if not erros:
+                    st.session_state["_sync_pais"] = 0
+                    st.toast("Formas de cobrança salvas.")
+                    st.rerun()
+
 def _msg(r) -> str:
     primeiro = (r.responsavel or "").split(" ")[0] or "tudo bem"
     txt = (f"Olá, {primeiro}! Passando para lembrar da mensalidade da van de {r.aluno} "
@@ -24,7 +72,9 @@ def _msg(r) -> str:
     if r.situacao == "vencido":
         txt = (f"Olá, {primeiro}! A mensalidade da van de {r.aluno} ({mes_label(r.competencia)}), de {brl(r.valor)}, "
                f"venceu em {data_br(r.vencimento)}. Consegue verificar, por favor?")
-    if c.get("chave_pix"):
+    if getattr(r, "asaas_link", None):
+        txt += f"\n\nPague por Pix ou boleto: {r.asaas_link}"
+    elif c.get("chave_pix"):
         txt += f"\n\nChave Pix: {c['chave_pix']}"
     return txt + "\n\nObrigado! 🚐"
 
@@ -69,6 +119,8 @@ def _tela_mes():
     elif filtro == "Pagos":
         df = df[df["situacao"] == "pago"]
 
+    if st.session_state.get("_aviso_mens"):
+        st.warning(st.session_state.pop("_aviso_mens"), icon=":material/info:")
     if df.empty:
         st.success("Nada por aqui. 🎉")
 
@@ -77,14 +129,18 @@ def _tela_mes():
     for r in df.itertuples():
         with st.container(border=True, key=f"card_{r.id}"):
             a, b = st.container(key=f"lp_{r.id}").columns([3, 2])
-            a.markdown(f"**{_ui.esc(r.aluno)}** {_ui.tag(r.situacao, _ui.ROTULO_MENS[r.situacao])}  \n"
+            asaas_tag = (" " + _ui.tag("embarcou", "Asaas · " + ST_ASAAS.get(r.asaas_status or "", "gerada"))
+                         if getattr(r, "asaas_id", None) else "")
+            a.markdown(f"**{_ui.esc(r.aluno)}** {_ui.tag(r.situacao, _ui.ROTULO_MENS[r.situacao])}{asaas_tag}  \n"
                        f"<span class='ve-sub'>vence {data_br(r.vencimento)} · {_ui.esc(r.responsavel or 'sem responsável')}"
                        f"</span>", unsafe_allow_html=True)
             if r.situacao == "pago":
                 b.markdown(f"**{brl(r.valor_pago)}**  \n<span class='ve-sub'>pago {data_br(r.pago_em)} · "
                            f"{_ui.esc(r.forma or '')}</span>", unsafe_allow_html=True)
                 if b.button("Estornar", key=f"est_{r.id}", type="tertiary"):
-                    repo.estornar(cid, r.id)
+                    aviso = cp.estornar(API, cid, r._asdict())
+                    if aviso:
+                        st.session_state["_aviso_mens"] = aviso
                     st.rerun()
                 continue
             b.markdown(f"**{brl(r.valor)}**")
@@ -95,7 +151,9 @@ def _tela_mes():
                     v = st.number_input("Valor recebido", min_value=0.0, value=float(r.valor), step=5.0)
                     f = st.selectbox("Forma", FORMAS)
                     if st.form_submit_button("Confirmar", type="primary"):
-                        repo.pagar(cid, r.id, d, v, f)
+                        aviso = cp.baixa_manual(API, cid, r._asdict(), d, v, f)
+                        if aviso:
+                            st.session_state["_aviso_mens"] = aviso
                         st.rerun()
             link = link_whats(r.telefone, _msg(r))
             if link:
@@ -111,8 +169,24 @@ def _tela_mes():
                         repo.alterar_mensalidade(cid, r.id, nv, nd)
                         st.rerun()
                     if s2.form_submit_button("Isentar mês", help="Ex.: férias ou bolsa — fica como pago com R$ 0."):
+                        if API and getattr(r, "asaas_id", None):
+                            try:
+                                API.cancelar_cobranca(r.asaas_id)
+                            except AsaasErro:
+                                pass
                         repo.pagar(cid, r.id, h, 0, "Isento")
                         st.rerun()
+            if API:
+                if getattr(r, "asaas_link", None):
+                    st.link_button("Abrir cobrança (Pix/boleto)", r.asaas_link, icon=":material/receipt_long:",
+                                   width="stretch")
+                elif st.button("Gerar Pix/boleto no Asaas", key=f"ger_{r.id}", icon=":material/qr_code_2:",
+                               width="stretch", help="Cobrança avulsa desta mensalidade, com baixa automática."):
+                    try:
+                        cp.gerar_cobranca(API, cid, r._asdict(), h)
+                        st.rerun()
+                    except AsaasErro as ex:
+                        st.error(str(ex))
 
 
 with aba_mes:

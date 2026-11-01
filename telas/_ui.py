@@ -418,3 +418,42 @@ def botoes_enviar_contrato(contrato: dict, aluno: str, telefone: str | None, ema
     a, b = st.container(key=f"linha_env_{chave}").columns(2)
     a.link_button(f"WhatsApp {para_quem}".strip(), w, icon=":material/chat:", width="stretch")
     b.link_button(f"E-mail {para_quem}".strip(), m, icon=":material/mail:", width="stretch")
+
+
+# ---------------------------------------------------------------- Asaas do gestor (cobrança dos pais)
+def _fernet():
+    """Chave para guardar a chave da API do gestor criptografada no banco (derivada de um segredo do app)."""
+    import base64
+    import hashlib
+    from cryptography.fernet import Fernet
+    seg = ""
+    for sec, k in (("app", "chave_cripto"), ("auth", "cookie_secret")):
+        try:
+            seg = seg or str(st.secrets[sec].get(k) or "")
+        except Exception:  # noqa: BLE001
+            pass
+    seg = seg or "pequenos-a-bordo-dev-local"
+    return Fernet(base64.urlsafe_b64encode(hashlib.sha256(("pab-asaas-gestor:" + seg).encode()).digest()))
+
+
+def cifrar_chave(chave: str) -> str:
+    return _fernet().encrypt(chave.strip().encode()).decode()
+
+
+def api_do_gestor(emp: dict):
+    """Cliente Asaas da conta do GESTOR (cobrança dos pais), ou None se não conectou / o plano não libera."""
+    from core import planos as pl
+    from core.asaas import Asaas
+    from core.fmt import hoje
+    if not emp or not emp.get("asaas_gestor_chave") or not pl.tem_cobranca_auto(emp, hoje()):
+        return None
+    try:
+        chave = _fernet().decrypt(emp["asaas_gestor_chave"].encode()).decode()
+    except Exception:  # noqa: BLE001
+        return None
+    base = None
+    try:
+        base = st.secrets["asaas"].get("base_url_gestor")
+    except Exception:  # noqa: BLE001
+        pass
+    return Asaas(chave, emp.get("asaas_gestor_ambiente") or "producao", base)

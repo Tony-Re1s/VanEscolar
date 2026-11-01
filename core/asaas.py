@@ -90,6 +90,28 @@ class Asaas:
     def cancelar(self, assinatura: str):
         self._req("DELETE", f"/subscriptions/{assinatura}")
 
+    # cobranças avulsas (mensalidade dos pais, na conta Asaas do gestor)
+    def testar(self):
+        self._req("GET", "/customers", params={"limit": 1})
+
+    def criar_cobranca(self, cliente: str, valor: float, vencimento: date, descricao: str, ref: str) -> dict:
+        return self._req("POST", "/payments", {
+            "customer": cliente, "billingType": "UNDEFINED", "value": round(float(valor), 2),
+            "dueDate": vencimento.isoformat(), "description": descricao[:500], "externalReference": ref})
+
+    def cobranca(self, pagamento: str) -> dict:
+        return self._req("GET", f"/payments/{pagamento}")
+
+    def receber_em_dinheiro(self, pagamento: str, data: date, valor: float):
+        self._req("POST", f"/payments/{pagamento}/receiveInCash",
+                  {"paymentDate": data.isoformat(), "value": round(float(valor), 2), "notifyCustomer": False})
+
+    def desfazer_dinheiro(self, pagamento: str):
+        self._req("POST", f"/payments/{pagamento}/undoReceivedInCash", {})
+
+    def cancelar_cobranca(self, pagamento: str):
+        self._req("DELETE", f"/payments/{pagamento}")
+
 
 def so_digitos(t) -> str:
     return "".join(ch for ch in str(t or "") if ch.isdigit())

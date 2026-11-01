@@ -402,3 +402,23 @@ create table if not exists asaas_pagamentos (
 
 -- v13 — link seguro para baixar o contrato assinado (enviado por WhatsApp/e-mail)
 alter table contratos add column if not exists link_token text unique;
+
+-- v14 — cobrança mista dos pais: cada gestor pode conectar a própria conta Asaas (opcional) e escolher, por aluno,
+-- manual / Asaas por mês / Asaas recorrente. Baixa manual sempre possível. Recurso liberado por plano.
+alter table config_planos add column if not exists cobranca_auto boolean not null default false;
+do $$
+begin
+  if not exists (select 1 from config where chave = 'mig_v14_cobranca') then
+    update config_planos set cobranca_auto = true where plano in ('pro', 'frota');
+    insert into config (chave, valor) values ('mig_v14_cobranca', 'true');
+  end if;
+end $$;
+alter table condutores add column if not exists asaas_gestor_chave text;       -- chave da API do gestor (criptografada)
+alter table condutores add column if not exists asaas_gestor_ambiente text;
+alter table responsaveis add column if not exists cpf text;
+alter table responsaveis add column if not exists asaas_cliente text;
+alter table passageiros add column if not exists cobranca text not null default 'manual';   -- manual | asaas | recorrente
+alter table passageiros add column if not exists asaas_assinatura text;
+alter table mensalidades add column if not exists asaas_id text;
+alter table mensalidades add column if not exists asaas_link text;
+alter table mensalidades add column if not exists asaas_status text;
