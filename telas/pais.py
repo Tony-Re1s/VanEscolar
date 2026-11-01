@@ -169,15 +169,23 @@ for aba, f in zip(abas, filhos.itertuples()):
 
         # carteirinha
         nasc = f"{idade(f.data_nasc)} anos · " if f.data_nasc else ""
-        st.markdown(f"""<div class='ve-cart'>
-            <div class='t'>Carteirinha do transporte escolar</div>
-            <h3>{_ui.esc(f.nome)}</h3>
-            <div>{nasc}{_ui.esc(f.serie or '')} {('· ' + TURNOS.get(f.turno, '')) if f.turno else ''}</div>
-            <div class='r'>🏫 {_ui.esc(f.escola or '—')}</div>
-            <div class='r'>🚐 {_ui.esc(f.van or f.condutor)} · {_ui.esc(f.veiculo or '')} {_ui.esc(f.placa or '')}</div>
-            <div class='r'>👤 Motorista: {_ui.esc(f.motorista)} · 📞 {_ui.esc(f.condutor_tel or '—')}</div>
-            {"<div class='r'>🧡 Monitor(a): " + _ui.esc(f.monitor_nome) + (" · 📞 " + _ui.esc(f.monitor_telefone) if f.monitor_telefone else "") + "</div>" if f.monitor_nome else ""}
-            <div class='r'>🏢 {_ui.esc(f.condutor)}</div></div>""", unsafe_allow_html=True)
+        # sem linhas em branco nem recuo: senão o Markdown quebra o bloco e mostra o HTML como texto
+        mon = f.monitor_nome if isinstance(f.monitor_nome, str) and f.monitor_nome.strip() else None
+        mon_tel = f.monitor_telefone if isinstance(f.monitor_telefone, str) and f.monitor_telefone.strip() else None
+        linhas_cart = [
+            "<div class='ve-cart'>",
+            "<div class='t'>Carteirinha do transporte escolar</div>",
+            f"<h3>{_ui.esc(f.nome)}</h3>",
+            f"<div>{nasc}{_ui.esc(f.serie or '')} {('· ' + TURNOS.get(f.turno, '')) if f.turno else ''}</div>",
+            f"<div class='r'>🏫 {_ui.esc(f.escola or '—')}</div>",
+            f"<div class='r'>🚐 {_ui.esc(f.van or f.condutor)} · {_ui.esc(f.veiculo or '')} {_ui.esc(f.placa or '')}</div>",
+            f"<div class='r'>👤 Motorista: {_ui.esc(f.motorista)} · 📞 {_ui.esc(f.condutor_tel or '—')}</div>",
+        ]
+        if mon:
+            linhas_cart.append(f"<div class='r'>🧡 Monitor(a): {_ui.esc(mon)}" + (f" · 📞 {_ui.esc(mon_tel)}" if mon_tel else "")
+                               + "</div>")
+        linhas_cart.append(f"<div class='r'>🏢 {_ui.esc(f.condutor)}</div></div>")
+        st.markdown("".join(linhas_cart), unsafe_allow_html=True)
         zap = link_whats(f.condutor_tel, f"Olá! Sou responsável por {f.nome}.")
         if zap:
             st.link_button("Falar com o motorista", zap, icon=":material/chat:")
