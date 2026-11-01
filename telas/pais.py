@@ -1,10 +1,11 @@
 """Área da família: carteirinha, embarque do dia, avisar falta e mensalidades."""
 from datetime import timedelta
 
+import pandas as pd
 import streamlit as st
 
 from core import contrato as ct
-from core import repo
+from core import repo, rota as R
 from core.fmt import TZ, TURNOS, brl, data_br, hoje, idade, link_whats, mes_label
 from telas import _ui
 
@@ -21,6 +22,33 @@ if filhos.empty:
 status = repo.status_hoje(pids, h)
 rotas = repo.rotas_dos_filhos(pids, h)
 avisos = repo.avisos_dos_filhos(pids, h)
+
+
+@st.fragment(run_every=30)
+def _ao_vivo(pid: str, nome: str):
+    """Van no mapa só enquanto a rota do filho está em andamento: na ida até chegar na escola, na volta até ser
+    entregue. Atualiza sozinho a cada 30 segundos."""
+    f1 = repo.filhos([pid])
+    tok = f1.iloc[0]["loc_token"] if len(f1) else None
+    s1 = repo.status_hoje([pid], h)
+    r1 = repo.rotas_dos_filhos([pid], h)
+    a1 = repo.ausencias([pid], h)
+    a1 = a1[a1["data"] == h] if not a1.empty else a1
+    for t in ("ida", "volta"):
+        x = r1[r1["trecho"] == t] if not r1.empty else r1
+        if x.empty:
+            continue
+        st_t = s1[s1["trecho"] == t]["status"] if not s1.empty else []
+        st_t = st_t.iloc[0] if len(st_t) else None
+        ausente = bool(len(a1) and a1[t].any())
+        if R.em_andamento_para(x.iloc[0].to_dict(), st_t, ausente):
+            onde = {"embarcou": f"{nome} está na van", None: "A van está a caminho" if t == "ida"
+                    else f"{nome} está na van, voltando para casa"}.get(st_t, "A van está em rota")
+            st.info(f"🚐 {onde}.", icon=":material/directions_bus:")
+            if isinstance(tok, str) and tok:
+                st.link_button("📍 Ver a van no mapa agora", _ui.link_mapa(tok), type="primary", width="stretch",
+                               key=f"mapa_{pid}_{t}")
+            return
 
 
 def _contrato(f, pid):
@@ -135,10 +163,8 @@ for aba, f in zip(abas, filhos.itertuples()):
             st.markdown(f"<div class='ve-faixa'>📣 <b>Aviso de {_ui.esc(quem_av)}</b> "
                         f"<span class='ve-sub'>· {x.criado_em.astimezone(TZ):%d/%m %H:%M}</span><br>"
                         f"{_ui.sem_formula(_ui.esc(x.texto))}</div>", unsafe_allow_html=True)
-        # localização ao vivo da van (quando o motorista ligou)
-        if f.loc_token:
-            st.link_button("📍 Ver a van no mapa agora", _ui.link_mapa(f.loc_token), type="primary",
-                           width="stretch")
+        # localização ao vivo da van — só enquanto a rota deste filho está em andamento
+        _ao_vivo(pid, f.nome.split()[0])
         _contrato(f, pid)
 
         # carteirinha
@@ -173,8 +199,13 @@ for aba, f in zip(abas, filhos.itertuples()):
         rt = rotas[rotas["passageiro_id"].astype(str) == pid] if not rotas.empty else rotas
         for t in ("ida", "volta"):
             x = rt[rt["trecho"] == t] if not rt.empty else rt
-            if not x.empty and not (not s.empty and (s["trecho"] == t).any()):
-                q = x.iloc[0]
+            if x.empty:
+                continue
+            q = x.iloc[0]
+            fim = q.get("finalizada_em")
+            if fim is not None and not pd.isna(fim):
+                linhas.append(f"✅ Rota da {t} finalizada às {fim.astimezone(TZ):%H:%M}")
+            elif not (not s.empty and (s["trecho"] == t).any()):
                 pos = f" · {f.nome.split()[0]} é o {int(q['posicao'])}º da rota" if t == "ida" else ""
                 st.info(f"🚐 A van saiu para a {'ida' if t == 'ida' else 'volta'} às "
                         f"{q['iniciada_em'].astimezone(TZ).strftime('%H:%M')}{pos}.", icon=":material/directions_bus:")

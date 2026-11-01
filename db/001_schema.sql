@@ -508,3 +508,9 @@ alter table vans add column if not exists monitor_apelido text;
 
 -- v22 — avisos também para a equipe (motoristas e monitores), além dos pais
 alter table avisos add column if not exists publico text not null default 'pais';
+
+-- v23 — fim da rota: finalizada sozinha quando não sobra criança pendente, ou pelo motorista/monitor (com conferência
+--       das pendentes). Os pais acompanham a van só enquanto a rota do filho está em andamento.
+alter table rotas_iniciadas add column if not exists finalizada_em timestamptz;
+alter table rotas_iniciadas add column if not exists finalizada_por text;
+alter table rotas_iniciadas add column if not exists pendentes_ao_finalizar int;

@@ -14,7 +14,7 @@ def _recarregar_codigo_novo():
     (core/*, telas/_ui). Recarrega os que mudaram desde a última execução — assim não precisa de Reboot."""
     for nome in ("core.fmt", "core.db", "core.planos", "core.contrato", "core.cobranca", "core.asaas", "core.repo",
                  "core.cobranca_pais", "core.comissao", "core.demo", "core.suporte", "core.mensagens",
-                 "core.backup", "core.auth", "telas._ui"):
+                 "core.backup", "core.auth", "core.rota", "telas._ui"):
         m = sys.modules.get(nome)
         arq = getattr(m, "__file__", None)
         if not arq:

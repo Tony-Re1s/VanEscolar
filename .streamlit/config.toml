@@ -19,3 +19,5 @@ toolbarMode = "minimal"
 
 [server]
 runOnSave = false
+# o motorista sai para o WhatsApp/Maps e volta: a sessão (van, trecho, tela) fica guardada por até 1 hora
+disconnectedSessionTTL = 3600

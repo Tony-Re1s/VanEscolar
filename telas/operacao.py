@@ -32,9 +32,10 @@ def _painel():
     for v in vans.itertuples():
         df = repo.chamada_dia(cid, v.id, dia, trecho)
         n = len(df)
-        feitos = int(df["status"].isin(["desembarcou", "embarcou"]).sum()) if n else 0
-        faltas = int(((df["status"] == "faltou") | df["avisou"]).sum()) if n else 0
-        ini = repo.rota_iniciada(v.id, dia, trecho)
+        feitos = int((df["status"] == "desembarcou").sum()) if n else 0
+        faltas = int(((df["status"] == "faltou") | (df["avisou"] & df["status"].isna())).sum()) if n else 0
+        rt = repo.rota_status(v.id, dia, trecho)
+        ini = rt["iniciada_em"] if rt else None
         loc = repo.localizacao_van(cid, v.id) or {}
         tot["alunos"] += n
         tot["feitos"] += feitos
@@ -42,7 +43,7 @@ def _painel():
         tot["rodando"] += 1 if ini is not None else 0
         if loc.get("loc_lat") is not None:
             pontos.append(dict(lat=loc["loc_lat"], lon=loc["loc_lng"], van=v.nome))
-        cards.append((v, df, n, feitos, faltas, ini, loc))
+        cards.append((v, df, n, feitos, faltas, ini, loc, rt))
 
     _ui.kpis([("Vans em rota", f"{tot['rodando']} de {len(vans)}"), ("Alunos no trecho", str(tot["alunos"])),
               ("Ida concluída" if trecho == "ida" else "Entregues", str(tot["feitos"])),
@@ -50,13 +51,18 @@ def _painel():
     if pontos:
         st.map(pd.DataFrame(pontos), zoom=11, size=60, color="#0A9C97", height=320)
 
-    for v, df, n, feitos, faltas, ini, loc in cards:
+    for v, df, n, feitos, faltas, ini, loc, rt in cards:
         with st.container(border=True, key=f"card_op_{v.id}"):
             equipe = v.motorista_nome or "sem motorista"
             if v.monitor_nome:
                 equipe += f" · monitor(a): {v.monitor_nome}"
+            fim = rt["finalizada_em"] if rt else None
             if ini is None:
                 sit = _ui.tag("aberto", "rota não iniciada")
+            elif fim is not None:
+                pf = rt.get("pendentes_ao_finalizar") or 0
+                sit = _ui.tag("vencido" if pf else "pago", f"rota finalizada às {fim.astimezone(TZ):%H:%M}"
+                              + (f" · {pf} pendente(s) conferida(s)" if pf else " ✓"))
             elif n and feitos + faltas >= n:
                 sit = _ui.tag("pago", "trecho concluído ✓")
             else:
@@ -64,9 +70,11 @@ def _painel():
             st.markdown(f"**🚐 {_ui.esc(v.nome)}** {sit}  \n<span class='ve-sub'>{_ui.esc(equipe)}</span>",
                         unsafe_allow_html=True)
             pend = max(0, n - feitos - faltas)
+            na_van = int((df["status"] == "embarcou").sum()) if n else 0
             st.progress(feitos / n if n else 0.0,
                         text=f"{feitos} de {n} {'na escola' if trecho == 'ida' else 'entregues'} · "
-                             f"{pend} pendente(s) · {faltas} falta(s)")
+                             + (f"{na_van} na van · " if trecho == "ida" and na_van else "")
+                             + f"{pend} pendente(s) · {faltas} falta(s)")
             linhas = []
             if loc.get("ativa") and loc.get("loc_em") is not None:
                 minutos = int((agora() - loc["loc_em"].astimezone(TZ)).total_seconds() // 60)
@@ -83,7 +91,7 @@ def _painel():
                 linhas.append("👤 motorista ainda não entrou no app")
             st.caption("  ·  ".join(linhas))
             if n:
-                faltando = df[~df["status"].isin(["desembarcou", "embarcou", "faltou"]) & ~df["avisou"]]
+                faltando = df[~df["status"].isin(["desembarcou", "faltou"]) & ~(df["avisou"] & df["status"].isna())]
                 if len(faltando):
                     st.caption("Pendentes: " + ", ".join(faltando["nome"]))
             if loc.get("ativa") and loc.get("loc_lat") is not None:

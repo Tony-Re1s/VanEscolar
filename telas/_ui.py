@@ -122,6 +122,36 @@ button[data-testid="stBaseButton-secondary"]:hover, .stLinkButton > a:hover {bor
 [class*="st-key-linha_ok"] button, [class*="st-key-linha_ok"] a {min-height: 2.7rem !important; font-size: .98rem !important;}
 [class*="st-key-card_falta"] {opacity: .55;}
 [class*="st-key-card_falta"]:hover {opacity: .85;}
+.st-key-tela_ligada {display: none !important;}
+/* rota do motorista: botões grandes e por cor — amarelo = mensagem, verde = embarcou/entregue,
+   vermelho = faltou, azul = caminho. Lê de relance, toca sem errar. */
+[class*="st-key-zap_"] button, [class*="st-key-zap_"] a, [class*="st-key-ok_"] button,
+[class*="st-key-falta_"] button, [class*="st-key-nav_"] a, [class*="st-key-nav_"] button,
+[class*="st-key-ini_rota"] button, [class*="st-key-fim_rota"] button, [class*="st-key-desf_"] button {
+    min-height: 3.4rem !important; font-size: 1.08rem !important; font-weight: 800 !important;
+    border-radius: 16px !important; border: none !important;}
+[class*="st-key-zap_"] button, [class*="st-key-zap_"] a {background: #FFC83D !important; color: #16324F !important;}
+[class*="st-key-ok_"] button, [class*="st-key-ini_rota"] button {background: #1E9E5A !important; color: #fff !important;}
+[class*="st-key-falta_"] button {background: #E5484D !important; color: #fff !important;}
+[class*="st-key-nav_"] a, [class*="st-key-nav_"] button {background: #2F7DE1 !important; color: #fff !important;}
+[class*="st-key-fim_rota"] button {background: #16324F !important; color: #fff !important;}
+[class*="st-key-desf_"] button {background: #EEF2F5 !important; color: #3E5468 !important; font-weight: 700 !important;}
+[class*="st-key-zap_"] p, [class*="st-key-ok_"] p, [class*="st-key-falta_"] p, [class*="st-key-nav_"] p,
+[class*="st-key-ini_rota"] p, [class*="st-key-fim_rota"] p, [class*="st-key-desf_"] p {font-size: 1.08rem !important;
+    font-weight: 800 !important; line-height: 1.15 !important;}
+/* 3 botões lado a lado no celular: sem ícone e com quebra de linha, para o texto caber inteiro */
+@media (max-width: 520px) {
+  [class*="st-key-linha_ok"] [data-testid="stIconMaterial"],
+  [class*="st-key-linha_ok"] span:has(> [data-testid="stIconMaterial"]) {display: none !important;}
+  [class*="st-key-linha_ok"] button > div, [class*="st-key-linha_ok"] a > div {gap: 0 !important; justify-content: center !important;}
+  [class*="st-key-linha_ok"] p {font-size: .98rem !important;}
+}
+[class*="st-key-linha_ok"] *, [class*="st-key-linha_av"] * {overflow-wrap: normal !important; word-break: keep-all !important;}
+[class*="st-key-linha_ok"] p, [class*="st-key-linha_av"] p {white-space: normal !important; overflow: visible !important;
+    text-overflow: clip !important; word-break: normal !important;}
+[class*="st-key-linha_ok"] button, [class*="st-key-linha_ok"] a {padding-left: .2rem !important; padding-right: .2rem !important;}
+[class*="st-key-zap_"] button:disabled, [class*="st-key-ok_"] button:disabled, [class*="st-key-nav_"] button:disabled {
+    opacity: .4 !important;}
 /* página inicial e planos */
 .ve-hero {text-align:center; padding: 1.2rem .5rem 1.4rem;}
 .ve-hero .logo {width:120px; height:120px; margin: 0 auto .4rem; filter: drop-shadow(0 12px 20px rgba(10,156,151,.25));}
@@ -391,6 +421,20 @@ def localizacao_ao_vivo(cid, van_id) -> str | None:
         repo.parar_localizacao(cid, van_id)
         st.rerun()
     return link_mapa(loc["loc_token"])
+
+
+def manter_tela_ligada(ligar: bool):
+    """Durante a rota a tela do celular não apaga sozinha (Wake Lock do navegador; volta a pedir quando o motorista
+    volta do WhatsApp/Maps). Fora da rota, libera."""
+    js_on = """<script>(function(){const w=window;w.__tbWakeOn=true;if(w.__tbWake)return;w.__tbWake=true;
+async function pedir(){try{if(w.__tbWakeOn&&'wakeLock' in navigator&&document.visibilityState==='visible'&&
+(!w.__tbLock||w.__tbLock.released)){w.__tbLock=await navigator.wakeLock.request('screen');}}catch(e){}}
+pedir();document.addEventListener('visibilitychange',pedir);document.addEventListener('click',pedir,{passive:true});
+})();</script>"""
+    js_off = """<script>(function(){const w=window;w.__tbWakeOn=false;
+try{if(w.__tbLock&&!w.__tbLock.released)w.__tbLock.release();}catch(e){}})();</script>"""
+    with st.container(key="tela_ligada"):
+        st.html(js_on if ligar else js_off, unsafe_allow_javascript=True)
 
 
 @st.fragment(run_every=30)

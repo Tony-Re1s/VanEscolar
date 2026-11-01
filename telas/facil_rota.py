@@ -38,12 +38,17 @@ if df.empty:
     st.stop()
 
 # 1) iniciar rota (os pais veem no app que a van saiu)
-inicio = repo.rota_iniciada(van_id, dia, trecho)
+rota = repo.rota_status(van_id, dia, trecho)
+inicio = rota["iniciada_em"] if rota else None
+finalizada = rota["finalizada_em"] if rota else None
+_ui.manter_tela_ligada(inicio is not None and finalizada is None)
 if inicio is None:
-    if st.button(f"Iniciar rota — {'ida' if trecho == 'ida' else 'volta'}", type="primary",
+    if st.button(f"Iniciar rota — {'ida' if trecho == 'ida' else 'volta'}", key="ini_rota",
                  icon=":material/play_arrow:", width="stretch"):
         repo.iniciar_rota(cid, van_id, dia, trecho, u.get("nome") or u["email"])
         st.rerun()
+elif finalizada is not None:
+    st.success(f"✅ Rota finalizada às {finalizada.astimezone(TZ):%H:%M}.", icon=":material/flag:")
 else:
     st.success(f"Rota iniciada às {inicio.astimezone(TZ):%H:%M}.", icon=":material/directions_bus:")
 
@@ -73,28 +78,33 @@ for pos, r in enumerate(vao.itertuples(), start=1):
         so_msg = link_whats(r.telefone, msg)
         com_loc = link_whats(r.telefone, M.saindo(trecho, nome1, apelido, hora, link)) if link else None
         if so_msg:
-            x1.link_button("Estou a caminho", so_msg, icon=":material/airport_shuttle:", width="stretch")
+            x1.link_button("Estou a caminho", so_msg, icon=":material/airport_shuttle:", width="stretch",
+                           key=f"zap_sm_{r.id}")
         else:
-            x1.button("Estou a caminho", key=f"sm_{r.id}", disabled=True, width="stretch",
+            x1.button("Estou a caminho", key=f"zap_smsem_{r.id}", disabled=True, width="stretch",
                       icon=":material/airport_shuttle:")
         if com_loc:
             x2.link_button("Com localização", com_loc, icon=":material/share_location:", width="stretch",
-                           type="primary")
+                           key=f"zap_cl_{r.id}")
         else:
-            x2.button("Com localização", key=f"cl_{r.id}", disabled=True, width="stretch",
+            x2.button("Com localização", key=f"zap_clsem_{r.id}", disabled=True, width="stretch",
                       icon=":material/share_location:",
                       help="Ligue a localização ao vivo acima." if r.telefone else "Cadastre o WhatsApp do responsável.")
 if not faltas.empty:
     st.caption("Não vão hoje: " + ", ".join(faltas["nome"]))
 
-if inicio is not None:
+if inicio is not None and finalizada is None:
     st.divider()
-    e1, e2 = st.columns(2)
-    if e1.button("Encerrar rota", icon=":material/flag:", width="stretch",
-                 help="Para a localização ao vivo (o link dos pais deixa de mostrar a van)."):
-        repo.parar_localizacao(cid, van_id)
-        st.toast("Rota encerrada.")
+    if st.button("Finalizar rota", key="fim_rota", icon=":material/flag:", width="stretch",
+                 help="Fecha a rota e para a localização ao vivo (os pais deixam de ver a van)."):
+        repo.finalizar_rota(cid, van_id, dia, trecho, u.get("nome") or u["email"], 0)
+        st.toast("Rota finalizada.")
         st.rerun()
-    if e2.button("Desfazer início", type="tertiary", width="stretch"):
+    if st.button("Desfazer início", type="tertiary"):
+        repo.parar_localizacao(cid, van_id)
         repo.desfazer_inicio_rota(cid, van_id, dia, trecho)
+        st.rerun()
+elif finalizada is not None:
+    if st.button("Reabrir rota", type="tertiary"):
+        repo.reabrir_rota(cid, van_id, dia, trecho)
         st.rerun()

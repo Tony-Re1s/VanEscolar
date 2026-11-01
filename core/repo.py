@@ -538,10 +538,42 @@ def rota_iniciada(van, dia: date, trecho: str):
     return df.iloc[0]["iniciada_em"] if len(df) else None
 
 
+def rota_status(van, dia: date, trecho: str) -> dict | None:
+    """Início e fim da rota do trecho (None se ainda não iniciada)."""
+    df = db.ao_vivo("""select iniciada_em, iniciada_por, finalizada_em, finalizada_por, pendentes_ao_finalizar
+                       from rotas_iniciadas where van_id=:van and data=:d and trecho=:t""", van=van, d=dia, t=trecho)
+    if not len(df):
+        return None
+    r = df.iloc[0].to_dict()
+    if pd.isna(r.get("finalizada_em")):
+        r["finalizada_em"] = None
+    return r
+
+
+def finalizar_rota(cid, van, dia: date, trecho: str, por: str, pendentes: int = 0):
+    """Fecha a rota e desliga a localização ao vivo (os pais deixam de ver a van)."""
+    db.gravar("""update rotas_iniciadas ri set finalizada_em = now(), finalizada_por = :por, pendentes_ao_finalizar = :p
+                 from vans v where ri.van_id = v.id and v.condutor_id = :cid
+                   and ri.van_id = :van and ri.data = :d and ri.trecho = :t and ri.finalizada_em is null""",
+              van=van, cid=cid, d=dia, t=trecho, por=por, p=int(pendentes))
+    parar_localizacao(cid, van)
+
+
+def reabrir_rota(cid, van, dia: date, trecho: str):
+    db.gravar("""update rotas_iniciadas ri set finalizada_em = null, finalizada_por = null, pendentes_ao_finalizar = null
+                 from vans v where ri.van_id = v.id and v.condutor_id = :cid
+                   and ri.van_id = :van and ri.data = :d and ri.trecho = :t""", van=van, cid=cid, d=dia, t=trecho)
+
+
+def marcar_varios(cid, van, pids: list, dia: date, trecho: str, status: str):
+    for pid in pids:
+        marcar(cid, van, str(pid), dia, trecho, status)
+
+
 def rotas_dos_filhos(pids: list[str], dia: date) -> pd.DataFrame:
     """Para cada filho: se a van dele já saiu hoje (ida/volta) e a posição dele na ordem da ida."""
     return db.ao_vivo("""
-        select p.id as passageiro_id, ri.trecho, ri.iniciada_em,
+        select p.id as passageiro_id, ri.trecho, ri.iniciada_em, ri.finalizada_em,
                (select count(*) + 1 from passageiros q
                  where q.van_id = p.van_id and q.ativo and q.faz_ida and q.turno = p.turno
                    and (q.ordem_rota, q.nome) < (p.ordem_rota, p.nome)
