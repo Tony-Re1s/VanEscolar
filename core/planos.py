@@ -17,22 +17,22 @@ from dataclasses import dataclass, field
 from datetime import date
 
 PADRAO = {
-    "basico": dict(nome="Básico", preco=29.90, preco_vip=24.90, anual_desconto=16.67, vans=1, alunos=None,
+    "basico": dict(nome="Básico", preco=24.90, preco_vip=19.90, anual_desconto=17.0, vans=1, alunos=None,
                    destaque="Motorista autônomo",
                    itens=["1 van", "Alunos ilimitados", "Contrato digital com assinatura", "Financeiro e painel"]),
-    "pro": dict(nome="Pro", preco=59.90, preco_vip=49.90, anual_desconto=16.67, vans=3, alunos=None,
+    "pro": dict(nome="Pro", preco=54.90, preco_vip=29.90, anual_desconto=17.0, vans=3, alunos=None,
                 destaque="Mais escolhido",
                 itens=["Até 3 vans", "Motoristas contratados", "Financeiro por van", "Tudo do Básico"]),
-    "frota": dict(nome="Frota", preco=99.90, preco_vip=84.90, anual_desconto=16.67, vans=None, alunos=None,
+    "frota": dict(nome="Frota", preco=99.90, preco_vip=79.90, anual_desconto=17.0, vans=None, alunos=None,
                   destaque="Empresas maiores",
                   itens=["Vans ilimitadas", "Motoristas ilimitados", "Suporte prioritário", "Tudo do Pro"]),
 }
 ORDEM = ["basico", "pro", "frota"]      # só o padrão; os planos de verdade vêm do banco (catalogo())
 
 CONFIG_PADRAO = {
-    "vip": {"ativo": True, "vagas": 50, "ate": None},
+    "vip": {"ativo": True, "vagas": 200, "ate": None},
     "indicacao": {"ativo": True, "meta": 10, "premio_meses": 2, "plano_degustacao": "pro", "dias_degustacao": 30},
-    "degustacao": {"ativo": True, "plano": "pro", "dias": 15},
+    "degustacao": {"ativo": True, "plano": "pro", "dias": 30},
 }
 
 # Como o plano foi liberado

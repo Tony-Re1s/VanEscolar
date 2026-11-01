@@ -354,3 +354,21 @@ begin
     insert into config (chave, valor) values ('mig_v9_sem_gratis', 'true');
   end if;
 end $$;
+
+-- v10 — preços definidos com o Tony (mercado: SmartVan, Vanzinha, VanGo, Via Van). Roda uma vez só;
+-- depois tudo se ajusta em Promoções. Quem já assinava fica no preço que tinha.
+do $$
+begin
+  if not exists (select 1 from config where chave = 'mig_v10_precos') then
+    update condutores c set preco_mensal = case when c.vip and cp.preco_vip is not null then cp.preco_vip
+                                                else cp.preco end
+      from config_planos cp
+     where cp.plano = c.plano and c.plano_tipo = 'pago' and c.preco_mensal is null and c.preco_combinado is null;
+    update config_planos set preco = 24.90, preco_vip = 19.90, anual_desconto = 17 where plano = 'basico';
+    update config_planos set preco = 54.90, preco_vip = 29.90, anual_desconto = 17 where plano = 'pro';
+    update config_planos set preco = 99.90, preco_vip = 79.90, anual_desconto = 17 where plano = 'frota';
+    update config set valor = valor || '{"ativo": true, "vagas": 200}'::jsonb where chave = 'vip';
+    update config set valor = valor || '{"dias": 30}'::jsonb where chave = 'degustacao';
+    insert into config (chave, valor) values ('mig_v10_precos', 'true');
+  end if;
+end $$;
