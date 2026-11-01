@@ -70,16 +70,26 @@ def perfil(usuario: dict) -> dict:
     """Atualiza condutor/responsável do usuário (lido sem cache: muda quando o condutor cadastra os pais)."""
     c = db.ao_vivo("select * from condutores where usuario_id = :u", u=usuario["id"])
     usuario["condutor"] = c.iloc[0].to_dict() if len(c) else None
-    r = db.ao_vivo("""select distinct pr.passageiro_id from responsaveis r
+    r = db.ao_vivo("""select distinct pr.passageiro_id, p.condutor_id from responsaveis r
                       join passageiro_responsavel pr on pr.responsavel_id = r.id
                       join passageiros p on p.id = pr.passageiro_id and p.ativo
                       join condutores c on c.id = p.condutor_id and c.ativo
                       where lower(r.email) = :e""", e=usuario["email"])
-    usuario["filhos"] = [str(x) for x in r["passageiro_id"]] if len(r) else []
-    from core import repo
+    from core import planos as pl, repo
+    from core.fmt import hoje
     vm = repo.vans_do_motorista(usuario["email"])
-    usuario["vans_motorista"] = vm.to_dict("records") if len(vm) else []
+    vans = vm.to_dict("records") if len(vm) else []
+    filhos = [(str(x.passageiro_id), str(x.condutor_id)) for x in r.itertuples()] if len(r) else []
+    # empresa sem plano em vigor (venceu e não pagou): motorista e pais ficam bloqueados até o gestor pagar
+    emps = repo.empresas_por_id({c for _, c in filhos} | {str(v["condutor_id"]) for v in vans})
+    cat = pl.catalogo()
+    bloq = {i for i, e in emps.items() if not pl.liberada(e, hoje(), cat)}
+    usuario["filhos"] = [p for p, c in filhos if c not in bloq]
+    usuario["vans_motorista"] = [v for v in vans if str(v["condutor_id"]) not in bloq]
+    usuario["bloqueios"] = sorted({emps[i]["nome"] for i in bloq})
     usuario["admin"] = usuario["email"] in admins()
+    cond = usuario["condutor"]
+    usuario["bloqueado"] = bool(cond) and not usuario["admin"] and not pl.liberada(cond, hoje(), cat)
     return usuario
 
 

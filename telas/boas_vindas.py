@@ -43,12 +43,17 @@ if ok:
             st.error("Código de indicação não encontrado. Confira com quem te indicou ou deixe em branco.")
             st.stop()
     nova = repo.criar_empresa(u["id"], u["email"], nome.strip(), telefone or None, dirige)
+    presente = repo.aplicar_indicacao(nova["id"], indicador["id"], hoje()) if indicador else None
     if indicador:
-        presente = repo.aplicar_indicacao(nova["id"], indicador["id"], hoje())
         if presente:
             st.session_state["_boas_vindas_msg"] = (
                 f"Indicação de {indicador['nome']} aplicada: plano {pl.catalogo()[presente[0]]['nome']} liberado "
                 f"de graça até {data_br(presente[1])}! 🎉")
+    if not presente:
+        deg = repo.aplicar_degustacao_inicial(nova["id"], hoje())
+        if deg and not st.session_state.get("_boas_vindas_msg"):
+            st.session_state["_boas_vindas_msg"] = (f"Conta criada! Você ganhou {(deg[1] - hoje()).days} dias do plano "
+                                                   f"{pl.catalogo()[deg[0]]['nome']} de graça, até {data_br(deg[1])}. 🎉")
     st.session_state.pop("_indicacao", None)
     auth.perfil(u)
     st.rerun()

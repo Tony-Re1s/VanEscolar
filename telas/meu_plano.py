@@ -10,8 +10,8 @@ c = exigir_condutor()
 emp = repo.empresa(c["id"])
 HOJE = hoje()
 cat = pl.catalogo()
-atual = pl.plano_da_empresa(emp, HOJE)
-p = cat[atual]
+atual = pl.plano_da_empresa(emp, HOJE, cat)       # None = sem plano em vigor (acesso bloqueado)
+p = cat.get(atual)
 uso = repo.uso_empresa(c["id"])
 
 st.title("Meu plano")
@@ -23,45 +23,50 @@ def _uso(n, lim):
 
 # ---------------------------------------------------------------- situação
 venc = emp.get("plano_ate")
-contratado = emp.get("plano") or "gratis"
-tipo = pl.tipo_da_empresa(emp) if contratado != "gratis" else "pago"
+contratado = emp.get("plano")
+tipo = pl.tipo_da_empresa(emp)
 vigente = pl.preco_vigente(emp, HOJE, cat)
-if atual == "gratis":
-    sub = pl.preco_txt(p)
+if p is None:
+    sub = ("venceu em " + data_br(venc)) if venc else "sem plano"
 elif tipo == "teste":
     sub = "degustação até " + data_br(venc)
 elif tipo == "cortesia":
     sub = "cortesia" + (" até " + data_br(venc) if venc else "")
 else:
     sub = f"{pl.brl(vigente)}/mês" + (f" · até {data_br(venc)}" if venc else "")
-if contratado != atual:
-    situacao = "Degustação acabou" if tipo == "teste" else "Venceu → Grátis"
+if p is None:
+    situacao = "Bloqueado"
 else:
     situacao = {"teste": "Degustação", "cortesia": "Cortesia"}.get(tipo, "Ativo")
-_ui.kpis([("Plano atual", p["nome"], sub),
-          ("Vans", _uso(uso['vans'], p['vans'])),
-          ("Alunos ativos", _uso(uso['alunos'], p['alunos'])),
+_ui.kpis([("Plano atual", p["nome"] if p else "Nenhum", sub),
+          ("Vans", _uso(uso['vans'], p['vans'] if p else None)),
+          ("Alunos ativos", _uso(uso['alunos'], p['alunos'] if p else None)),
           ("Situação", situacao)])
 
-if contratado != atual and tipo == "teste":
-    st.warning(f"Sua degustação do plano {cat[contratado]['nome']} terminou e a conta voltou ao plano Grátis. "
-               "Nada foi apagado — assine para continuar com tudo liberado.", icon=":material/info:")
-elif contratado != atual:
-    st.warning("Sua assinatura venceu e a conta voltou ao plano Grátis. Nada foi apagado — renove para voltar a "
-               "cadastrar acima do limite.", icon=":material/info:")
+if p is None:
+    if st.session_state["usuario"].get("admin"):
+        st.warning("Sua empresa está sem plano em vigor (como administrador, você continua com acesso).",
+                   icon=":material/admin_panel_settings:")
+    else:
+        motivo = ("Sua degustação terminou" if tipo == "teste" else "Sua assinatura venceu") if venc else \
+            "Sua conta está sem plano"
+        st.error(f"**{motivo}** e o acesso ao app está bloqueado — para você, seus motoristas e os pais. "
+                 "**Nada foi apagado**: assine abaixo e tudo volta assim que o pagamento for confirmado.",
+                 icon=":material/lock:")
 elif tipo == "teste" and venc:
     faltam = (venc - HOJE).days
     st.info(f"Você está experimentando o plano **{p['nome']}** de graça até **{data_br(venc)}** "
             f"({'hoje é o último dia' if faltam <= 0 else 'falta 1 dia' if faltam == 1 else f'faltam {faltam} dias'})."
-            " Para continuar depois disso, assine abaixo — nada do que você cadastrou se perde.",
+            " Depois disso o acesso é bloqueado até assinar — nada do que você cadastrou se perde.",
             icon=":material/celebration:")
-if tipo == "pago" and atual != "gratis" and emp.get("desconto_origem") and emp.get("desconto_ate"):
+if p and tipo == "pago" and emp.get("desconto_origem") and emp.get("desconto_ate"):
     st.caption(f"Preço promocional ({pl.ORIGENS.get(emp['desconto_origem'], '')}) até {data_br(emp['desconto_ate'])}; "
                "depois volta ao preço normal do plano.")
-for rec, nome in (("vans", "vans"), ("alunos", "alunos")):
-    lim = p[rec]
-    if lim is not None and uso[rec] >= lim:
-        st.info(f"Você atingiu o limite de {nome} do plano {p['nome']}.", icon=":material/upgrade:")
+if p:
+    for rec, nome in (("vans", "vans"), ("alunos", "alunos")):
+        lim = p[rec]
+        if lim is not None and uso[rec] >= lim:
+            st.info(f"Você atingiu o limite de {nome} do plano {p['nome']}.", icon=":material/upgrade:")
 mg = int(emp.get("meses_gratis") or 0)
 if mg:
     st.success(f"Você tem **{mg} mês(es) grátis** ganhos por indicação — eles entram nas próximas renovações.",
@@ -105,10 +110,11 @@ if pedido:
 
 # ---------------------------------------------------------------- assinar
 st.subheader("Assinar")
-pagos = [k for k in pl.ORDEM if k != "gratis"]
+pagos = list(cat)
 with st.container(border=True, key="card_assinar"):
     a, b = st.columns([3, 2])
-    escolha = a.selectbox("Plano", pagos, index=pagos.index(atual) if atual in pagos else pagos.index("pro"),
+    padrao = atual if atual in pagos else contratado if contratado in pagos else pagos[0]
+    escolha = a.selectbox("Plano", pagos, index=pagos.index(padrao),
                           format_func=lambda k: f"{cat[k]['nome']} — {pl.preco_txt(cat[k])}/mês")
     anual_max = max(float(cat[k]["anual_desconto"] or 0) for k in pagos)
     rotulos = {"mensal": "Mensal", "anual": f"Anual (-{anual_max:.0f}%)" if anual_max else "Anual"}
@@ -142,8 +148,9 @@ with st.container(border=True, key="card_assinar"):
 
     # cupom de dias grátis: libera degustação na hora
     if cupom and cupom["tipo"] == "dias":
-        plano_cupom = (cupom.get("planos") or ["pro"])[0]
-        if tipo == "pago" and atual != "gratis":
+        plano_cupom = (cupom.get("planos") or [pl.config("degustacao").get("plano") or pagos[0]])[0]
+        plano_cupom = plano_cupom if plano_cupom in cat else pagos[0]
+        if tipo == "pago" and atual is not None:
             st.info("Esse cupom é de dias grátis e vale para quem ainda não é assinante.")
         elif st.button(f"Ativar {int(cupom['valor'])} dias grátis do {cat[plano_cupom]['nome']}", type="primary",
                        icon=":material/celebration:"):

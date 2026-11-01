@@ -17,11 +17,12 @@ st.caption("Regra: entre cupom, campanha, Passageiro VIP e anual, o cliente paga
            "Preço combinado passa por cima de tudo. Meses grátis da indicação são crédito à parte.")
 
 cat = pl.catalogo()
-abas = st.tabs(["Planos e preços", "Cupons", "Campanhas", "Passageiro VIP", "Indicação"])
+abas = st.tabs(["Planos e preços", "Cupons", "Campanhas", "Passageiro VIP", "Degustação", "Indicação"])
+PLANOS = list(cat)
 
 
 def _nome_plano(k):
-    return cat[k]["nome"]
+    return cat[k]["nome"] if k in cat else f"{k} (excluído)"
 
 
 # ================================================================ planos e preços
@@ -30,7 +31,7 @@ with abas[0]:
                 "para o plano não ter VIP. Os itens do cartão vão separados por **|**.")
     df = pd.DataFrame([dict(plano=k, nome=cat[k]["nome"], preco=cat[k]["preco"], preco_vip=cat[k]["preco_vip"],
                             anual_desconto=cat[k]["anual_desconto"], vans=cat[k]["vans"], alunos=cat[k]["alunos"],
-                            destaque=cat[k]["destaque"], itens=" | ".join(cat[k]["itens"])) for k in pl.ORDEM])
+                            destaque=cat[k]["destaque"], itens=" | ".join(cat[k]["itens"])) for k in PLANOS])
     ed = st.data_editor(
         df, hide_index=True, width="stretch", num_rows="fixed", disabled=["plano"],
         column_config={
@@ -57,8 +58,82 @@ with abas[0]:
                                vans=n(r["vans"], True), alunos=n(r["alunos"], True), destaque=r["destaque"] or "",
                                itens=[i.strip() for i in str(r["itens"] or "").split("|") if i.strip()]))
         repo.salvar_config_planos(linhas)
-        st.toast("Planos salvos.")
+        st.toast("Planos salvos. Quem já assina continua no preço antigo até você atualizar.")
         st.rerun()
+
+    # ---- quem paga preço antigo
+    antigos = repo.precos_antigos(HOJE)
+    if not antigos.empty:
+        st.markdown(f"**Assinantes no preço antigo ({len(antigos)})** — escolha quem passa para o preço novo:")
+        tab = antigos.assign(atualizar=False)[["atualizar", "nome", "plano_nome", "periodo", "vip", "atual", "novo"]]
+        ed_a = st.data_editor(
+            tab, hide_index=True, width="stretch", disabled=["nome", "plano_nome", "periodo", "vip", "atual", "novo"],
+            column_config={"atualizar": st.column_config.CheckboxColumn("Atualizar"),
+                           "nome": "Empresa", "plano_nome": "Plano", "periodo": "Período",
+                           "vip": st.column_config.CheckboxColumn("VIP"),
+                           "atual": st.column_config.NumberColumn("Paga hoje", format="R$ %.2f"),
+                           "novo": st.column_config.NumberColumn("Preço novo", format="R$ %.2f")},
+            key="ed_antigos")
+        a1, a2 = st.columns(2)
+        marcados = [antigos.iloc[i]["id"] for i, v in enumerate(ed_a["atualizar"]) if v]
+        if a1.button(f"Atualizar selecionados ({len(marcados)})", disabled=not marcados, width="stretch",
+                     icon=":material/check_box:"):
+            repo.atualizar_para_preco_novo(marcados)
+            st.toast(f"{len(marcados)} assinante(s) no preço novo.")
+            st.rerun()
+        if a2.button(f"Atualizar todos ({len(antigos)})", width="stretch", icon=":material/done_all:"):
+            repo.atualizar_para_preco_novo(list(antigos["id"]))
+            st.toast("Todos no preço novo.")
+            st.rerun()
+
+    # ---- criar plano
+    with st.expander("➕ Criar plano novo", icon=":material/add_card:"):
+        with st.form("novo_plano", clear_on_submit=True):
+            a, b = st.columns(2)
+            nome_n = a.text_input("Nome do plano *", placeholder="Ex.: Escolar Plus")
+            selo_n = b.text_input("Selo do cartão", placeholder="Ex.: Para 2 vans")
+            c1, c2, c3 = st.columns(3)
+            preco_n = c1.number_input("Preço/mês *", min_value=0.0, step=1.0, format="%.2f")
+            vip_n = c2.number_input("Preço VIP (0 = sem VIP)", min_value=0.0, step=1.0, format="%.2f")
+            anual_n = c3.number_input("Anual: % de desconto", min_value=0.0, max_value=90.0, step=1.0, value=16.67)
+            d1, d2 = st.columns(2)
+            vans_n = d1.number_input("Vans (0 = ilimitado)", min_value=0, step=1, value=1)
+            alunos_n = d2.number_input("Alunos (0 = ilimitado)", min_value=0, step=1, value=0)
+            itens_n = st.text_area("Itens do cartão (um por linha)", placeholder="2 vans\nAlunos ilimitados")
+            if st.form_submit_button("Criar plano", type="primary"):
+                import re
+                import unicodedata
+                cod = unicodedata.normalize("NFKD", nome_n).encode("ascii", "ignore").decode().lower()
+                cod = re.sub(r"[^a-z0-9]+", "_", cod).strip("_")[:30]
+                if not nome_n.strip() or preco_n <= 0:
+                    st.error("Preencha o nome e um preço maior que zero.")
+                elif cod in cat:
+                    st.error("Já existe um plano com esse nome.")
+                else:
+                    repo.criar_plano(dict(plano=cod, nome=nome_n.strip(), preco=round(preco_n, 2),
+                                          preco_vip=round(vip_n, 2) or None, anual_desconto=round(anual_n, 2),
+                                          vans=int(vans_n) or None, alunos=int(alunos_n) or None,
+                                          destaque=selo_n.strip(),
+                                          itens=[i.strip() for i in itens_n.splitlines() if i.strip()]))
+                    st.toast(f"Plano {nome_n} criado.")
+                    st.rerun()
+
+    # ---- excluir plano
+    with st.expander("🗑️ Excluir plano", icon=":material/delete:"):
+        st.caption("Só dá para excluir um plano sem nenhum gestor ativo nele. As campanhas dele são apagadas e ele "
+                   "sai dos cupons.")
+        x1, x2 = st.columns([3, 1], vertical_alignment="bottom")
+        alvo = x1.selectbox("Plano", PLANOS, format_func=_nome_plano, key="excluir_plano")
+        n = len(repo.gestores_no_plano(alvo, HOJE))
+        x1.caption(f"{n} gestor(es) ativo(s) no {_nome_plano(alvo)}.")
+        if x2.button("Excluir", key="btn_excluir_plano", disabled=n > 0, width="stretch"):
+            erro = repo.excluir_plano(alvo, HOJE)
+            if erro:
+                st.error(erro)
+            else:
+                st.toast(f"Plano {_nome_plano(alvo)} excluído.")
+                st.rerun()
+
     st.markdown("**Prévia (como o visitante vê, com as promoções de hoje):**")
     _ui.cartoes_planos(precos=_ui.precos_planos(None))
 
@@ -102,10 +177,10 @@ with abas[1]:
         tipo = b.selectbox("Tipo", tipos, index=tipos.index(g("tipo") or "pct"), format_func=pl.TIPOS_CUPOM.get)
         valor = cc.number_input("Valor *", min_value=0.0, step=1.0, value=float(g("valor") or 10),
                                 help="% (ex.: 20), R$ (ex.: 10) ou nº de dias (ex.: 30), conforme o tipo.")
-        planos_sel = st.multiselect("Vale para", [k for k in pl.ORDEM if k != "gratis"], default=g("planos") or [],
+        planos_sel = st.multiselect("Vale para", PLANOS, default=[k for k in (g("planos") or []) if k in cat],
                                     format_func=_nome_plano,
                                     help="Vazio = todos. No cupom de dias grátis, o 1º plano escolhido é o "
-                                         "liberado (vazio = Pro).")
+                                         "liberado (vazio = o plano da degustação).")
         d1, d2, d3 = st.columns(3)
         duracao = d1.number_input("Desconto por quantos meses", min_value=0, step=1,
                                   value=int(g("duracao_meses") or 0) if atual_cp else 1,
@@ -132,6 +207,14 @@ with abas[1]:
                                   cupom_id=g("id"))
                 st.toast(f"Cupom {cod} salvo.")
                 st.rerun()
+    if atual_cp is not None:
+        k1, k2 = st.columns([3, 1], vertical_alignment="center")
+        conf_cp = k1.checkbox(f"Quero excluir o cupom {atual_cp['codigo']} (o histórico de uso some junto)",
+                              key=f"conf_cp_{atual_cp['id']}")
+        if k2.button("Excluir cupom", disabled=not conf_cp, icon=":material/delete:", width="stretch"):
+            repo.excluir_cupom(atual_cp["id"])
+            st.toast(f"Cupom {atual_cp['codigo']} excluído.")
+            st.rerun()
 
 # ================================================================ campanhas
 with abas[2]:
@@ -157,8 +240,8 @@ with abas[2]:
     with st.form("camp_form", clear_on_submit=cm is None):
         a, b, cc = st.columns([3, 2, 2])
         nome = a.text_input("Nome *", value=g("nome") or "", placeholder="Volta às aulas")
-        pagos = [k for k in pl.ORDEM if k != "gratis"]
-        plano = b.selectbox("Plano", pagos, index=pagos.index(g("plano") or "pro"), format_func=_nome_plano)
+        plano = b.selectbox("Plano", PLANOS, index=PLANOS.index(g("plano")) if g("plano") in cat else 0,
+                            format_func=_nome_plano)
         preco = cc.number_input("Preço promocional/mês *", min_value=0.0, step=1.0, format="%.2f",
                                 value=float(g("preco") or 39.90))
         d1, d2, d3 = st.columns(3)
@@ -180,6 +263,13 @@ with abas[2]:
                                           duracao_meses=int(duracao) or None, ativo=ativo), camp_id=g("id"))
                 st.toast("Campanha salva.")
                 st.rerun()
+    if cm is not None:
+        k1, k2 = st.columns([3, 1], vertical_alignment="center")
+        conf_cm = k1.checkbox(f"Quero excluir a campanha {cm['nome']}", key=f"conf_cm_{cm['id']}")
+        if k2.button("Excluir campanha", disabled=not conf_cm, icon=":material/delete:", width="stretch"):
+            repo.excluir_campanha(cm["id"])
+            st.toast("Campanha excluída.")
+            st.rerun()
 
 # ================================================================ Passageiro VIP
 with abas[3]:
@@ -208,8 +298,26 @@ with abas[3]:
         st.dataframe(v.rename(columns={"nome": "Empresa", "plano": "Plano", "preco_mensal": "Preço/mês"}),
                      hide_index=True, width="stretch")
 
-# ================================================================ indicação
+# ================================================================ degustação de conta nova
 with abas[4]:
+    cfg = pl.config("degustacao")
+    st.markdown("Não existe plano grátis: **toda conta nova ganha uma degustação** e, quando ela acaba, o acesso "
+                "fica bloqueado até assinar (nada é apagado). Quem chega por indicação ganha a degustação da aba "
+                "*Indicação*.")
+    with st.form("deg_form"):
+        a, b, cc = st.columns(3)
+        ativo_d = a.checkbox("Degustação ligada", value=bool(cfg.get("ativo")),
+                             help="Desligada: a conta nova já nasce bloqueada até assinar.")
+        plano_dd = b.selectbox("Plano", PLANOS, index=PLANOS.index(cfg["plano"]) if cfg.get("plano") in cat else 0,
+                               format_func=_nome_plano)
+        dias_dd = cc.number_input("Dias", min_value=1, step=1, value=int(cfg.get("dias") or 15))
+        if st.form_submit_button("Salvar degustação", type="primary"):
+            repo.salvar_config("degustacao", dict(ativo=ativo_d, plano=plano_dd, dias=int(dias_dd)))
+            st.toast("Degustação salva.")
+            st.rerun()
+
+# ================================================================ indicação
+with abas[5]:
     cfg = pl.config("indicacao")
     st.markdown(f"Cada gestor tem um código. Quem é indicado ganha **{cfg['dias_degustacao']} dias de "
                 f"{_nome_plano(cfg['plano_degustacao'])}**; quem indica ganha **{cfg['premio_meses']} mês(es) grátis "
@@ -219,9 +327,9 @@ with abas[4]:
         ativo = a.checkbox("Indicação ligada", value=bool(cfg.get("ativo")))
         meta = a.number_input("A cada quantos indicados pagantes", min_value=1, step=1, value=int(cfg["meta"]))
         premio = b.number_input("Meses grátis de prêmio", min_value=0, step=1, value=int(cfg["premio_meses"]))
-        pagos = [k for k in pl.ORDEM if k != "gratis"]
-        plano_d = a.selectbox("Degustação do indicado: plano", pagos,
-                              index=pagos.index(cfg.get("plano_degustacao") or "pro"), format_func=_nome_plano)
+        plano_d = a.selectbox("Degustação do indicado: plano", PLANOS,
+                              index=PLANOS.index(cfg["plano_degustacao"]) if cfg.get("plano_degustacao") in cat else 0,
+                              format_func=_nome_plano)
         dias = b.number_input("Degustação do indicado: dias", min_value=0, step=1, value=int(cfg["dias_degustacao"]))
         if st.form_submit_button("Salvar indicação", type="primary"):
             repo.salvar_config("indicacao", dict(ativo=ativo, meta=int(meta), premio_meses=int(premio),

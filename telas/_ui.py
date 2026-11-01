@@ -205,11 +205,16 @@ def cartoes_planos(atual: str | None = None, precos: dict | None = None):
     com o preço cheio riscado)."""
     from core import planos as pl
     cat = pl.catalogo()
-    cols = st.columns(len(pl.ORDEM))
-    for col, k in zip(cols, pl.ORDEM):
+    if not cat:
+        st.info("Nenhum plano cadastrado.")
+        return
+    cols = st.columns(min(len(cat), 4))
+    for i, k in enumerate(cat):
+        col = cols[i % len(cols)]
         p = cat[k]
         pr = (precos or {}).get(k)
-        cls = "ve-plano" + (" atual" if k == atual else "") + (" top" if k == "pro" and k != atual else "")
+        top = "mais escolhido" in (p.get("destaque") or "").lower()
+        cls = "ve-plano" + (" atual" if k == atual else "") + (" top" if top and k != atual else "")
         selo = "Seu plano" if k == atual else p["destaque"]
         itens = "".join(f"<li>{esc(i)}</li>" for i in p["itens"])
         if pr and pr.tem_desconto:
@@ -285,7 +290,7 @@ def precos_planos(emp: dict | None, cupom: dict | None = None, periodo: str = "m
     from core import planos as pl, repo
     from core.fmt import hoje
     cat, camps, cfg_vip, usadas = pl.catalogo(), repo.campanhas(), pl.config("vip"), repo.vip_usadas()
-    return {k: pl.calcular(emp, k, hoje(), periodo, cupom, cat, camps, cfg_vip, usadas) for k in pl.ORDEM}
+    return {k: pl.calcular(emp, k, hoje(), periodo, cupom, cat, camps, cfg_vip, usadas) for k in cat}
 
 
 def faixa_vip(emp: dict | None = None):

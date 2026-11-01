@@ -3,6 +3,9 @@
 Os planos e as configurações ficam no banco (tabelas config_planos e config) e se ajustam na tela
 Administração → Promoções. Os valores abaixo são só o padrão (usados se o banco ainda não tiver nada).
 
+Não existe plano grátis: conta nova ganha degustação; quando a assinatura/degustação vence, o acesso é bloqueado
+até o pagamento (nada é apagado).
+
 Regra de preço: entre cupom, campanha, Passageiro VIP e plano anual vale o MELHOR preço para o cliente
 (os descontos não se somam). Preço combinado pelo admin passa por cima de tudo. Meses grátis da indicação
 são crédito à parte.
@@ -14,9 +17,6 @@ from dataclasses import dataclass, field
 from datetime import date
 
 PADRAO = {
-    "gratis": dict(nome="Grátis", preco=0.0, preco_vip=None, anual_desconto=0.0, vans=1, alunos=10,
-                   destaque="Para conhecer",
-                   itens=["1 van", "Até 10 alunos", "Rota, chamada e mensalidades", "Área dos pais"]),
     "basico": dict(nome="Básico", preco=29.90, preco_vip=24.90, anual_desconto=16.67, vans=1, alunos=None,
                    destaque="Motorista autônomo",
                    itens=["1 van", "Alunos ilimitados", "Contrato digital com assinatura", "Financeiro e painel"]),
@@ -27,12 +27,12 @@ PADRAO = {
                   destaque="Empresas maiores",
                   itens=["Vans ilimitadas", "Motoristas ilimitados", "Suporte prioritário", "Tudo do Pro"]),
 }
-ORDEM = ["gratis", "basico", "pro", "frota"]
+ORDEM = ["basico", "pro", "frota"]      # só o padrão; os planos de verdade vêm do banco (catalogo())
 
 CONFIG_PADRAO = {
     "vip": {"ativo": True, "vagas": 50, "ate": None},
     "indicacao": {"ativo": True, "meta": 10, "premio_meses": 2, "plano_degustacao": "pro", "dias_degustacao": 30},
-    "degustacao": {"dias_padrao": 15},
+    "degustacao": {"ativo": True, "plano": "pro", "dias": 15},
 }
 
 # Como o plano foi liberado
@@ -68,14 +68,14 @@ def catalogo() -> dict:
         df = db.consultar("select * from config_planos order by ordem, plano")
     except Exception:  # noqa: BLE001
         return {k: dict(v) for k, v in PADRAO.items()}
+    if df.empty:
+        return {k: dict(v) for k, v in PADRAO.items()}
     out = {}
     for r in df.to_dict("records"):
         out[r["plano"]] = dict(nome=r["nome"], preco=_num(r["preco"]) or 0.0, preco_vip=_num(r["preco_vip"]),
                                anual_desconto=_num(r["anual_desconto"]) or 0.0, vans=_int(r["vans"]),
                                alunos=_int(r["alunos"]), destaque=r["destaque"] or "",
                                itens=list(r["itens"] or []))
-    for k in ORDEM:                       # garante os 4 planos
-        out.setdefault(k, dict(PADRAO[k]))
     return out
 
 
@@ -93,13 +93,21 @@ def config(chave: str) -> dict:
 
 # ---------------------------------------------------------------- plano em vigor e limites
 
-def plano_da_empresa(empresa: dict, hoje: date) -> str:
-    """Plano em vigor: o contratado, ou Grátis se a assinatura/degustação venceu."""
-    p = (empresa or {}).get("plano") or "gratis"
+def plano_da_empresa(empresa: dict, hoje: date, cat: dict | None = None) -> str | None:
+    """Plano em vigor, ou None se a empresa está sem plano (venceu, nunca assinou ou o plano foi excluído) —
+    nesse caso o acesso fica bloqueado até pagar."""
+    p = (empresa or {}).get("plano")
     ate = (empresa or {}).get("plano_ate")
-    if p != "gratis" and ate and ate < hoje:
-        return "gratis"
-    return p if p in ORDEM else "gratis"
+    if not p or p not in (cat or catalogo()):
+        return None
+    if ate and ate < hoje:
+        return None
+    return p
+
+
+def liberada(empresa: dict, hoje: date, cat: dict | None = None) -> bool:
+    """Empresa ativa e com plano em vigor (pago, degustação ou cortesia)."""
+    return bool(empresa) and bool(empresa.get("ativo", True)) and plano_da_empresa(empresa, hoje, cat) is not None
 
 
 def tipo_da_empresa(empresa: dict) -> str:
@@ -107,8 +115,9 @@ def tipo_da_empresa(empresa: dict) -> str:
     return t if t in TIPOS else "pago"
 
 
-def limite(plano: str, recurso: str, cat: dict | None = None):
-    return (cat or catalogo())[plano][recurso]
+def limite(plano: str | None, recurso: str, cat: dict | None = None):
+    cat = cat or catalogo()
+    return cat[plano][recurso] if plano in cat else None
 
 
 def cabe(plano: str, recurso: str, atual: int, novos: int = 1, cat: dict | None = None) -> bool:
@@ -180,7 +189,7 @@ def calcular(empresa: dict | None, plano: str, hoje: date, periodo: str = "mensa
     p = cat[plano]
     base = float(p["preco"] or 0)
     res = Preco(plano=plano, periodo=periodo, base=base, final=base)
-    if plano == "gratis" or base <= 0:
+    if base <= 0:
         res.final = 0.0
         return res
     emp = empresa or {}
@@ -225,11 +234,25 @@ def calcular(empresa: dict | None, plano: str, hoje: date, periodo: str = "mensa
     return res
 
 
-def preco_vigente(empresa: dict, hoje: date, cat: dict | None = None) -> float:
-    """Quanto a empresa paga hoje por mês (0 se Grátis, degustação, cortesia ou vencido)."""
+def preco_regular(empresa: dict, plano: str, cat: dict | None = None) -> float:
+    """Preço "de tabela" do plano para esta empresa (sem cupom/campanha): VIP se for VIP; anual com desconto."""
     cat = cat or catalogo()
-    plano = plano_da_empresa(empresa, hoje)
-    if plano == "gratis" or tipo_da_empresa(empresa) != "pago":
+    if plano not in cat:
+        return 0.0
+    p = cat[plano]
+    pv = _num(p.get("preco_vip"))
+    if empresa.get("vip") and pv is not None:
+        return pv
+    if (empresa.get("periodo") or "mensal") == "anual" and p.get("anual_desconto"):
+        return round(float(p["preco"]) * (1 - float(p["anual_desconto"]) / 100), 2)
+    return float(p["preco"])
+
+
+def preco_vigente(empresa: dict, hoje: date, cat: dict | None = None) -> float:
+    """Quanto a empresa paga hoje por mês (0 se sem plano, degustação, cortesia ou vencido)."""
+    cat = cat or catalogo()
+    plano = plano_da_empresa(empresa, hoje, cat)
+    if plano is None or tipo_da_empresa(empresa) != "pago":
         return 0.0
     combinado = _num(empresa.get("preco_combinado"))
     if combinado is not None and combinado > 0:
@@ -238,10 +261,4 @@ def preco_vigente(empresa: dict, hoje: date, cat: dict | None = None) -> float:
     ate = empresa.get("desconto_ate")
     if pm is not None and (not ate or ate >= hoje):
         return pm
-    p = cat[plano]
-    pv = _num(p.get("preco_vip"))
-    if empresa.get("vip") and pv is not None:
-        return pv
-    if (empresa.get("periodo") or "mensal") == "anual" and p.get("anual_desconto"):
-        return round(float(p["preco"]) * (1 - float(p["anual_desconto"]) / 100), 2)
-    return float(p["preco"])
+    return preco_regular(empresa, plano, cat)

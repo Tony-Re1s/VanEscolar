@@ -25,35 +25,32 @@ cat = pl.catalogo()
 SIT = {"pago": ("pago", "Em dia"), "vence": ("vence_logo", "Vence logo"), "vencido": ("vencido", "Vencido"),
        "teste": ("embarcou", "Degustação"), "acabou": ("vencido", "Degustação acabou"),
        "cortesia": ("desembarcou", "Cortesia"),
-       "limite": ("aberto", "Grátis no limite"), "gratis": ("aberto", "Grátis"), "off": ("faltou", "Desativada")}
+       "sem_plano": ("vencido", "Sem plano"), "off": ("faltou", "Desativada")}
 
 
 def _situacao(r) -> str:
     if not r["ativo"]:
         return "off"
-    contratado = r["plano"] or "gratis"
+    contratado = r["plano"]
     ate = r["plano_ate"]
     tipo = pl.tipo_da_empresa(r)
-    if contratado != "gratis" and tipo in ("teste", "cortesia"):
+    if contratado not in cat:
+        return "sem_plano"
+    if tipo in ("teste", "cortesia"):
         if ate and ate < HOJE:
             return "acabou"
         return tipo
-    if contratado != "gratis":
-        if ate and ate < HOJE:
-            return "vencido"
-        if ate and ate <= HOJE + timedelta(days=AVISO_DIAS):
-            return "vence"
-        return "pago"
-    g = cat["gratis"]
-    if r["vans"] >= g["vans"] or r["alunos"] >= g["alunos"] - 2:
-        return "limite"
-    return "gratis"
+    if ate and ate < HOJE:
+        return "vencido"
+    if ate and ate <= HOJE + timedelta(days=AVISO_DIAS):
+        return "vence"
+    return "pago"
 
 
 linhas = []
 for r in df.to_dict("records"):
     r["sit"] = _situacao(r)
-    r["vig"] = pl.plano_da_empresa(r, HOJE)
+    r["vig"] = pl.plano_da_empresa(r, HOJE, cat)
     linhas.append(r)
 
 pagos = [r for r in linhas if r["sit"] in ("pago", "vence")]
@@ -66,10 +63,10 @@ cont = {k: sum(1 for r in linhas if r["sit"] == k) for k in SIT}
 _ui.kpis([("Receita por mês", brl(receita), f"{len(pagos)} assinante(s) pagante(s)"),
           ("Vencem em 7 dias", str(cont["vence"]), f"{cont['vencido']} já vencido(s)"),
           ("Em degustação", str(len(testes)), f"{testes_7} acaba(m) em 7 dias"),
-          ("No Grátis", str(cont["gratis"] + cont["limite"]), f"{cont['limite']} perto do limite")])
+          ("Bloqueados", str(cont["vencido"] + cont["acabou"] + cont["sem_plano"]), "sem plano em vigor")])
 
-por_plano = {k: sum(1 for r in linhas if r["vig"] == k and r["ativo"]) for k in pl.ORDEM}
-st.markdown(" ".join(_ui.tag("pago" if k != "gratis" else "aberto", f"{cat[k]['nome']}: {n}")
+por_plano = {k: sum(1 for r in linhas if r["vig"] == k and r["ativo"]) for k in cat}
+st.markdown(" ".join(_ui.tag("pago", f"{cat[k]['nome']}: {n}")
                      for k, n in por_plano.items()) +
             f" <span class='ve-sub'>· {len(linhas)} empresa(s) · {int(df['vans'].sum())} van(s) · "
             f"{int(df['alunos'].sum())} alunos ativos</span>", unsafe_allow_html=True)
@@ -80,14 +77,13 @@ if pedidos:
 
 # filtros
 FILTROS = {"Todos": None, "Pedidos": "pedido", "Vencem logo": {"vence"}, "Vencidos": {"vencido"}, "Pagantes": {"pago", "vence"},
-           "Degustação": {"teste", "acabou"}, "Cortesia": {"cortesia"}, "Grátis no limite": {"limite"},
-           "Grátis": {"gratis", "limite"}, "Desativadas": {"off"}}
+           "Degustação": {"teste", "acabou"}, "Cortesia": {"cortesia"},
+           "Bloqueados": {"vencido", "acabou", "sem_plano"}, "Desativadas": {"off"}}
 a, b = st.columns([3, 2])
 filtro = a.segmented_control("Mostrar", list(FILTROS), default="Todos", label_visibility="collapsed") or "Todos"
 busca = b.text_input("Buscar", placeholder="Buscar nome ou e-mail", label_visibility="collapsed").strip().lower()
 
-ORDEM_SIT = {"vencido": 0, "acabou": 1, "vence": 2, "teste": 3, "limite": 4, "pago": 5, "cortesia": 6, "gratis": 7,
-             "off": 8}
+ORDEM_SIT = {"vencido": 0, "acabou": 1, "sem_plano": 2, "vence": 3, "teste": 4, "pago": 5, "cortesia": 6, "off": 7}
 sel = [r for r in linhas
        if (FILTROS[filtro] is None or (FILTROS[filtro] == "pedido" and r.get("pedido"))
            or (FILTROS[filtro] != "pedido" and r["sit"] in FILTROS[filtro]))
@@ -99,36 +95,38 @@ if not sel:
 
 def _mensagem(r) -> str | None:
     primeiro = (r["nome"] or "").split(" ")[0]
-    p = cat[r["plano"] or "gratis"]
+    p = cat.get(r["plano"])
+    if p is None:
+        return (f"Olá, {primeiro}! Sua conta no Pequenos a Bordo está sem plano e o acesso está pausado (nada foi "
+                "apagado). Quer que eu te ajude a escolher um plano para voltar a usar? 🚐")
     valor = pl.brl(pl.preco_vigente(dict(r, plano_ate=HOJE), HOJE, cat) or p["preco"])
     if r["sit"] == "vence":
         return (f"Olá, {primeiro}! Sua assinatura do plano {p['nome']} do Pequenos a Bordo vence em "
                 f"{data_br(r['plano_ate'])}. Quer que eu envie o Pix de {valor} para renovar? 🚐")
     if r["sit"] == "vencido":
         return (f"Olá, {primeiro}! Sua assinatura do plano {p['nome']} do Pequenos a Bordo venceu em "
-                f"{data_br(r['plano_ate'])} e a conta voltou ao Grátis (nada foi apagado). Quer renovar por "
+                f"{data_br(r['plano_ate'])} e a conta voltou o acesso foi pausado (nada foi apagado). Quer renovar por "
                 f"{valor}/mês? 🚐")
     if r["sit"] == "teste" and r["plano_ate"]:
         return (f"Olá, {primeiro}! Sua degustação do plano {p['nome']} do Pequenos a Bordo vai até "
                 f"{data_br(r['plano_ate'])}. Está gostando? Para continuar com tudo liberado depois disso, é "
                 f"{pl.preco_txt(p)}/mês. Posso te mandar o Pix? 🚐")
     if r["sit"] == "acabou":
-        return (f"Olá, {primeiro}! Sua degustação do plano {p['nome']} do Pequenos a Bordo terminou e a conta voltou "
-                f"ao Grátis (nada foi apagado). Quer continuar no {p['nome']} por {pl.preco_txt(p)}/mês? 🚐")
-    if r["sit"] == "limite":
-        return (f"Olá, {primeiro}! Vi que você já está usando bastante o Pequenos a Bordo 🚐 O plano Grátis vai até "
-                f"{cat['gratis']['vans']} van e {cat['gratis']['alunos']} alunos. Com o Básico ({pl.preco_txt(cat['basico'])}/mês) "
-                f"os alunos ficam ilimitados, e o Pro ({pl.preco_txt(cat['pro'])}/mês) vai até {cat['pro']['vans']} vans. "
-                "Posso te ajudar a assinar?")
+        return (f"Olá, {primeiro}! Sua degustação do plano {p['nome']} do Pequenos a Bordo terminou e "
+                f"o acesso foi pausado (nada foi apagado). Quer continuar no {p['nome']} por {pl.preco_txt(p)}/mês? 🚐")
     return None
+
+
+antigos = {str(x["id"]): x for x in repo.precos_antigos(HOJE).to_dict("records")}
 
 
 for r in sel:
     chave, rotulo = SIT[r["sit"]]
-    p = cat[r["plano"] or "gratis"]
+    p = cat.get(r["plano"]) or {"nome": "Sem plano", "preco": 0.0}
+    tem_plano = r["plano"] in cat
     with st.container(border=True, key=f"card_{r['id']}"):
-        ate = f" até {data_br(r['plano_ate'])}" if r["plano_ate"] and (r["plano"] or "gratis") != "gratis" else ""
-        if (r["plano"] or "gratis") != "gratis" and pl.tipo_da_empresa(r) != "pago":
+        ate = f" até {data_br(r['plano_ate'])}" if r["plano_ate"] and tem_plano else ""
+        if tem_plano and pl.tipo_da_empresa(r) != "pago":
             ate = f" · {pl.TIPOS[pl.tipo_da_empresa(r)]}" + (ate or " sem prazo")
         ultimo = f" · último acesso {data_br(r['ultimo_acesso'])}" if r.get("ultimo_acesso") else ""
         extras = ""
@@ -169,7 +167,7 @@ for r in sel:
             c1.link_button("Cobrar" if r["sit"] in ("vence", "vencido") else
                            "Convidar a assinar" if r["sit"] in ("teste", "acabou") else "Oferecer plano", lk,
                            icon=":material/chat:", width="stretch")
-        if (r["plano"] or "gratis") != "gratis" and r["ativo"] and r["sit"] != "cortesia":
+        if tem_plano and r["ativo"] and r["sit"] != "cortesia":
             anual = r.get("periodo") == "anual"
             if c2.button("Pagou: +12 meses" if anual else "Pagou: +1 mês", key=f"mes_{r['id']}",
                          icon=":material/payments:", width="stretch",
@@ -178,21 +176,30 @@ for r in sel:
                 st.toast(f"{r['nome']}: {p['nome']} renovado até {data_br(ate_)}.")
                 st.rerun()
         mg = int(r.get("meses_gratis") or 0)
-        if mg and (r["plano"] or "gratis") != "gratis" and r["ativo"]:
+        if mg and tem_plano and r["ativo"]:
             if st.button(f"Usar mês grátis da indicação ({mg} disponível(is))", key=f"mg_{r['id']}",
                          icon=":material/redeem:", width="stretch"):
                 ate_ = repo.usar_mes_gratis(r["id"], HOJE)
                 st.toast(f"{r['nome']}: +1 mês grátis, até {data_br(ate_)}.")
                 st.rerun()
+        velho = antigos.get(str(r["id"]))
+        if velho:
+            if st.button(f"Atualizar para o preço novo ({pl.brl(float(velho['atual']))} → "
+                         f"{pl.brl(float(velho['novo']))})", key=f"pn_{r['id']}", icon=":material/price_change:",
+                         width="stretch", help="Hoje esta empresa paga o preço antigo do plano."):
+                repo.atualizar_para_preco_novo([r["id"]])
+                st.toast(f"{r['nome']}: agora paga {pl.brl(float(velho['novo']))}/mês.")
+                st.rerun()
         with c3.popover("Plano", icon=":material/workspace_premium:", width="stretch"):
             with st.form(f"plano_{r['id']}"):
-                novo = st.selectbox("Plano", pl.ORDEM, index=pl.ORDEM.index(r["plano"] or "gratis"),
+                planos = list(cat)
+                novo = st.selectbox("Plano", planos, index=planos.index(r["plano"]) if tem_plano else 0,
                                     format_func=lambda k: f"{cat[k]['nome']} ({pl.preco_txt(cat[k])})")
                 tipos = list(pl.TIPOS)
                 tipo = st.radio("Como liberar", tipos, index=tipos.index(pl.tipo_da_empresa(r)), horizontal=True,
                                 format_func=pl.TIPOS.get,
-                                help="Pago: o cliente pagou. Degustação: grátis por alguns dias e depois volta ao "
-                                     "plano Grátis sozinho. Cortesia: liberado sem cobrar.")
+                                help="Pago: o cliente pagou. Degustação: grátis por alguns dias e depois o acesso "
+                                     "bloqueia sozinho até assinar. Cortesia: liberado sem cobrar.")
                 dias = st.selectbox("Degustação por", pl.DIAS_TESTE, index=1, format_func=lambda d: f"{d} dias",
                                     help="Só para Degustação — conta a partir de hoje.")
                 validade = st.date_input("Válido até (Pago e Cortesia)", value=r["plano_ate"] or somar_meses(HOJE, 1),
@@ -203,9 +210,7 @@ for r in sel:
                                             help="Preço negociado só com esta empresa. 0 = usa o preço normal "
                                                  "(com as promoções).")
                 if st.form_submit_button("Salvar plano", type="primary"):
-                    if novo == "gratis":
-                        ate_novo = None
-                    elif tipo == "teste":
+                    if tipo == "teste":
                         ate_novo = HOJE + timedelta(days=dias)
                     elif tipo == "cortesia" and sem_prazo:
                         ate_novo = None
@@ -214,7 +219,7 @@ for r in sel:
                     repo.definir_plano(r["id"], novo, ate_novo, tipo)
                     repo.definir_preco_combinado(r["id"], combinado or None)
                     st.toast(f"{r['nome']}: {cat[novo]['nome']}"
-                             + ("" if novo == "gratis" else f" · {pl.TIPOS[tipo]}")
+                             + f" · {pl.TIPOS[tipo]}"
                              + (f" até {data_br(ate_novo)}" if ate_novo else ""))
                     st.rerun()
         if c4.button("Desativar" if r["ativo"] else "Reativar", key=f"at_{r['id']}", width="stretch",

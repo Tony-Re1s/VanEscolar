@@ -40,7 +40,11 @@ st.markdown("<div class='ve-grade'>" + "".join(
 st.subheader("Planos")
 _ui.faixa_vip()
 _ui.cartoes_planos(precos=_ui.precos_planos(None))
-st.caption("Comece grátis. Os planos pagos liberam mais vans e alunos.")
+from core import planos as _pl
+_deg = _pl.config("degustacao")
+if _deg.get("ativo") and _deg.get("plano") in _pl.catalogo():
+    st.caption(f"Experimente {_deg['dias']} dias do plano {_pl.catalogo()[_deg['plano']]['nome']} de graça ao criar sua "
+               "conta — sem cartão.")
 
 st.markdown("<div class='ve-rodape'>Pequenos a Bordo · São Paulo/SP · "
             "<a href='/privacidade' target='_self'>Política de Privacidade</a> · "

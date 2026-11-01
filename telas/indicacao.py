@@ -52,7 +52,7 @@ if ind.empty:
 for r in ind.to_dict("records"):
     if r["indicacao_contada"]:
         st_ = _ui.tag("pago", "assinou ✓ contou")
-    elif (r["plano"] or "gratis") != "gratis" and r["plano_tipo"] == "teste" and r["plano_ate"] and r["plano_ate"] >= hoje():
+    elif r["plano"] and r["plano_tipo"] == "teste" and r["plano_ate"] and r["plano_ate"] >= hoje():
         st_ = _ui.tag("embarcou", f"em degustação até {data_br(r['plano_ate'])}")
     else:
         st_ = _ui.tag("aberto", "ainda não assinou")

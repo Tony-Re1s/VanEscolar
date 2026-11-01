@@ -41,7 +41,11 @@ if cond and not cond.get("ativo", True):
     st.stop()
 
 paginas: dict[str, list] = {}
-if cond:
+if cond and usuario.get("bloqueado"):
+    # assinatura/degustação venceu: o gestor só vê a tela do plano para pagar (nada foi apagado)
+    paginas["Assinatura"] = [st.Page("telas/meu_plano.py", title="Meu plano", icon=":material/workspace_premium:",
+                                     default=True)]
+elif cond:
     paginas["Dia a dia"] = [
         st.Page("telas/hoje.py", title="Hoje", icon=":material/today:", default=True),
         st.Page("telas/chamada.py", title="Rota e chamada", icon=":material/fact_check:"),
@@ -71,7 +75,10 @@ if usuario.get("admin"):
     paginas["Administração"] = [st.Page("telas/admin.py", title="Assinantes", icon=":material/admin_panel_settings:"),
                                 st.Page("telas/promocoes.py", title="Promoções", icon=":material/sell:"),
                                 st.Page("telas/banco.py", title="Banco e backup", icon=":material/database:")]
-if not cond and not vans_mot and not usuario.get("filhos"):
+if not cond and not vans_mot and not usuario.get("filhos") and usuario.get("bloqueios"):
+    paginas.setdefault("Aviso", []).append(
+        st.Page("telas/bloqueado.py", title="Acesso suspenso", icon=":material/lock:", default=True))
+elif not cond and not vans_mot and not usuario.get("filhos"):
     paginas.setdefault("Começar", []).append(
         st.Page("telas/boas_vindas.py", title="Criar minha empresa", icon=":material/rocket_launch:",
                 default=not usuario.get("filhos") and not vans_mot))

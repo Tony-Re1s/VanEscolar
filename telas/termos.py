@@ -32,10 +32,12 @@ fornece o meio para preencher, assinar eletronicamente e guardar o documento, e 
 responsável pelo conteúdo das cláusulas.
 
 #### 5. Planos e pagamento
-Há um plano grátis com limites e planos pagos por número de vans, com valores informados na página de Planos.
-Os planos pagos são mensais e podem ser cancelados a qualquer momento; o acesso pago segue até o fim do período
-já pago. Se a assinatura vencer, a conta volta ao plano grátis, sem perda de dados — mas o cadastro de novas vans
-ou alunos acima do limite fica bloqueado. Valores podem mudar com aviso prévio de 30 dias.
+Os planos são pagos, por número de vans, com valores informados na página de Planos. Toda conta nova ganha um
+período de degustação gratuita. Os planos são mensais ou anuais e podem ser cancelados a qualquer momento; o acesso
+segue até o fim do período já pago. Quando a degustação ou a assinatura vence sem pagamento, o acesso ao app fica
+**suspenso** para o gestor, seus motoristas e os responsáveis, **sem perda de dados**, e volta assim que o pagamento
+é confirmado. Valores podem mudar com aviso prévio de 30 dias; quem já assina pode manter o preço contratado
+conforme a oferta vigente.
 
 #### 6. Uso adequado
 Não é permitido usar o app para fins ilegais, cadastrar dados de terceiros sem autorização, tentar acessar dados de

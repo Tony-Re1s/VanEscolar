@@ -316,7 +316,9 @@ create table if not exists cupons_usos (
 );
 
 -- valores iniciais (só entram se ainda não existem — depois tudo se ajusta na tela Promoções)
-insert into config_planos (plano, nome, preco, preco_vip, anual_desconto, vans, alunos, destaque, itens, ordem) values
+insert into config_planos (plano, nome, preco, preco_vip, anual_desconto, vans, alunos, destaque, itens, ordem)
+select v.plano, v.nome, v.preco, v.preco_vip, v.anual_desconto, v.vans, v.alunos, v.destaque, v.itens::jsonb, v.ordem
+from (values
   ('gratis', 'Grátis', 0, null, 0, 1, 10, 'Para conhecer',
    '["1 van", "Até 10 alunos", "Rota, chamada e mensalidades", "Área dos pais"]', 1),
   ('basico', 'Básico', 29.90, 24.90, 16.67, 1, null, 'Motorista autônomo',
@@ -325,7 +327,8 @@ insert into config_planos (plano, nome, preco, preco_vip, anual_desconto, vans, 
    '["Até 3 vans", "Motoristas contratados", "Financeiro por van", "Tudo do Básico"]', 3),
   ('frota', 'Frota', 99.90, 84.90, 16.67, null, null, 'Empresas maiores',
    '["Vans ilimitadas", "Motoristas ilimitados", "Suporte prioritário", "Tudo do Pro"]', 4)
-on conflict (plano) do nothing;
+) as v(plano, nome, preco, preco_vip, anual_desconto, vans, alunos, destaque, itens, ordem)
+where not exists (select 1 from config_planos);   -- só na 1ª vez: depois os planos são do admin
 
 insert into config (chave, valor) values
   ('vip', '{"ativo": true, "vagas": 50, "ate": null}'),
@@ -336,3 +339,18 @@ on conflict (chave) do nothing;
 update condutores set codigo_indicacao =
   upper(left(regexp_replace(split_part(nome, ' ', 1), '[^A-Za-z]', '', 'g'), 6)) || upper(substr(md5(id::text), 1, 3))
 where codigo_indicacao is null;
+
+
+-- v9 — sem plano Grátis: planos criados/excluídos pelo admin, degustação automática e bloqueio ao vencer
+update config set valor = valor || '{"ativo": true, "plano": "pro", "dias": 15}'::jsonb
+where chave = 'degustacao' and not (valor ? 'plano');
+do $$
+begin
+  if not exists (select 1 from config where chave = 'mig_v9_sem_gratis') then
+    delete from config_planos where plano = 'gratis';
+    -- quem estava no Grátis ganha a degustação padrão (15 dias de Pro) para não ficar bloqueado de surpresa
+    update condutores set plano = 'pro', plano_tipo = 'teste', plano_ate = current_date + 15
+     where coalesce(plano, 'gratis') = 'gratis';
+    insert into config (chave, valor) values ('mig_v9_sem_gratis', 'true');
+  end if;
+end $$;

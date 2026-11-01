@@ -569,9 +569,9 @@ def uso_empresa(cid) -> dict:
 
 
 def definir_plano(cid, plano: str, ate, tipo: str = "pago"):
-    """tipo: pago | teste (degustação, volta ao Grátis em `ate`) | cortesia (sem cobrar; `ate` opcional)."""
+    """tipo: pago | teste (degustação; em `ate` o acesso bloqueia) | cortesia (sem cobrar; `ate` opcional)."""
     db.gravar("update condutores set plano = :p, plano_ate = :a, plano_tipo = :t where id = :cid",
-              p=plano, a=ate, t=("pago" if plano == "gratis" else tipo), cid=cid)
+              p=plano, a=ate, t=tipo, cid=cid)
 
 
 # ------------------------------------------------------------------ promoções (cupons, campanhas, VIP, indicação)
@@ -586,8 +586,21 @@ def garantir_codigo_indicacao(cid):
               cid=cid)
 
 
+# preço "de tabela" que cada assinante paga hoje, calculado com os valores atuais de config_planos
+_SQL_PRECO_REGULAR = """case when c.vip and cp.preco_vip is not null then cp.preco_vip
+                             when c.periodo = 'anual' and cp.anual_desconto > 0
+                                  then round(cp.preco * (1 - cp.anual_desconto / 100), 2)
+                             else cp.preco end"""
+
+
 def salvar_config_planos(linhas: list[dict]):
+    """Salva preços/limites. Quem já assina e ainda não tinha preço gravado fica com o preço ANTIGO
+    (para mudar, use "Atualizar para o preço novo")."""
     with db.transacao() as s:
+        s.execute(text(f"""update condutores c set preco_mensal = {_SQL_PRECO_REGULAR}
+                           from config_planos cp
+                           where cp.plano = c.plano and c.plano_tipo = 'pago' and c.preco_mensal is null
+                             and c.preco_combinado is null"""))
         for r in linhas:
             s.execute(text("""update config_planos set nome=:nome, preco=:preco, preco_vip=:preco_vip,
                                 anual_desconto=:anual_desconto, vans=:vans, alunos=:alunos, destaque=:destaque,
@@ -662,7 +675,8 @@ def validar_cupom(codigo: str, cid, hoje: date, plano: str | None = None) -> tup
 def ativar_cupom_dias(cid, cupom: dict, hoje: date) -> tuple[str, date]:
     """Cupom de dias grátis: libera degustação do plano do cupom (ou Pro) e registra o uso."""
     from datetime import timedelta
-    plano = (cupom.get("planos") or ["pro"])[0]
+    from core import planos as pl
+    plano = (cupom.get("planos") or [pl.config("degustacao").get("plano") or next(iter(pl.catalogo()))])[0]
     ate = hoje + timedelta(days=int(cupom["valor"]))
     with db.transacao() as s:
         s.execute(text("""update condutores set plano=:p, plano_ate=:a, plano_tipo='teste' where id=cast(:cid as uuid)"""),
@@ -757,7 +771,7 @@ def registrar_pagamento(cid, hoje: date, pedido: dict | None = None) -> date:
 
 def usar_mes_gratis(cid, hoje: date) -> date | None:
     emp = empresa(cid)
-    if not emp or int(emp.get("meses_gratis") or 0) <= 0 or (emp.get("plano") or "gratis") == "gratis":
+    if not emp or int(emp.get("meses_gratis") or 0) <= 0 or not emp.get("plano"):
         return None
     ate = somar_meses(max(emp.get("plano_ate") or hoje, hoje), 1)
     db.gravar("""update condutores set plano_ate = :a, meses_gratis = meses_gratis - 1, plano_tipo = 'pago'
@@ -783,7 +797,9 @@ def aplicar_indicacao(cid, indicador_id, hoje: date) -> tuple[str, date] | None:
               "and indicado_por is null", i=str(indicador_id), cid=str(cid))
     if not cfg.get("ativo"):
         return None
-    plano = cfg.get("plano_degustacao") or "pro"
+    plano = cfg.get("plano_degustacao")
+    if plano not in pl.catalogo():
+        return None
     ate = hoje + timedelta(days=int(cfg.get("dias_degustacao") or 30))
     definir_plano(cid, plano, ate, "teste")
     return plano, ate
@@ -801,3 +817,97 @@ def ranking_indicacoes() -> pd.DataFrame:
                          from condutores c
                          where c.indicacoes_pagas > 0 or exists(select 1 from condutores x where x.indicado_por = c.id)
                          order by c.indicacoes_pagas desc, indicados desc, c.nome""")
+
+
+
+# ------------------------------------------------------------------ planos: criar, excluir, preço antigo × novo
+def criar_plano(d: dict):
+    db.gravar("""insert into config_planos (plano, nome, preco, preco_vip, anual_desconto, vans, alunos, destaque, itens,
+                                            ordem)
+                 values (:plano, :nome, :preco, :preco_vip, :anual_desconto, :vans, :alunos, :destaque,
+                         cast(:itens as jsonb), coalesce((select max(ordem) from config_planos), 0) + 1)""",
+              **dict(d, itens=_json.dumps(d["itens"], ensure_ascii=False)))
+
+
+def gestores_no_plano(plano: str, hoje: date) -> pd.DataFrame:
+    """Empresas ativas com esse plano em vigor (pago, degustação ou cortesia)."""
+    return db.ao_vivo("""select nome, plano_tipo, plano_ate from condutores
+                         where ativo and plano = :p and (plano_ate is null or plano_ate >= :h) order by nome""",
+                      p=plano, h=hoje)
+
+
+def excluir_plano(plano: str, hoje: date) -> str | None:
+    """Exclui o plano se nenhum gestor ativo estiver nele. Devolve o motivo se não puder."""
+    from core import planos as pl
+    g = gestores_no_plano(plano, hoje)
+    if len(g):
+        return f"{len(g)} gestor(es) ativo(s) neste plano: " + ", ".join(g["nome"].head(5))
+    for chave, campo, nome in (("degustacao", "plano", "a degustação de conta nova"),
+                               ("indicacao", "plano_degustacao", "o presente da indicação")):
+        atual = db.ao_vivo("select valor from config where chave = :c", c=chave)     # sem cache: decisão de exclusão
+        if len(atual) and (atual.iloc[0]["valor"] or {}).get(campo, pl.CONFIG_PADRAO[chave].get(campo)) == plano:
+            return f"Esse plano é usado n{nome} (aba Degustação/Indicação) — troque lá antes."
+    if db.um("select 1 as x from condutores where pedido->>'plano' = :p", p=plano):
+        return "Há pedido de assinatura aguardando neste plano — confirme ou descarte antes."
+    if len(db.consultar("select plano from config_planos")) <= 1:
+        return "Precisa existir pelo menos um plano."
+    with db.transacao() as s:
+        s.execute(text("delete from campanhas where plano = :p"), dict(p=plano))
+        s.execute(text("""update cupons set planos = nullif((select coalesce(jsonb_agg(x), '[]'::jsonb)
+                                                              from jsonb_array_elements_text(planos) x where x <> :p),
+                                                             '[]'::jsonb)
+                          where planos ? :p"""), dict(p=plano))
+        s.execute(text("delete from config_planos where plano = :p"), dict(p=plano))
+    return None
+
+
+def excluir_cupom(cupom_id):
+    db.gravar("delete from cupons where id = cast(:i as uuid)", i=str(cupom_id))
+
+
+def excluir_campanha(camp_id):
+    db.gravar("delete from campanhas where id = cast(:i as uuid)", i=str(camp_id))
+
+
+def precos_antigos(hoje: date) -> pd.DataFrame:
+    """Assinantes pagando um preço travado diferente do preço de tabela atual do plano deles
+    (fica de fora quem tem cupom/campanha em andamento ou preço combinado)."""
+    return db.ao_vivo(f"""
+        select c.id, c.nome, c.plano, cp.nome as plano_nome, c.periodo, c.vip, c.preco_mensal as atual,
+               {_SQL_PRECO_REGULAR} as novo
+        from condutores c join config_planos cp on cp.plano = c.plano
+        where c.ativo and c.plano_tipo = 'pago' and (c.plano_ate is null or c.plano_ate >= :h)
+          and c.preco_combinado is null and c.preco_mensal is not null
+          and (c.desconto_ate is null or c.desconto_ate < :h)
+          and coalesce(c.desconto_origem, '') not in ('cupom', 'campanha', 'combinado')
+          and c.preco_mensal <> {_SQL_PRECO_REGULAR}
+        order by cp.ordem, c.nome""", h=hoje)
+
+
+def atualizar_para_preco_novo(ids: list):
+    """Passa os assinantes escolhidos para o preço de tabela atual do plano deles."""
+    if not ids:
+        return
+    db.gravar(f"""update condutores c set preco_mensal = {_SQL_PRECO_REGULAR}, desconto_origem = null, desconto_ate = null
+                  from config_planos cp
+                  where cp.plano = c.plano and c.id = any(cast(:ids as uuid[]))""", ids=[str(i) for i in ids])
+
+
+def aplicar_degustacao_inicial(cid, hoje: date) -> tuple[str, date] | None:
+    """Conta nova (sem indicação): degustação automática configurada em Promoções."""
+    from datetime import timedelta
+    from core import planos as pl
+    cfg = pl.config("degustacao")
+    plano = cfg.get("plano")
+    if not cfg.get("ativo") or plano not in pl.catalogo():
+        return None
+    ate = hoje + timedelta(days=int(cfg.get("dias") or 15))
+    definir_plano(cid, plano, ate, "teste")
+    return plano, ate
+
+
+def empresas_por_id(ids: list) -> dict:
+    if not ids:
+        return {}
+    df = db.ao_vivo("select * from condutores where id = any(cast(:ids as uuid[]))", ids=[str(i) for i in ids])
+    return {str(r["id"]): r for r in df.to_dict("records")}
