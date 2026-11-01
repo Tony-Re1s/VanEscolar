@@ -125,6 +125,35 @@ def responder_pelo_app(engine, cid, texto: str, email: str):
                           where condutor_id = cast(:c as uuid) and autor = 'cliente'"""), {"c": str(cid)})
 
 
+def reenviar_pendentes(engine, tg: Telegram) -> int:
+    """Mensagens de cliente que não chegaram no Telegram (enviadas antes de conectar o bot ou com o Telegram fora
+    do ar) — manda agora. Só as dos últimos 7 dias."""
+    with engine.connect() as c:
+        chat = _cfg(c, "telegram_admin").get("chat_id")
+        if not chat:
+            return 0
+        rs = [dict(r._mapping) for r in c.execute(text("""
+            select m.id, m.texto, m.autor_email, m.criado_em, c.nome, c.plano, c.plano_tipo, c.telefone
+            from suporte_mensagens m join condutores c on c.id = m.condutor_id
+            where m.autor = 'cliente' and m.tg_msg_id is null and m.criado_em > now() - interval '7 days'
+            order by m.criado_em limit 20"""))]
+    n = 0
+    for r in rs:
+        cab = " · ".join(x for x in (r["nome"], (r["plano"] or "sem plano").capitalize(), r["autor_email"],
+                                     r["telefone"]) if x)
+        from zoneinfo import ZoneInfo
+        quando = r["criado_em"].astimezone(ZoneInfo("America/Sao_Paulo")).strftime("%d/%m %H:%M")
+        try:
+            tg_id = tg.enviar(chat, f"💬 {cab}\n(enviada em {quando})\n\n{r['texto']}\n\n"
+                                    "↩️ Use \"Responder\" nesta mensagem para responder.")
+        except TelegramErro:
+            break
+        with engine.begin() as c:
+            c.execute(text("update suporte_mensagens set tg_msg_id = :g where id = :i"), {"g": tg_id, "i": r["id"]})
+        n += 1
+    return n
+
+
 # ---------------------------------------------------------------- Telegram → app (respostas)
 AJUDA = ("Para responder um cliente, toque e segure a mensagem dele e escolha \"Responder\". "
          "Mensagens soltas não vão para ninguém.")
@@ -132,7 +161,7 @@ AJUDA = ("Para responder um cliente, toque e segure a mensagem dele e escolha \"
 
 def sincronizar(engine, tg: Telegram) -> dict:
     """Lê as novidades do bot: conecta o administrador (código) e grava as respostas dele. Idempotente."""
-    out = dict(respostas=0, conectado=False, erro=None)
+    out = dict(respostas=0, conectado=False, erro=None, reenviadas=0)
     try:
         with engine.connect() as c:
             offset = _cfg(c, "telegram_offset").get("offset")
@@ -141,6 +170,7 @@ def sincronizar(engine, tg: Telegram) -> dict:
         out["erro"] = str(e)
         return out
     if not ups:
+        out["reenviadas"] = reenviar_pendentes(engine, tg)
         return out
     with engine.begin() as c:
         chat_admin = _cfg(c, "telegram_admin").get("chat_id")
@@ -191,6 +221,7 @@ def sincronizar(engine, tg: Telegram) -> dict:
             tg.enviar(chat_id, msg, resp)
         except TelegramErro:
             pass
+    out["reenviadas"] = reenviar_pendentes(engine, tg)
     return out
 
 
