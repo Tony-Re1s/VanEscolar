@@ -184,6 +184,43 @@ def tag(chave: str, texto: str | None = None) -> str:
 
 
 APP_URL = "https://turminhaabordo.streamlit.app"
+EMAIL_CONTATO = "contato@turminhaabordo.com.br"
+
+
+# ---------------------------------------------------------------- Fale conosco (Telegram)
+def telegram():
+    """Cliente do bot de suporte (ou None se a chave não estiver nos Secrets)."""
+    from core.suporte import Telegram
+    try:
+        cfg = st.secrets.get("telegram") or {}
+        tok = cfg.get("token")
+    except Exception:  # noqa: BLE001
+        return None
+    return Telegram(tok, cfg.get("base_url")) if tok else None
+
+
+def motor():
+    from core import db
+    return db.conexao(db.banco_ativo()).engine
+
+
+def sincronizar_suporte(intervalo: int = 60) -> dict | None:
+    """Busca as respostas dadas no Telegram (no máx. 1x por `intervalo` segundos por sessão)."""
+    import time
+    from core import suporte
+    tg = telegram()
+    if not tg or time.time() - st.session_state.get("_sync_tg", 0) < intervalo:
+        return None
+    st.session_state["_sync_tg"] = time.time()
+    try:
+        return suporte.sincronizar(motor(), tg)
+    except Exception:  # noqa: BLE001 — suporte nunca derruba o app
+        return None
+
+
+def link_contato(assunto: str = "Contato — Turminha a Bordo") -> str:
+    import urllib.parse
+    return f"mailto:{EMAIL_CONTATO}?subject={urllib.parse.quote(assunto)}"
 
 
 def selo_acesso(email: str | None, acessos: dict) -> str:

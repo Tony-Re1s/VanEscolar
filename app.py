@@ -13,7 +13,7 @@ def _recarregar_codigo_novo():
     """O Streamlit Cloud atualiza os arquivos a cada publicação, mas guarda na memória os módulos já importados
     (core/*, telas/_ui). Recarrega os que mudaram desde a última execução — assim não precisa de Reboot."""
     for nome in ("core.fmt", "core.db", "core.planos", "core.contrato", "core.cobranca", "core.asaas", "core.repo",
-                 "core.cobranca_pais", "core.comissao", "core.demo",
+                 "core.cobranca_pais", "core.comissao", "core.demo", "core.suporte",
                  "core.backup", "core.auth", "telas._ui"):
         m = sys.modules.get(nome)
         arq = getattr(m, "__file__", None)
@@ -138,6 +138,22 @@ elif not cond and not vans_mot and not usuario.get("filhos"):
     paginas.setdefault("Começar", []).append(
         st.Page("telas/boas_vindas.py", title="Criar minha empresa", icon=":material/rocket_launch:",
                 default=not usuario.get("filhos") and not vans_mot))
+
+# Fale conosco (assinante) — as respostas dadas no Telegram são buscadas de tempos em tempos
+if cond and not usuario.get("bloqueado"):
+    from telas import _ui as _uix  # noqa: E402
+    _uix.sincronizar_suporte(intervalo=120)
+    try:
+        from core import suporte as _sup
+        _novas = _sup.nao_lidas_cliente(_uix.motor(), cond["id"])
+    except Exception:  # noqa: BLE001
+        _novas = 0
+    _grupo_fc = "Conta" if "Conta" in paginas else "Cadastros"
+    paginas.setdefault(_grupo_fc, []).append(
+        st.Page("telas/fale_conosco.py", title=f"Fale conosco ({_novas} nova{'s' if _novas > 1 else ''})"
+                if _novas else "Fale conosco", icon=":material/support_agent:", url_path="fale_conosco"))
+if usuario.get("admin"):
+    paginas["Administração"].append(st.Page("telas/suporte_admin.py", title="Suporte", icon=":material/forum:"))
 
 # parceiro Exclusivo (divulgador): canal com textos prontos, vagas VIP ao vivo e comissão
 from core import planos as _pl  # noqa: E402

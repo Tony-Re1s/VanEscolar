@@ -1,4 +1,4 @@
-name: Asaas — sincronizar pagamentos
+name: Asaas e suporte — sincronizar
 
 # A cada 30 min: libera/renova o plano de quem pagou no Asaas (o Streamlit não recebe webhook).
 # Secrets do repositório: NEON_URL, ASAAS_API_KEY e ASAAS_AMBIENTE (sandbox | producao).
@@ -26,3 +26,8 @@ jobs:
           ASAAS_API_KEY: ${{ secrets.ASAAS_API_KEY }}
           ASAAS_AMBIENTE: ${{ secrets.ASAAS_AMBIENTE }}
         run: python scripts/asaas_sync.py
+      - name: Fale conosco (respostas do Telegram)
+        env:
+          NEON_URL: ${{ secrets.NEON_URL }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+        run: python scripts/telegram_sync.py

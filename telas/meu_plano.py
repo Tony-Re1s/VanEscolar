@@ -256,3 +256,6 @@ with st.container(border=True, key="card_assinar"):
             st.rerun()
     st.caption("Pagamento por Pix, boleto ou cartão. Assim que confirmado, o plano é liberado na sua conta."
                + (" A cobrança se repete sozinha a cada período — dá para cancelar quando quiser." if API else ""))
+
+if st.session_state["usuario"].get("bloqueado"):
+    st.caption(f"Dúvidas sobre a assinatura? Escreva para [{_ui.EMAIL_CONTATO}]({_ui.link_contato('Assinatura — Turminha a Bordo')}).")

@@ -52,7 +52,7 @@ Não vendemos dados. Usamos fornecedores para operar o app, que só tratam os da
 cópias de segurança criptografadas). Mensagens de WhatsApp só são enviadas quando o próprio usuário toca no botão e
 envia pelo aplicativo dele. O **Asaas** (processador de pagamentos) recebe os dados necessários para cobrar a
 assinatura do gestor e, **se o gestor conectar a conta Asaas dele** para cobrar as mensalidades, o nome, CPF, e-mail e
-telefone do responsável financeiro, para emitir Pix e boleto em nome do gestor. Também podemos compartilhar dados por ordem judicial ou exigência legal.
+telefone do responsável financeiro, para emitir Pix e boleto em nome do gestor. As mensagens do **Fale conosco** (com o nome da empresa, o e-mail e o telefone do gestor) são entregues ao suporte pelo **Telegram**. Também podemos compartilhar dados por ordem judicial ou exigência legal.
 Alguns fornecedores ficam fora do Brasil; nesses casos a transferência segue o art. 33 da LGPD.
 
 #### 6. Por quanto tempo guardamos

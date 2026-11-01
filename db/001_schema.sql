@@ -454,3 +454,19 @@ begin
     insert into config (chave, valor) values ('mig_v16_faixas', 'true');
   end if;
 end $$;
+
+-- v17 — "Fale conosco": chat do assinante com o suporte; as mensagens vão para o Telegram do administrador e as
+--       respostas dadas lá (Responder na mensagem) voltam para o app
+create table if not exists suporte_mensagens (
+  id            bigserial primary key,
+  condutor_id   uuid not null references condutores(id) on delete cascade,
+  autor         text not null check (autor in ('cliente', 'suporte')),
+  autor_email   text,
+  texto         text not null,
+  criado_em     timestamptz not null default now(),
+  tg_msg_id     bigint,            -- id da mensagem no chat do Telegram do administrador
+  tg_update_id  bigint unique,     -- resposta que veio do Telegram (evita gravar 2x)
+  lida          boolean not null default false
+);
+create index if not exists ix_suporte_condutor on suporte_mensagens(condutor_id, criado_em);
+create index if not exists ix_suporte_tg on suporte_mensagens(tg_msg_id);
