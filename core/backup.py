@@ -25,7 +25,7 @@ MAGICO = b"PAB1"
 ITERACOES = 390_000
 
 # Ordem de dependência (quem é referenciado vem antes)
-TABELAS = ["config", "config_planos", "cupons", "campanhas", "usuarios", "condutores", "cupons_usos", "asaas_pagamentos", "escolas", "vans", "passageiros", "responsaveis", "passageiro_responsavel",
+TABELAS = ["config", "config_planos", "cupons", "campanhas", "usuarios", "condutores", "cupons_usos", "asaas_pagamentos", "comissoes", "escolas", "vans", "passageiros", "responsaveis", "passageiro_responsavel",
            "mensalidades", "lancamentos", "chamadas", "ausencias", "contratos", "rotas_iniciadas"]
 
 

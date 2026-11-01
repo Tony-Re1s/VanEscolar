@@ -422,3 +422,20 @@ alter table passageiros add column if not exists asaas_assinatura text;
 alter table mensalidades add column if not exists asaas_id text;
 alter table mensalidades add column if not exists asaas_link text;
 alter table mensalidades add column if not exists asaas_status text;
+
+-- v15 — divulgadores (Exclusivo): comissão sobre os indicados ativos, textos de divulgação e laboratório
+alter table condutores add column if not exists comissao_desde date;     -- quando destravou a comissão (meta batida)
+create table if not exists comissoes (
+  condutor_id   uuid not null references condutores(id) on delete cascade,
+  competencia   date not null,                 -- dia 1 do mês
+  ativos        int not null default 0,        -- indicados pagantes ativos no fechamento
+  base          numeric(10,2) not null default 0,
+  valor         numeric(10,2) not null default 0,
+  pago_em       date,
+  atualizado_em timestamptz not null default now(),
+  primary key (condutor_id, competencia)
+);
+insert into config (chave, valor) values
+  ('comissao', '{"ativo": true, "meta": 100, "pct": 10, "ate": "2027-12-31"}'),
+  ('laboratorio', '{}')
+on conflict (chave) do nothing;

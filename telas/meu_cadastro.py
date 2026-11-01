@@ -36,7 +36,9 @@ from core.fmt import hoje as _hoje  # noqa: E402
 from telas import _ui  # noqa: E402
 
 _emp = repo.empresa(c["id"])
-if not _pl.tem_cobranca_auto(_emp, _hoje()):
+if not _ui.recurso_liberado("cobranca_pais", c["id"]):
+    _ui.em_breve("cobranca_pais")
+elif not _pl.tem_cobranca_auto(_emp, _hoje()):
     st.info("Gere **Pix e boleto** para os pais com **baixa automática** quando eles pagam. Disponível nos planos "
             "com cobrança automática (ex.: **Pro** e **Frota**).", icon=":material/workspace_premium:")
     st.page_link("telas/meu_plano.py", label="Ver planos", icon=":material/upgrade:")

@@ -83,6 +83,15 @@ def link_whats(telefone: str | None, msg: str) -> str | None:
     return f"https://wa.me/{d}?text={urllib.parse.quote(msg)}"
 
 
+def link_email(email: str | None, assunto: str, corpo: str) -> str | None:
+    """mailto: — abre o e-mail do próprio gestor (Gmail/Outlook do celular) com a mensagem pronta."""
+    email = (email or "").strip()
+    if "@" not in email:
+        return None
+    return (f"mailto:{urllib.parse.quote(email)}?subject={urllib.parse.quote(assunto)}"
+            f"&body={urllib.parse.quote(corpo)}")
+
+
 def link_maps_rota(enderecos: list[str], destino: str | None = None) -> str | None:
     """Rota no Google Maps passando pelos endereços na ordem (até 9 paradas + destino)."""
     pontos = [e for e in enderecos if e]

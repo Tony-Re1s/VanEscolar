@@ -24,8 +24,10 @@ def contar_indicacao(s, emp: dict):
     cfg = _config(s, "indicacao", {"meta": 10, "premio_meses": 2})
     meta, premio = max(1, int(cfg.get("meta") or 10)), int(cfg.get("premio_meses") or 0)
     s.execute(text("update condutores set indicacao_contada = true where id = cast(:i as uuid)"), dict(i=str(emp["id"])))
+    # Exclusivo (divulgador) não ganha meses grátis — o prêmio dele é a comissão
     s.execute(text(f"""update condutores set indicacoes_pagas = indicacoes_pagas + 1,
                          meses_gratis = meses_gratis + case when (indicacoes_pagas + 1) % {meta} = 0
+                                                             and coalesce(plano_tipo, 'pago') <> 'cortesia'
                                                             then {premio} else 0 end
                        where id = cast(:i as uuid)"""), dict(i=str(emp["indicado_por"])))
 

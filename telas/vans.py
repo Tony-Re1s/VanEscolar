@@ -38,8 +38,6 @@ for v in df.itertuples():
                 st.link_button("Convidar no WhatsApp", lk, icon=":material/send:")
             else:
                 st.caption("Cadastre o WhatsApp do motorista para enviar o convite.")
-if not df.empty and any((e or "") != u["email"] for e in df["motorista_email"].dropna()):
-    _ui.aviso_modo_teste()
 
 NOVA = "➕ Nova van"
 opcoes = [NOVA] + [r.nome for r in df.itertuples()]

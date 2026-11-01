@@ -1,4 +1,5 @@
-"""Administração → Promoções: preços dos planos, cupons, campanhas, Passageiro VIP e indicação. Tudo ajustável."""
+"""Administração → Promoções: preços dos planos, cupons, campanhas, Passageiro VIP, indicação, divulgadores
+(comissão e textos) e laboratório. Tudo ajustável."""
 from datetime import timedelta
 
 import pandas as pd
@@ -17,7 +18,8 @@ st.caption("Regra: entre cupom, campanha, Passageiro VIP e anual, o cliente paga
            "Preço combinado passa por cima de tudo. Meses grátis da indicação são crédito à parte.")
 
 cat = pl.catalogo()
-abas = st.tabs(["Planos e preços", "Cupons", "Campanhas", "Passageiro VIP", "Degustação", "Indicação"])
+abas = st.tabs(["Planos e preços", "Cupons", "Campanhas", "Passageiro VIP", "Degustação", "Indicação",
+               "Divulgadores", "Laboratório"])
 PLANOS = list(cat)
 
 
@@ -350,3 +352,87 @@ with abas[5]:
                                         "indicacoes_pagas": "Pagantes", "meses_gratis": "Meses grátis guardados"})
                      [["Empresa", "Código", "Indicados", "Pagantes", "Meses grátis guardados"]],
                      hide_index=True, width="stretch")
+
+# ================================================================ divulgadores (Exclusivo): comissão e textos
+with abas[6]:
+    from core import comissao
+    cfg = pl.config("comissao")
+    st.markdown("Os parceiros **Exclusivos** divulgam o app. Ao chegar à meta de indicados **pagando ao mesmo tempo**, "
+                "destravam a comissão (fica destravada) e passam a receber a % sobre o que os indicados **ativos** "
+                "pagam no mês, até a data final. Exclusivo **não** ganha os meses grátis da indicação. "
+                "Você paga por Pix e marca como pago aqui.")
+    with st.form("com_form"):
+        a, b, cc, d = st.columns(4)
+        ativo_c = a.checkbox("Comissão ligada", value=bool(cfg.get("ativo")))
+        meta_c = b.number_input("Meta (indicados pagando)", min_value=1, step=1, value=int(cfg.get("meta") or 100))
+        pct_c = cc.number_input("Comissão (%)", min_value=0.0, max_value=100.0, step=1.0,
+                                value=float(cfg.get("pct") or 10))
+        ate_c = d.date_input("Vale até", value=pd.Timestamp(cfg.get("ate") or HOJE.replace(year=HOJE.year + 1)).date(),
+                             format="DD/MM/YYYY")
+        if st.form_submit_button("Salvar comissão", type="primary"):
+            repo.salvar_config("comissao", dict(ativo=ativo_c, meta=int(meta_c), pct=float(pct_c),
+                                                ate=ate_c.isoformat()))
+            st.toast("Comissão salva.")
+            st.rerun()
+
+    st.markdown("**Divulgadores**")
+    dv = comissao.divulgadores(HOJE)
+    if dv.empty:
+        st.caption("Nenhum Exclusivo ainda. Para tornar alguém divulgador, dê o plano **Exclusivo** em *Assinantes*.")
+    else:
+        st.dataframe(pd.DataFrame({
+            "Divulgador": dv["nome"], "Código": dv["codigo_indicacao"], "Indicados": dv["indicados"],
+            "Pagando agora": dv["ativos"],
+            "Destravou": [data_br(x) if x else "—" for x in dv["comissao_desde"]],
+            "Comissão do mês": [pl.brl(v) for v in dv["mes"]],
+            "A pagar": [pl.brl(v) for v in dv["a_pagar"]], "Já pago": [pl.brl(float(v)) for v in dv["ja_pago"]],
+            "Chave Pix": dv["chave_pix"].fillna("—")}), hide_index=True, width="stretch")
+        for r in dv[dv["a_pagar"] > 0].itertuples():
+            pend = comissao.pendentes(r.id)
+            with st.container(border=True, key=f"card_pagar_{r.id}"):
+                st.markdown(f"**{_ui.esc(r.nome)}** — a pagar **{pl.brl(r.a_pagar)}** · Pix: "
+                            f"`{r.chave_pix or 'sem chave cadastrada'}`")
+                meses = st.multiselect("Meses", list(pend["competencia"]), default=list(pend["competencia"]),
+                                       format_func=lambda m, p=pend: f"{m:%m/%Y} — " + pl.brl(
+                                           float(p.loc[p["competencia"] == m, "valor"].iloc[0])),
+                                       key=f"meses_{r.id}")
+                st.caption("O mês atual ainda pode mudar até o fim do mês (se entrar ou sair indicado). "
+                           "Marcando como pago, ele congela.")
+                if st.button("Marcar como pago (Pix feito)", key=f"pago_{r.id}", type="primary",
+                             icon=":material/paid:", disabled=not meses):
+                    n = comissao.marcar_pago(r.id, meses, HOJE)
+                    st.toast(f"{n} mês(es) marcado(s) como pago(s).")
+                    st.rerun()
+
+    st.divider()
+    st.markdown("**Textos prontos do Canal do divulgador**")
+    st.caption("Marcadores que viram o valor de cada divulgador: **{link}** (link de indicação), **{codigo}**, "
+               "**{vagas}** (vagas VIP restantes, ao vivo), **{vip_basico}**, **{vip_pro}** (preços VIP), "
+               "**{dias}** (dias grátis de quem é indicado), **{nome}** (empresa do divulgador).")
+    tx = pd.DataFrame((pl.config("divulgacao") or {}).get("textos") or [], columns=["titulo", "texto"])
+    ed_tx = st.data_editor(tx, hide_index=True, width="stretch", num_rows="dynamic", key="ed_textos_div",
+                           column_config={"titulo": st.column_config.TextColumn("Título", required=True),
+                                          "texto": st.column_config.TextColumn("Texto", required=True,
+                                                                               width="large")})
+    if st.button("Salvar textos", icon=":material/save:"):
+        lin = [dict(titulo=str(r["titulo"]).strip(), texto=str(r["texto"]).strip()) for _, r in ed_tx.iterrows()
+               if pd.notna(r["titulo"]) and pd.notna(r["texto"]) and str(r["texto"]).strip()]
+        repo.salvar_config("divulgacao", dict(textos=lin))
+        st.toast(f"{len(lin)} texto(s) salvo(s).")
+        st.rerun()
+
+# ================================================================ laboratório
+with abas[7]:
+    st.markdown("Recurso **em teste** aparece só para os **Exclusivos** (e para você). Quando estiver bom, libere "
+                "para **todos** os planos. Os outros assinantes veem um aviso de \"chega em breve\".")
+    lab = dict(pl.config("laboratorio") or {})
+    with st.form("lab_form"):
+        novo = {}
+        for k, nome in pl.RECURSOS.items():
+            novo[k] = st.radio(nome, ["todos", "exclusivo"], horizontal=True, key=f"lab_{k}",
+                               index=1 if lab.get(k) == "exclusivo" else 0,
+                               format_func={"todos": "Liberado para todos", "exclusivo": "Só Exclusivo (teste)"}.get)
+        if st.form_submit_button("Salvar laboratório", type="primary"):
+            repo.salvar_config("laboratorio", novo)
+            st.toast("Laboratório salvo.")
+            st.rerun()

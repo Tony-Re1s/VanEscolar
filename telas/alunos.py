@@ -5,7 +5,7 @@ import pandas as pd
 import streamlit as st
 
 from core import repo
-from core.fmt import TURNOS, brl, hoje, idade, link_whats
+from core.fmt import TURNOS, brl, hoje, idade, link_email, link_whats
 from telas import _ui
 from telas._ui import exigir_condutor
 
@@ -28,6 +28,28 @@ aba_lista, aba_edit, aba_ct = st.tabs(["Lista", "Cadastrar / editar", "Contratos
 
 # ------------------------------------------------------------------ lista
 with aba_lista:
+    nao_entraram = repo.responsaveis_sem_acesso(cid)
+    if not nao_entraram.empty:
+        with st.expander(f"Ainda não entraram no app ({len(nao_entraram)})", icon=":material/person_alert:"):
+            st.caption("Responsáveis que ainda não acessaram. Reenvie o convite — abre o WhatsApp da pessoa ou o "
+                       "seu e-mail com a mensagem pronta, é só enviar.")
+            for r in nao_entraram.itertuples():
+                msg = (f"Olá, {r.nome.split(' ')[0]}! Lembrete do app Pequenos a Bordo, da van de {r.alunos}. "
+                       f"Acesse {_ui.APP_URL} e clique em \"Entrar com Google\" usando o e-mail {r.email}. Lá você "
+                       "vê a carteirinha, acompanha o embarque, avisa faltas, vê as mensalidades e assina o "
+                       "contrato. 🚐")
+                with st.container(border=True, key=f"card_naoentrou_{r.id}"):
+                    st.markdown(f"**{_ui.esc(r.nome)}** <span class='ve-sub'>· {_ui.esc(r.alunos)} · "
+                                f"{_ui.esc(r.email)}</span>", unsafe_allow_html=True)
+                    k1, k2 = st.container(key=f"linha_reenv_{r.id}").columns(2)
+                    lk = link_whats(r.telefone, msg)
+                    if lk:
+                        k1.link_button("Reenviar no WhatsApp", lk, icon=":material/send:", width="stretch")
+                    else:
+                        k1.button("Reenviar no WhatsApp", key=f"rw_{r.id}", disabled=True, width="stretch",
+                                  icon=":material/send:", help="Cadastre o telefone do responsável.")
+                    k2.link_button("Reenviar por e-mail", link_email(r.email, "Convite — Pequenos a Bordo", msg),
+                                   icon=":material/mail:", width="stretch")
     if todos.empty:
         st.info("Nenhum aluno ainda. Use a aba **Cadastrar / editar**.")
     else:
@@ -169,10 +191,14 @@ with aba_edit:
                            f"Google\" usando o e-mail {r.email}. Lá você vê a carteirinha, acompanha o embarque, avisa "
                            "faltas, vê as mensalidades e assina o contrato. 🚐")
                     lk = link_whats(r.telefone, msg)
+                    lm = link_email(r.email, "Convite — Pequenos a Bordo", msg)
+                    k1, k2 = st.container(key=f"linha_conv_{r.id}").columns(2)
                     if lk:
-                        st.link_button("Convidar no WhatsApp", lk, icon=":material/send:", key=f"conv_{r.id}")
-        if not resp.empty and resp["email"].notna().any():
-            _ui.aviso_modo_teste()
+                        k1.link_button("Convidar no WhatsApp", lk, icon=":material/send:", key=f"conv_{r.id}",
+                                       width="stretch")
+                    if lm:
+                        k2.link_button("Convidar por e-mail", lm, icon=":material/mail:", key=f"convm_{r.id}",
+                                       width="stretch", help="Abre o seu e-mail com o convite pronto.")
 
         outros = repo.responsaveis(cid)
         outros = outros[~outros["id"].isin(resp["id"])] if not resp.empty and not outros.empty else outros
@@ -305,8 +331,12 @@ with aba_ct:
                                    "Pequenos a Bordo: https://pequenosabordo.streamlit.app — entre com o seu Google, "
                                    "confira as condições, preencha seus dados e clique em Assinar e enviar. Obrigado!")
                             lk = _lw(tel if isinstance(tel, str) else None, msg)
+                            lm = link_email(r.email_resp, f"Contrato da van escolar — {r.aluno} ({ano})", msg)
+                            k1, k2 = st.container(key=f"linha_lembra_{r.passageiro_id}").columns(2)
                             if lk:
-                                st.link_button("Lembrar no WhatsApp", lk, icon=":material/chat:")
+                                k1.link_button("Lembrar no WhatsApp", lk, icon=":material/chat:", width="stretch")
+                            if lm:
+                                k2.link_button("Lembrar por e-mail", lm, icon=":material/mail:", width="stretch")
                     titulo = "Preparar contrato" if r.situacao == "preparar" else "Ajustar condições"
                     with st.expander(titulo, expanded=False):
                         novo = _form_servico(r, sv, f"sv_{r.passageiro_id}")

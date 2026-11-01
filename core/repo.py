@@ -473,7 +473,10 @@ def contratos_empresa(cid, ano: int) -> pd.DataFrame:
                     when c.contratada_assinou_em is null then 'assinar'
                     else 'ok' end as situacao,
                exists (select 1 from passageiro_responsavel pr join responsaveis r on r.id = pr.responsavel_id
-                       where pr.passageiro_id = p.id and r.email is not null) as tem_email
+                       where pr.passageiro_id = p.id and r.email is not null) as tem_email,
+               (select r.email from passageiro_responsavel pr join responsaveis r on r.id = pr.responsavel_id
+                 where pr.passageiro_id = p.id and r.email is not null
+                 order by pr.financeiro desc, r.nome limit 1) as email_resp
         from passageiros p left join vans v on v.id = p.van_id
         left join contratos c on c.passageiro_id = p.id and c.ano = :a
         where p.condutor_id = :cid and p.ativo order by p.nome""", cid=cid, a=ano)
@@ -523,6 +526,19 @@ def acessos(emails: list[str]) -> dict:
         return {}
     df = db.ao_vivo("select email, ultimo_acesso from usuarios where email = any(cast(:e as text[]))", e=emails)
     return dict(zip(df["email"], df["ultimo_acesso"])) if len(df) else {}
+
+
+def responsaveis_sem_acesso(cid) -> pd.DataFrame:
+    """Responsáveis (com e-mail) de alunos ativos que ainda nunca entraram no app."""
+    return db.ao_vivo("""
+        select r.id, r.nome, r.telefone, r.email,
+               string_agg(distinct p.nome, ', ' order by p.nome) as alunos
+        from responsaveis r
+        join passageiro_responsavel pr on pr.responsavel_id = r.id
+        join passageiros p on p.id = pr.passageiro_id and p.ativo
+        where r.condutor_id = :cid and r.email is not null
+          and not exists (select 1 from usuarios u where u.email = lower(r.email))
+        group by r.id, r.nome, r.telefone, r.email order by r.nome""", cid=cid)
 
 
 # ------------------------------------------------------------------ painel de mensalidades
@@ -706,8 +722,9 @@ def salvar_campanha(d: dict, camp_id=None):
 
 
 def vip_usadas() -> int:
-    r = db.um("select count(*) as n from condutores where vip")
-    return int(r["n"]) if r else 0
+    """Vagas VIP já usadas — leitura sem cache (o contador do divulgador atualiza ao vivo)."""
+    df = db.ao_vivo("select count(*) as n from condutores where vip")
+    return int(df.iloc[0]["n"]) if len(df) else 0
 
 
 def vips() -> pd.DataFrame:
@@ -766,6 +783,11 @@ def aplicar_indicacao(cid, indicador_id, hoje: date) -> tuple[str, date] | None:
     ate = hoje + timedelta(days=int(cfg.get("dias_degustacao") or 30))
     definir_plano(cid, plano, ate, "teste")
     return plano, ate
+
+
+def salvar_chave_pix(cid, chave: str | None):
+    db.gravar("update condutores set chave_pix = :p where id = cast(:c as uuid)", p=(chave or "").strip() or None,
+              c=str(cid))
 
 
 def indicados(cid) -> pd.DataFrame:

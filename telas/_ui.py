@@ -197,12 +197,6 @@ def selo_acesso(email: str | None, acessos: dict) -> str:
     return tag("pago", "acessou " + quando.astimezone(TZ).strftime("%d/%m %H:%M"))
 
 
-def aviso_modo_teste():
-    import streamlit as st
-    st.caption("🔐 Enquanto o login estiver em **modo Teste** no Google, inclua o e-mail da pessoa em "
-               "**Google Cloud → Google Auth Platform → Público → Usuários de teste**, senão o Google bloqueia a entrada.")
-
-
 def cartoes_planos(atual: str | None = None, precos: dict | None = None):
     """Cartões dos planos lado a lado (no celular, empilhados). `precos`: plano → planos.Preco (mostra a promoção
     com o preço cheio riscado)."""
@@ -324,6 +318,9 @@ def localizacao_ao_vivo(cid, van_id) -> str | None:
     """Liga/desliga a localização ao vivo da van. Ligada, o celular manda a posição a cada ~30 s enquanto este app
     estiver aberto e os pais veem a van num link público que expira. Devolve o link (ou None se desligada)."""
     from core import repo
+    if not recurso_liberado("gps", cid):
+        em_breve("gps")
+        return None
     loc = repo.localizacao_van(cid, van_id)
     if not (loc and loc.get("ativa")):
         if st.button("Ligar localização ao vivo", key=f"loc_on_{van_id}", icon=":material/my_location:",
@@ -400,6 +397,24 @@ def sincronizar_asaas(cid=None, forcar: bool = False) -> dict | None:
     return res
 
 
+# ---------------------------------------------------------------- laboratório (novidades só para Exclusivo)
+def recurso_liberado(chave: str, cid=None) -> bool:
+    """Recurso em teste no laboratório? Então só Exclusivo e admin veem (os outros veem um aviso de 'em breve')."""
+    from core import planos as pl, repo
+    from core.fmt import hoje
+    u = st.session_state.get("usuario") or {}
+    if (pl.config("laboratorio") or {}).get(chave, "todos") != "exclusivo":
+        return True
+    cid = cid or (u.get("condutor") or {}).get("id")
+    return pl.liberado(repo.empresa(cid) if cid else None, chave, hoje(), admin=bool(u.get("admin")))
+
+
+def em_breve(chave: str):
+    from core import planos as pl
+    st.caption(f"🧪 **{pl.RECURSOS.get(chave, chave)}** está em teste com os parceiros Exclusivos e chega para "
+               "todos em breve.")
+
+
 # ---------------------------------------------------------------- enviar contrato assinado
 def botoes_enviar_contrato(contrato: dict, aluno: str, telefone: str | None, email: str | None, para_quem: str,
                            chave: str):
@@ -407,6 +422,8 @@ def botoes_enviar_contrato(contrato: dict, aluno: str, telefone: str | None, ema
     import urllib.parse
     from core import repo
     from core.fmt import link_whats
+    if not recurso_liberado("envio_contrato"):
+        return
     link = f"{APP_URL}/?contrato={repo.token_contrato(contrato['id'] if 'id' in contrato else contrato['contrato_id'])}"
     ano = contrato.get("ano")
     msg = (f"Olá! Segue o contrato de transporte escolar de {aluno} ({ano}), assinado eletronicamente pelo app "
@@ -446,6 +463,8 @@ def api_do_gestor(emp: dict):
     from core.asaas import Asaas
     from core.fmt import hoje
     if not emp or not emp.get("asaas_gestor_chave") or not pl.tem_cobranca_auto(emp, hoje()):
+        return None
+    if not recurso_liberado("cobranca_pais", emp.get("id")):
         return None
     try:
         chave = _fernet().decrypt(emp["asaas_gestor_chave"].encode()).decode()

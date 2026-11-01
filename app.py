@@ -13,7 +13,7 @@ def _recarregar_codigo_novo():
     """O Streamlit Cloud atualiza os arquivos a cada publicação, mas guarda na memória os módulos já importados
     (core/*, telas/_ui). Recarrega os que mudaram desde a última execução — assim não precisa de Reboot."""
     for nome in ("core.fmt", "core.db", "core.planos", "core.contrato", "core.cobranca", "core.asaas", "core.repo",
-                 "core.cobranca_pais",
+                 "core.cobranca_pais", "core.comissao",
                  "core.backup", "core.auth", "telas._ui"):
         m = sys.modules.get(nome)
         arq = getattr(m, "__file__", None)
@@ -63,6 +63,15 @@ if usuario is None:
 
 if st.session_state.pop("_recarregar_perfil", False):
     auth.perfil(usuario)
+
+if not st.session_state.get("_comissao_ok"):     # 1x por sessão (e no máx. 1x por dia no banco)
+    st.session_state["_comissao_ok"] = True
+    try:
+        from core import comissao as _com
+        from core.fmt import hoje as _hoje
+        _com.atualizar_todos(_hoje())
+    except Exception:  # noqa: BLE001 — nunca atrapalha a entrada
+        pass
 
 cond = usuario.get("condutor")          # empresa da qual a pessoa é gestora
 vans_mot = usuario.get("vans_motorista") or []   # vans que a pessoa dirige (de qualquer empresa)
@@ -125,6 +134,17 @@ elif not cond and not vans_mot and not usuario.get("filhos"):
     paginas.setdefault("Começar", []).append(
         st.Page("telas/boas_vindas.py", title="Criar minha empresa", icon=":material/rocket_launch:",
                 default=not usuario.get("filhos") and not vans_mot))
+
+# parceiro Exclusivo (divulgador): canal com textos prontos, vagas VIP ao vivo e comissão
+from core import planos as _pl  # noqa: E402
+from core.fmt import hoje as _hj  # noqa: E402
+DIVULGADOR = st.Page("telas/divulgador.py", title="Canal do divulgador", icon=":material/campaign:")
+if cond and not usuario.get("bloqueado") and _pl.eh_exclusivo(cond, _hj()):
+    grupo = "Conta" if "Conta" in paginas else "Cadastros"
+    # no lugar do "Indique e ganhe": o prêmio do Exclusivo é a comissão (não ganha meses grátis)
+    paginas[grupo] = [p for p in paginas.get(grupo, []) if p.title != "Indique e ganhe"] + [DIVULGADOR]
+elif usuario.get("admin"):
+    paginas["Administração"].append(DIVULGADOR)
 
 paginas["Sobre"] = [PRIVACIDADE, TERMOS]
 

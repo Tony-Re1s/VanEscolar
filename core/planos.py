@@ -33,6 +33,22 @@ CONFIG_PADRAO = {
     "vip": {"ativo": True, "vagas": 200, "ate": None},
     "indicacao": {"ativo": True, "meta": 10, "premio_meses": 2, "plano_degustacao": "pro", "dias_degustacao": 30},
     "degustacao": {"ativo": True, "plano": "pro", "dias": 30},
+    "comissao": {"ativo": True, "meta": 100, "pct": 10, "ate": "2027-12-31"},
+    "laboratorio": {},
+    "divulgacao": {"textos": [
+        {"titulo": "Convite curto (WhatsApp)",
+         "texto": "Oi! 🚐 Conhece o Pequenos a Bordo? Rota, chamada, mensalidades e contrato da van escolar, tudo no "
+                  "celular. Os primeiros assinantes viram *Passageiro VIP* e pagam menos para sempre — restam só "
+                  "*{vagas} vagas*. Entre pelo meu link e ganhe {dias} dias grátis: {link}"},
+        {"titulo": "Grupo de transportadores",
+         "texto": "Pessoal da van escolar 👋 Estou usando o Pequenos a Bordo para organizar a rota, avisar os pais no "
+                  "WhatsApp e controlar as mensalidades. Quem assinar agora entra como Passageiro VIP: Básico por "
+                  "{vip_basico} e Pro por {vip_pro} por mês, preço travado para sempre. Faltam {vagas} vagas! "
+                  "Teste {dias} dias grátis: {link} (código {codigo})"},
+        {"titulo": "Status / story",
+         "texto": "🚐 Van escolar organizada no celular: rota, chamada, mensalidades e contrato. Últimas {vagas} vagas "
+                  "VIP com preço travado para sempre 👉 {link}"},
+    ]},
 }
 
 # Como o plano foi liberado
@@ -269,3 +285,31 @@ def tem_cobranca_auto(empresa: dict, hoje: date, cat: dict | None = None) -> boo
     cat = cat or catalogo()
     p = plano_da_empresa(empresa, hoje, cat)
     return bool(p and cat[p].get("cobranca_auto"))
+
+
+# ---------------------------------------------------------------- laboratório (recursos só para Exclusivo)
+RECURSOS = {"gps": "Localização ao vivo da van", "cobranca_pais": "Cobrança dos pais pelo Asaas",
+            "envio_contrato": "Enviar o contrato assinado por WhatsApp/e-mail"}
+
+
+def texto_divulgacao(modelo: str, valores: dict) -> str:
+    """Troca {link}, {vagas}… pelos valores; marcador desconhecido fica como está (não quebra o texto)."""
+    class _D(dict):
+        def __missing__(self, k):
+            return "{" + k + "}"
+    try:
+        return str(modelo).format_map(_D(valores))
+    except (ValueError, IndexError):
+        return str(modelo)
+
+
+def eh_exclusivo(empresa: dict, hoje: date, cat: dict | None = None) -> bool:
+    return bool(empresa) and tipo_da_empresa(empresa) == "cortesia" and liberada(empresa, hoje, cat)
+
+
+def liberado(empresa: dict | None, chave: str, hoje: date, admin: bool = False) -> bool:
+    """Recurso liberado para esta empresa? No laboratório ('exclusivo') só Exclusivo (e admin) usa."""
+    modo = (config("laboratorio") or {}).get(chave, "todos")
+    if modo != "exclusivo" or admin:
+        return True
+    return eh_exclusivo(empresa or {}, hoje)
