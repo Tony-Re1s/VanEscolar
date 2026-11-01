@@ -375,8 +375,12 @@ def filhos(pids: list[str]) -> pd.DataFrame:
                e.nome as escola, c.nome as condutor, c.chave_pix, c.id as condutor_id,
                coalesce(v.motorista_nome, c.nome) as motorista,
                coalesce(v.motorista_telefone, c.telefone) as condutor_tel,
-               v.placa, v.veiculo, v.nome as van
+               v.placa, v.veiculo, v.nome as van,
+               coalesce(v.motorista_apelido, case when lower(v.motorista_email) = lower(u.email) then c.apelido end)
+                 as apelido,
+               case when v.loc_ate > now() then v.loc_token end as loc_token
         from passageiros p join condutores c on c.id = p.condutor_id
+        left join usuarios u on u.id = c.usuario_id
         left join escolas e on e.id = p.escola_id left join vans v on v.id = p.van_id
         where p.id = any(cast(:ids as uuid[])) order by p.nome""", ids=pids)
 
@@ -403,6 +407,16 @@ def avisar_ausencia(pid, dia: date, ida: bool, volta: bool, motivo, usuario_id):
                  on conflict (passageiro_id, data) do update set ida=excluded.ida, volta=excluded.volta,
                      motivo=excluded.motivo, criado_por=excluded.criado_por, criado_em=now()""",
               pid=pid, d=dia, ida=ida, volta=volta, m=motivo, u=usuario_id)
+
+
+def desfazer_falta_trecho(cid, pid, dia: date, trecho: str):
+    """Motorista: "vai sim" — tira o aviso de falta dos pais só deste trecho (se sobrar nada, apaga o aviso)."""
+    col = "ida" if trecho == "ida" else "volta"
+    db.gravar(f"""update ausencias a set {col} = false from passageiros p
+                  where a.passageiro_id = p.id and p.id = :pid and p.condutor_id = :cid and a.data = :d""",
+              pid=pid, cid=cid, d=dia)
+    db.gravar("delete from ausencias where passageiro_id = :pid and data = :d and not ida and not volta",
+              pid=pid, d=dia)
 
 
 def cancelar_ausencia(pid, aid):
@@ -1112,3 +1126,34 @@ def apagar_dados_empresa(cid, hoje: date):
             s.execute(text(f"delete from {t} where condutor_id = cast(:c as uuid)"), {"c": str(cid)})
         s.execute(text("update condutores set dados_apagados_em = :h where id = cast(:c as uuid)"),
                   {"h": hoje, "c": str(cid)})
+
+
+# ------------------------------------------------------------------ avisos do gestor para os pais
+def salvar_aviso(cid, alvo: str, texto: str, por: str, ate: date | None, van_id=None, passageiro_id=None):
+    db.gravar("""insert into avisos (condutor_id, alvo, van_id, passageiro_id, texto, criado_por, ate)
+                 values (:c, :a, cast(:v as uuid), cast(:p as uuid), :t, :por, :ate)""",
+              c=cid, a=alvo, v=str(van_id) if van_id else None, p=str(passageiro_id) if passageiro_id else None,
+              t=texto.strip()[:1000], por=por, ate=ate)
+
+
+def avisos_empresa(cid) -> pd.DataFrame:
+    return db.ao_vivo("""select a.id, a.alvo, a.texto, a.criado_em, a.ate, a.criado_por, v.nome as van, p.nome as aluno
+                         from avisos a left join vans v on v.id = a.van_id left join passageiros p on p.id = a.passageiro_id
+                         where a.condutor_id = :c order by a.criado_em desc limit 50""", c=cid)
+
+
+def excluir_aviso(cid, aid):
+    db.gravar("delete from avisos where id = cast(:a as uuid) and condutor_id = :c", a=str(aid), c=cid)
+
+
+def avisos_dos_filhos(pids: list[str], hoje: date) -> pd.DataFrame:
+    """Avisos em vigor para cada filho: os gerais da empresa, os da van dele e os só dele (últimos 30 dias)."""
+    if not pids:
+        return pd.DataFrame()
+    return db.ao_vivo("""
+        select p.id as passageiro_id, a.id, a.alvo, a.texto, a.criado_em, a.ate
+        from passageiros p join avisos a on a.condutor_id = p.condutor_id
+         and (a.alvo = 'todos' or (a.alvo = 'van' and a.van_id = p.van_id) or (a.alvo = 'aluno' and a.passageiro_id = p.id))
+        where p.id = any(cast(:ids as uuid[])) and (a.ate is null or a.ate >= :h)
+          and a.criado_em > now() - interval '30 days'
+        order by a.criado_em desc""", ids=pids, h=hoje)

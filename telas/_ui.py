@@ -116,6 +116,12 @@ button[data-testid="stBaseButton-secondary"]:hover, .stLinkButton > a:hover {bor
 [class*="st-key-lp_"] [data-testid="stHorizontalBlock"] {flex-wrap: nowrap !important; gap: .5rem !important;}
 [class*="st-key-lp_"] [data-testid="stColumn"] {min-width: 0 !important;}
 [class*="st-key-linha"] button, [class*="st-key-linha"] a {padding-left: .3rem !important; padding-right: .3rem !important;}
+/* chamada: botões grandes (avisar / avisar + local) e cartão esmaecido de quem não vai */
+[class*="st-key-linha_av"] button, [class*="st-key-linha_av"] a {min-height: 3.1rem !important; font-size: 1.02rem !important;
+    font-weight: 700 !important; border-radius: 16px !important;}
+[class*="st-key-linha_ok"] button, [class*="st-key-linha_ok"] a {min-height: 2.7rem !important; font-size: .98rem !important;}
+[class*="st-key-card_falta"] {opacity: .55;}
+[class*="st-key-card_falta"]:hover {opacity: .85;}
 /* página inicial e planos */
 .ve-hero {text-align:center; padding: 1.2rem .5rem 1.4rem;}
 .ve-hero .logo {width:120px; height:120px; margin: 0 auto .4rem; filter: drop-shadow(0 12px 20px rgba(10,156,151,.25));}

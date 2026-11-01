@@ -485,3 +485,17 @@ insert into config (chave, valor) values
   ('fidelidade', '{"pausa_preco": 9.9, "pausa_dias": 60, "dados_dias": 60, "perde_vip": true}')
 on conflict (chave) do nothing;
 alter table condutores add column if not exists perdeu_vip boolean not null default false;   -- cancelou: não volta a ser VIP
+
+-- v20 — avisos do gestor para os pais: para todos, para uma van ou para um aluno (aparecem na área da família)
+create table if not exists avisos (
+  id             uuid primary key default gen_random_uuid(),
+  condutor_id    uuid not null references condutores(id) on delete cascade,
+  alvo           text not null check (alvo in ('todos', 'van', 'aluno')),
+  van_id         uuid references vans(id) on delete cascade,
+  passageiro_id  uuid references passageiros(id) on delete cascade,
+  texto          text not null,
+  criado_por     text,
+  criado_em      timestamptz not null default now(),
+  ate            date
+);
+create index if not exists ix_avisos_condutor on avisos(condutor_id, criado_em);

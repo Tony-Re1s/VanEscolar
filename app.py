@@ -94,6 +94,7 @@ elif cond and (cond.get("modo") or "completo") == "facil":
         st.Page("telas/facil_rota.py", title="Rota", icon=":material/airport_shuttle:", default=True)]) + [
         st.Page("telas/facil_alunos.py", title="Alunos", icon=":material/groups:", default=EM_PAUSA),
         st.Page("telas/mensalidades.py", title="Mensalidades", icon=":material/payments:"),
+        st.Page("telas/avisos.py", title="Avisos aos pais", icon=":material/notifications:"),
     ]
     paginas["Conta"] = [
         st.Page("telas/meu_cadastro.py", title="Minha empresa", icon=":material/storefront:"),
@@ -102,7 +103,8 @@ elif cond and (cond.get("modo") or "completo") == "facil":
     ]
 elif cond:
     paginas["Dia a dia"] = [st.Page("telas/hoje.py", title="Hoje", icon=":material/today:", default=True)] + (
-        [] if EM_PAUSA else [st.Page("telas/chamada.py", title="Rota e chamada", icon=":material/fact_check:")])
+        [] if EM_PAUSA else [st.Page("telas/chamada.py", title="Rota e chamada", icon=":material/fact_check:")]) + [
+        st.Page("telas/avisos.py", title="Avisos aos pais", icon=":material/notifications:")]
     paginas["Dinheiro"] = [
         st.Page("telas/mensalidades.py", title="Mensalidades", icon=":material/payments:"),
         st.Page("telas/financeiro.py", title="Financeiro", icon=":material/monitoring:"),

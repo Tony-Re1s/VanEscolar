@@ -1,5 +1,7 @@
 """Rota do dia e chamada (embarque / desembarque / falta) — por van.
 Gestor: escolhe qualquer van da empresa. Motorista contratado: só a(s) van(s) que dirige."""
+import urllib.parse
+
 import streamlit as st
 
 from core import mensagens as M, repo
@@ -108,39 +110,71 @@ if rota:
         st.caption("A rota tem mais de 10 paradas: o Maps mostra as 9 primeiras e o destino.")
 
 st.divider()
-BOT = {"ida": [("embarcou", "Embarcou"), ("desembarcou", "Na escola"), ("faltou", "Faltou")],
-       "volta": [("embarcou", "Embarcou"), ("desembarcou", "Entregue"), ("faltou", "Faltou")]}
+FEITO = {"ida": "Na escola", "volta": "Entregue"}
 for r in df.itertuples():
-    with st.container(border=True, key=f"card_{r.id}"):
-        st_atual = r.status if isinstance(r.status, str) else None
-        etiqueta = (_ui.tag(st_atual, _ui.ROTULO_CHAM[st_atual]) if st_atual
-                    else _ui.tag("aviso", "Avisou falta") if r.avisou else "")
+    st_atual = r.status if isinstance(r.status, str) else None
+    nao_vai = st_atual == "faltou" or (r.avisou and st_atual is None)
+    with st.container(border=True, key=f"card_{'falta_' if nao_vai else ''}{r.id}"):
+        etiqueta = (_ui.tag(st_atual, {"embarcou": "Embarcou", "desembarcou": FEITO[trecho] + " ✓",
+                                       "faltou": "Faltou"}[st_atual]) if st_atual
+                    else _ui.tag("aviso", "Pais avisaram falta") if r.avisou else "")
+        end = ", ".join(x for x in (r.endereco, r.bairro) if x)
         st.markdown(f"**{r.ordem_rota}. {_ui.esc(r.nome)}** {etiqueta}  \n"
-                    f"<span class='ve-sub'>{_ui.esc(', '.join(x for x in (r.endereco, r.bairro) if x) or 'sem endereço')}"
+                    f"<span class='ve-sub'>{_ui.esc(end or 'sem endereço')}"
                     f"{' · ' + _ui.esc(r.referencia) if r.referencia else ''} · {_ui.esc(r.escola or 'sem escola')}"
                     f"</span>", unsafe_allow_html=True)
         if r.observacoes:
             st.caption(f"⚠️ {r.observacoes}")
-        cols = st.container(key=f"linha_{r.id}").columns([1, 1, 1, 1, 1])
-        for col, (k, rot) in zip(cols, BOT[trecho]):
-            if col.button(rot, key=f"{k}_{r.id}", width="stretch",
-                          type="primary" if st_atual == k else "secondary"):
-                repo.marcar(cid, van_id, r.id, dia, trecho, None if st_atual == k else k)
-                st.rerun()
+        if r.avisou:
+            st.caption("📣 Os pais avisaram que não vai" + (f": {r.aviso_motivo}" if r.aviso_motivo else "") + ".")
+
+        # 1) avisar (grandes): só mensagem / com o link da van no mapa
         nome1 = r.nome.split()[0]
-        link = link_whats(r.telefone, M.chegando(trecho, nome1, apelido, agora().hour))
-        if link:
-            cols[3].link_button("Avisar", link, icon=":material/chat:", width="stretch",
-                                help="\"Está chegando\" no WhatsApp do responsável.")
-            if link_mapa:
-                cols[4].link_button("+ Local", link_whats(r.telefone, M.chegando(trecho, nome1, apelido,
-                                                                                    agora().hour, link_mapa)),
-                                    icon=":material/share_location:", width="stretch",
-                                    help="Avisa que está chegando e manda o link da van no mapa.")
+        if not nao_vai:
+            a1, a2 = st.container(key=f"linha_av_{r.id}").columns(2)
+            link = link_whats(r.telefone, M.chegando(trecho, nome1, apelido, agora().hour))
+            if link:
+                a1.link_button("Avisar", link, icon=":material/chat:", width="stretch",
+                               help="\"Está chegando\" no WhatsApp do responsável.")
             else:
-                cols[4].button("+ Local", key=f"loc_{r.id}", disabled=True, width="stretch",
-                               icon=":material/share_location:",
-                               help="Inicie a rota e ligue a localização ao vivo (no topo) para mandar o mapa.")
+                a1.button("Avisar", key=f"semzap2_{r.id}", disabled=True, width="stretch", icon=":material/chat:",
+                          help="Cadastre o WhatsApp do responsável.")
+            if link and link_mapa:
+                a2.link_button("Avisar + local", link_whats(r.telefone, M.chegando(trecho, nome1, apelido,
+                                                                                     agora().hour, link_mapa)),
+                               icon=":material/share_location:", width="stretch", type="primary",
+                               help="Avisa que está chegando e manda o link da van no mapa.")
+            else:
+                a2.button("Avisar + local", key=f"loc_{r.id}", disabled=True, width="stretch",
+                          icon=":material/share_location:",
+                          help="Inicie a rota e ligue a localização ao vivo (no topo) para mandar o mapa."
+                          if link else "Cadastre o WhatsApp do responsável.")
+
+        # 2) concluído ✓ / faltou / como chegar
+        b1, b2, b3 = st.container(key=f"linha_ok_{r.id}").columns(3)
+        feito = st_atual in ("desembarcou", "embarcou")
+        if b1.button(FEITO[trecho], key=f"ok_{r.id}", width="stretch", icon=":material/check_circle:",
+                     type="primary" if feito else "secondary",
+                     help=("Deixou na escola" if trecho == "ida" else "Entregou em casa") + " (toque de novo para desfazer)."):
+            repo.marcar(cid, van_id, r.id, dia, trecho, None if feito else "desembarcou")
+            st.rerun()
+        if r.avisou and st_atual is None:
+            if b2.button("Vai sim", key=f"vai_{r.id}", width="stretch", icon=":material/undo:",
+                         help="Os pais avisaram falta, mas a criança vai: tira o aviso deste trajeto."):
+                repo.desfazer_falta_trecho(cid, r.id, dia, trecho)
+                st.rerun()
+        elif b2.button("Faltou", key=f"falta_{r.id}", width="stretch", icon=":material/person_off:",
+                       type="primary" if st_atual == "faltou" else "secondary",
+                       help="Marca a falta (toque de novo para desfazer)."):
+            repo.marcar(cid, van_id, r.id, dia, trecho, None if st_atual == "faltou" else "faltou")
+            st.rerun()
+        if end:
+            b3.link_button("Como chegar", "https://www.google.com/maps/dir/?api=1&travelmode=driving&destination="
+                           + urllib.parse.quote(end), icon=":material/navigation:", width="stretch",
+                           help="Abre o Google Maps com o caminho até a casa.")
+        else:
+            b3.button("Como chegar", key=f"nav_{r.id}", disabled=True, width="stretch", icon=":material/navigation:",
+                      help="Cadastre o endereço do aluno.")
 
 st.divider()
 with st.expander("Ordem da rota"):

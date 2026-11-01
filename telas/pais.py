@@ -20,6 +20,7 @@ if filhos.empty:
 
 status = repo.status_hoje(pids, h)
 rotas = repo.rotas_dos_filhos(pids, h)
+avisos = repo.avisos_dos_filhos(pids, h)
 
 
 def _contrato(f, pid):
@@ -127,6 +128,17 @@ abas = st.tabs([r.nome.split()[0] for r in filhos.itertuples()]) if len(filhos) 
 for aba, f in zip(abas, filhos.itertuples()):
     pid = str(f.id)
     with aba:
+        # avisos do transporte (gerais, da van ou só deste filho)
+        av = avisos[avisos["passageiro_id"].astype(str) == pid] if not avisos.empty else avisos
+        quem_av = f.apelido or f.condutor
+        for x in av.itertuples():
+            st.markdown(f"<div class='ve-faixa'>📣 <b>Aviso de {_ui.esc(quem_av)}</b> "
+                        f"<span class='ve-sub'>· {x.criado_em.astimezone(TZ):%d/%m %H:%M}</span><br>"
+                        f"{_ui.sem_formula(_ui.esc(x.texto))}</div>", unsafe_allow_html=True)
+        # localização ao vivo da van (quando o motorista ligou)
+        if f.loc_token:
+            st.link_button("📍 Ver a van no mapa agora", _ui.link_mapa(f.loc_token), type="primary",
+                           width="stretch")
         _contrato(f, pid)
 
         # carteirinha
