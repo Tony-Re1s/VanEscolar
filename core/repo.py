@@ -1137,15 +1137,25 @@ def apagar_dados_empresa(cid, hoje: date):
 
 
 # ------------------------------------------------------------------ avisos do gestor para os pais
-def salvar_aviso(cid, alvo: str, texto: str, por: str, ate: date | None, van_id=None, passageiro_id=None):
-    db.gravar("""insert into avisos (condutor_id, alvo, van_id, passageiro_id, texto, criado_por, ate)
-                 values (:c, :a, cast(:v as uuid), cast(:p as uuid), :t, :por, :ate)""",
+def salvar_aviso(cid, alvo: str, texto: str, por: str, ate: date | None, van_id=None, passageiro_id=None,
+                 publico: str = "pais"):
+    db.gravar("""insert into avisos (condutor_id, alvo, van_id, passageiro_id, texto, criado_por, ate, publico)
+                 values (:c, :a, cast(:v as uuid), cast(:p as uuid), :t, :por, :ate, :pub)""",
               c=cid, a=alvo, v=str(van_id) if van_id else None, p=str(passageiro_id) if passageiro_id else None,
-              t=texto.strip()[:1000], por=por, ate=ate)
+              t=texto.strip()[:1000], por=por, ate=ate, pub=publico)
+
+
+def avisos_equipe(cid, van_id, hoje: date) -> pd.DataFrame:
+    """Recados do gestor para motoristas/monitores: os gerais e os desta van, em vigor."""
+    return db.ao_vivo("""select id, texto, criado_em, criado_por from avisos
+                         where condutor_id = :c and publico = 'equipe' and (ate is null or ate >= :h)
+                           and (alvo = 'todos' or van_id = cast(:v as uuid))
+                         order by criado_em desc limit 10""", c=cid, v=str(van_id), h=hoje)
 
 
 def avisos_empresa(cid) -> pd.DataFrame:
-    return db.ao_vivo("""select a.id, a.alvo, a.texto, a.criado_em, a.ate, a.criado_por, v.nome as van, p.nome as aluno
+    return db.ao_vivo("""select a.id, a.alvo, a.publico, a.texto, a.criado_em, a.ate, a.criado_por, v.nome as van,
+                                p.nome as aluno
                          from avisos a left join vans v on v.id = a.van_id left join passageiros p on p.id = a.passageiro_id
                          where a.condutor_id = :c order by a.criado_em desc limit 50""", c=cid)
 
@@ -1162,6 +1172,6 @@ def avisos_dos_filhos(pids: list[str], hoje: date) -> pd.DataFrame:
         select p.id as passageiro_id, a.id, a.alvo, a.texto, a.criado_em, a.ate
         from passageiros p join avisos a on a.condutor_id = p.condutor_id
          and (a.alvo = 'todos' or (a.alvo = 'van' and a.van_id = p.van_id) or (a.alvo = 'aluno' and a.passageiro_id = p.id))
-        where p.id = any(cast(:ids as uuid[])) and (a.ate is null or a.ate >= :h)
+        where p.id = any(cast(:ids as uuid[])) and a.publico = 'pais' and (a.ate is null or a.ate >= :h)
           and a.criado_em > now() - interval '30 days'
         order by a.criado_em desc""", ids=pids, h=hoje)

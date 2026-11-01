@@ -505,3 +505,6 @@ alter table vans add column if not exists monitor_nome text;
 alter table vans add column if not exists monitor_email text;
 alter table vans add column if not exists monitor_telefone text;
 alter table vans add column if not exists monitor_apelido text;
+
+-- v22 — avisos também para a equipe (motoristas e monitores), além dos pais
+alter table avisos add column if not exists publico text not null default 'pais';

@@ -28,6 +28,22 @@ else:
     st.caption(f"🚐 {_ui.rotulo_van(van, varias)}")
 cid, van_id = van["cid"], van["id"]
 
+# motorista/monitor: recados do gestor e contato rápido com ele
+if not van["gestor"]:
+    for x in repo.avisos_equipe(cid, van_id, hoje()).itertuples():
+        st.markdown(f"<div class='ve-faixa'>📌 <b>Recado do gestor</b> <span class='ve-sub'>· "
+                    f"{x.criado_em.astimezone(TZ):%d/%m %H:%M}</span><br>{_ui.sem_formula(_ui.esc(x.texto))}</div>",
+                    unsafe_allow_html=True)
+    tel_g = van.get("empresa_tel")
+    if tel_g:
+        from core.fmt import so_digitos
+        g1, g2 = st.container(key="linha_gestor").columns(2)
+        g1.link_button("Ligar para o gestor", f"tel:+55{so_digitos(tel_g)[-11:]}", icon=":material/call:",
+                       width="stretch")
+        lk_g = link_whats(tel_g, f"Olá! Aqui é da {van['nome']}.")
+        if lk_g:
+            g2.link_button("WhatsApp do gestor", lk_g, icon=":material/chat:", width="stretch")
+
 a, b = st.columns([1, 1])
 dia = a.date_input("Dia", value=hoje(), format="DD/MM/YYYY", label_visibility="collapsed")
 padrao = "ida" if agora().hour < 11 or 13 <= agora().hour < 15 else "volta"
@@ -94,6 +110,18 @@ else:
         repo.parar_localizacao(cid, van_id)
         repo.desfazer_inicio_rota(cid, van_id, dia, trecho)
         st.rerun()
+
+# recado rápido para todas as famílias desta van (aparece na área dos pais hoje)
+with st.expander("Avisar todos os pais desta van", icon=":material/campaign:"):
+    PRONTOS = ["Hoje a van vai atrasar uns 15 minutos.", "Hoje a van vai atrasar uns 30 minutos.",
+               "Trânsito pesado — chegaremos um pouco mais tarde.", "Outro aviso…"]
+    escolha_av = st.radio("Aviso", PRONTOS, key=f"av_pronto_{van_id}", label_visibility="collapsed")
+    txt_av = st.text_input("Escreva o aviso", key=f"av_txt_{van_id}") if escolha_av == PRONTOS[-1] else escolha_av
+    if st.button("Publicar para os pais", icon=":material/send:", key=f"av_pub_{van_id}", type="primary",
+                 disabled=not (txt_av or "").strip()):
+        repo.salvar_aviso(cid, "van", txt_av, u.get("nome") or u["email"], hoje(), van_id=van_id)
+        st.toast("Aviso publicado — os pais da van já veem no app.")
+    st.caption("Aparece hoje no topo da área da família de todos os alunos desta van.")
 
 # rota no Google Maps
 casas = [", ".join(x for x in (r.endereco, r.bairro) if x) for r in vao.itertuples() if r.endereco]

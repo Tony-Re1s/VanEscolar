@@ -293,7 +293,7 @@ def vans_acessiveis(u: dict) -> list[dict]:
     for v in u.get("vans_motorista") or []:
         if str(v["id"]) not in vistos:
             out.append(dict(id=str(v["id"]), nome=v["nome"], placa=v.get("placa"), cid=v["condutor_id"],
-                            empresa=v["empresa"], gestor=False, minha=True))
+                            empresa=v["empresa"], gestor=False, minha=True, empresa_tel=v.get("empresa_tel")))
     out.sort(key=lambda x: (not x["minha"], x["empresa"], x["nome"]))   # a que a pessoa dirige vem primeiro
     return out
 

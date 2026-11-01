@@ -12,15 +12,21 @@ from telas._ui import exigir_condutor
 c = exigir_condutor()
 u = st.session_state["usuario"]
 cid = c["id"]
-st.title("Avisos aos pais")
-st.caption("O aviso aparece no topo da área da família (Meus filhos) de quem você escolher. Ex.: \"Amanhã não tem "
-           "van por causa do feriado\", \"Hoje vou atrasar 15 minutos\".")
+st.title("Avisos")
+PUB = {"pais": "Para os pais", "equipe": "Para a equipe"}
+publico = st.segmented_control("Público", list(PUB), format_func=PUB.get, default="pais", key="av_pub") or "pais"
+st.caption("O aviso aparece no topo da área da família (Meus filhos). Ex.: \"Amanhã não tem van por causa do "
+           "feriado\"." if publico == "pais" else
+           "O recado aparece no topo da Rota e chamada dos motoristas e monitores. Ex.: \"Amanhã a Ana sai mais "
+           "cedo, às 11h\".")
 
 vans = repo.vans(cid)
 alunos = repo.passageiros(cid)
-ALVOS = {"todos": "Todas as famílias", "van": "Uma van", "aluno": "Um aluno"}
+ALVOS = {"todos": "Todas as famílias", "van": "Uma van", "aluno": "Um aluno"} if publico == "pais" else \
+    {"todos": "Toda a equipe", "van": "Equipe de uma van"}
 
-alvo = st.segmented_control("Para quem", list(ALVOS), format_func=ALVOS.get, default="todos", key="av_alvo") or "todos"
+alvo = st.segmented_control("Para quem", list(ALVOS), format_func=ALVOS.get, default="todos",
+                            key=f"av_alvo_{publico}") or "todos"
 with st.form("aviso", clear_on_submit=True):
     van_id = aluno_id = None
     if alvo == "van":
@@ -47,14 +53,29 @@ if ok:
         st.error("Escolha para quem é o aviso.")
     else:
         repo.salvar_aviso(cid, alvo, texto, u.get("nome") or u["email"], hoje() + timedelta(days=int(dias) - 1),
-                          van_id, aluno_id)
-        st.session_state["_ultimo_aviso"] = dict(alvo=alvo, van=van_id, aluno=aluno_id, texto=texto.strip())
-        st.toast("Aviso publicado — já aparece para os pais.")
+                          van_id, aluno_id, publico=publico)
+        st.session_state["_ultimo_aviso"] = dict(alvo=alvo, van=van_id, aluno=aluno_id, texto=texto.strip(),
+                                                 publico=publico)
+        st.toast("Aviso publicado — já aparece " + ("para os pais." if publico == "pais" else "para a equipe."))
         st.rerun()
 
 # depois de publicar: atalho para mandar também no WhatsApp de cada família
 ult = st.session_state.get("_ultimo_aviso")
-if ult and not alunos.empty:
+if ult and ult.get("publico") == "equipe" and not vans.empty:
+    eq = vans if ult["alvo"] == "todos" else vans[vans["id"].astype(str) == ult["van"]]
+    tels = []
+    for r in eq.itertuples():
+        for nome, tel, email in ((r.motorista_nome, r.motorista_telefone, r.motorista_email),
+                                 (r.monitor_nome, r.monitor_telefone, r.monitor_email)):
+            if tel and (email or "") != u["email"]:
+                tels.append((f"{nome or 'Equipe'} ({r.nome})", tel))
+    if tels:
+        with st.expander(f"Mandar também no WhatsApp ({len(tels)} pessoa(s) da equipe)", icon=":material/chat:"):
+            for nome, tel in tels:
+                lk = link_whats(tel, f"📌 {ult['texto']}")
+                if lk:
+                    st.link_button(nome, lk, icon=":material/send:", width="stretch")
+elif ult and not alunos.empty:
     dest = alunos if ult["alvo"] == "todos" else \
         alunos[alunos["van_id"].astype(str) == ult["van"]] if ult["alvo"] == "van" else \
         alunos[alunos["id"].astype(str) == ult["aluno"]]
@@ -72,7 +93,10 @@ av = repo.avisos_empresa(cid)
 if av.empty:
     st.caption("Nenhum aviso ainda.")
 for r in av.itertuples():
-    para = {"todos": "todas as famílias", "van": f"van {r.van}", "aluno": f"família de {r.aluno}"}[r.alvo]
+    if r.publico == "equipe":
+        para = "toda a equipe" if r.alvo == "todos" else f"equipe da van {r.van}"
+    else:
+        para = {"todos": "todas as famílias", "van": f"van {r.van}", "aluno": f"família de {r.aluno}"}[r.alvo]
     vence = r.ate is not None and r.ate < hoje()
     with st.container(border=True, key=f"card_aviso_{r.id}"):
         x1, x2 = st.columns([5, 1])
