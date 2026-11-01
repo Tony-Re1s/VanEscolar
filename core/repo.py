@@ -35,8 +35,18 @@ def criar_empresa(usuario_id, email: str, nome: str, telefone: str | None, dirig
 
 
 def atualizar_empresa(cid, d: dict):
+    d = dict(d, apelido=" ".join((d.get("apelido") or "").split()) or None)
     db.gravar("""update condutores set nome=:nome, telefone=:telefone, chave_pix=:chave_pix,
-                 dia_vencimento=:dia_vencimento where id=:cid""", cid=cid, **d)
+                 dia_vencimento=:dia_vencimento, apelido=:apelido where id=:cid""", cid=cid, **d)
+
+
+def apelido_motorista(van_id) -> str | None:
+    """Como as famílias chamam quem dirige esta van: o apelido da van; se for o próprio gestor, o apelido dele."""
+    r = db.um("""select coalesce(v.motorista_apelido,
+                                 case when lower(v.motorista_email) = lower(u.email) then c.apelido end) as apelido
+                 from vans v join condutores c on c.id = v.condutor_id left join usuarios u on u.id = c.usuario_id
+                 where v.id = cast(:v as uuid)""", v=str(van_id))
+    return (r or {}).get("apelido")
 
 
 def empresas_todas() -> pd.DataFrame:
@@ -63,13 +73,14 @@ def vans(cid, so_ativas=True) -> pd.DataFrame:
 
 
 _CAMPOS_V = ["nome", "veiculo", "placa", "capacidade", "motorista_nome", "motorista_email", "motorista_telefone",
-             "motorista_cnh", "ativo"]
+             "motorista_cnh", "motorista_apelido", "ativo"]
 
 
 def salvar_van(cid, d: dict, vid=None):
     d = {k: d.get(k) for k in _CAMPOS_V}
     d["motorista_email"] = (d.get("motorista_email") or "").strip().lower() or None
     d["placa"] = (d.get("placa") or "").strip().upper() or None
+    d["motorista_apelido"] = " ".join((d.get("motorista_apelido") or "").split()) or None
     if vid:
         db.gravar(f"update vans set {', '.join(f'{k}=:{k}' for k in _CAMPOS_V)} where id=:vid and condutor_id=:cid",
                   cid=cid, vid=vid, **d)

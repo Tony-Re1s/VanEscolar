@@ -66,6 +66,9 @@ with st.form("van", clear_on_submit=v is None):
     mot_tel = m3.text_input("WhatsApp do motorista", value=g("motorista_telefone") or "",
                             help="Aparece para os pais como contato da van.")
     mot_cnh = m4.text_input("CNH (opcional)", value=g("motorista_cnh") or "")
+    mot_apelido = st.text_input("Como as famílias chamam quem dirige", value=g("motorista_apelido") or "",
+                                placeholder="Tio Jô, Tia Rose…" + (" (vazio = o seu, de Minha empresa)" if eu_dirijo else ""),
+                                help="Vai nas mensagens da rota: \"O tio Jô está a caminho para buscar a Helena\".")
     ativo = st.checkbox("Van ativa", value=bool(g("ativo") if v else True))
     ok = st.form_submit_button("Salvar van", type="primary")
 
@@ -80,7 +83,7 @@ if ok:
                  motorista_nome=(c["nome"] if eu_dirijo else (mot_nome or None)),
                  motorista_email=(u["email"] if eu_dirijo else (mot_email or None)),
                  motorista_telefone=(mot_tel or (c.get("telefone") if eu_dirijo else None)) or None,
-                 motorista_cnh=mot_cnh or None, ativo=ativo)
+                 motorista_cnh=mot_cnh or None, motorista_apelido=mot_apelido or None, ativo=ativo)
     if ativo and (not v or not bool(g("ativo"))) and not _ui.checar_limite(c, "vans"):
         st.stop()
     repo.salvar_van(cid, dados, vid=g("id"))

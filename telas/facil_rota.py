@@ -1,7 +1,7 @@
 """Modo fácil — Rota: iniciar a rota e avisar cada família no WhatsApp (só a mensagem, ou com o link da van no mapa)."""
 import streamlit as st
 
-from core import repo
+from core import mensagens as M, repo
 from core.fmt import TZ, agora, hoje, link_whats
 from telas import _ui
 from telas._ui import exigir_condutor
@@ -56,19 +56,20 @@ vao = df[~df["avisou"] & (df["status"] != "faltou")]
 faltas = df[df["avisou"] | (df["status"] == "faltou")]
 st.subheader(f"Avisar as famílias ({len(vao)})")
 st.caption("Cada botão abre o WhatsApp do responsável com a mensagem pronta — é só enviar.")
-saud = "Bom dia" if agora().hour < 12 else "Boa tarde" if agora().hour < 18 else "Boa noite"
+apelido = repo.apelido_motorista(van_id)
+if not apelido:
+    st.caption("💡 Diga como as famílias te chamam (ex.: **Tio Jô**) em **Minha empresa** — aí a mensagem fica "
+               "\"O tio Jô está a caminho para buscar…\".")
+hora = agora().hour
 for pos, r in enumerate(vao.itertuples(), start=1):
     nome1 = r.nome.split()[0]
-    if trecho == "ida":
-        msg = f"{saud}! 🚐 A van está a caminho para buscar {nome1}. Deixe-o(a) pronto(a), por favor."
-    else:
-        msg = f"{saud}! 🚐 A van saiu da escola e está levando {nome1} para casa."
+    msg = M.saindo(trecho, nome1, apelido, hora)
     with st.container(border=True, key=f"card_fam_{r.id}"):
         st.markdown(f"**{pos}. {_ui.esc(r.nome)}**" + ("" if r.telefone else
                     " <span class='ve-sub'>· sem WhatsApp do responsável</span>"), unsafe_allow_html=True)
         x1, x2 = st.container(key=f"linha_fam_{r.id}").columns(2)
         so_msg = link_whats(r.telefone, msg)
-        com_loc = link_whats(r.telefone, f"{msg} Acompanhe a van ao vivo: {link}") if link else None
+        com_loc = link_whats(r.telefone, M.saindo(trecho, nome1, apelido, hora, link)) if link else None
         if so_msg:
             x1.link_button("Estou a caminho", so_msg, icon=":material/airport_shuttle:", width="stretch")
         else:

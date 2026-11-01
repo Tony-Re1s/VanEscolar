@@ -2,7 +2,7 @@
 Gestor: escolhe qualquer van da empresa. Motorista contratado: só a(s) van(s) que dirige."""
 import streamlit as st
 
-from core import repo
+from core import mensagens as M, repo
 from core.fmt import TZ, TURNOS, agora, data_br, hoje, inicio_mes, link_maps_rota, link_whats, somar_meses
 from telas import _ui
 
@@ -58,6 +58,8 @@ _ui.kpis([("Alunos no trecho", len(df)), ("Embarcaram", int(n_emb)), ("Desembarc
 # iniciar rota: registra a saída (os pais veem no app) e lista uma mensagem pronta no WhatsApp para o
 # responsável de cada criança que vai hoje, na ordem da rota (o WhatsApp comum não permite envio automático em massa)
 inicio = repo.rota_iniciada(van_id, dia, trecho)
+apelido = repo.apelido_motorista(van_id)
+link_mapa = None
 if inicio is None:
     if dia == hoje() and st.button(f"Iniciar rota — {'ida' if trecho == 'ida' else 'volta'}", type="primary",
                                    icon=":material/play_arrow:", width="stretch",
@@ -68,7 +70,6 @@ else:
     st.success(f"Rota iniciada às {inicio.astimezone(TZ).strftime('%H:%M')} — os pais já veem no app.",
                icon=":material/directions_bus:")
     vao_hoje = df[~df["avisou"] & (df["status"] != "faltou")]
-    saud = "Bom dia" if agora().hour < 12 else "Boa tarde" if agora().hour < 18 else "Boa noite"
     with st.container(border=True, key="card_loc_chamada"):
         st.markdown("**📍 Localização ao vivo** <span class='ve-sub'>— com ela ligada, as mensagens levam o link "
                     "da van no mapa</span>", unsafe_allow_html=True)
@@ -77,13 +78,8 @@ else:
         st.caption("Toque em cada um: abre a conversa do responsável cadastrado com a mensagem pronta — é só enviar.")
         for pos, r in enumerate(vao_hoje.itertuples(), start=1):
             nome1 = r.nome.split()[0]
-            if trecho == "ida":
-                msg = (f"{saud}! 🚐 A van saiu agora para a ida. {nome1} é o {pos}º da rota — "
-                       f"deixe-o(a) pronto(a), por favor. Se não for hoje, avise pelo app Turminha a Bordo.")
-            else:
-                msg = f"{saud}! 🚐 A van saiu da escola agora e está levando {nome1} para casa."
-            if link_mapa:
-                msg += f" Acompanhe a van ao vivo: {link_mapa}"
+            msg = M.saindo(trecho, nome1, apelido, agora().hour, link_mapa,
+                           parada=pos if trecho == "ida" else None, avisar_falta=trecho == "ida")
             lk = link_whats(r.telefone, msg)
             if lk:
                 st.link_button(f"{pos}. {r.nome}", lk, icon=":material/chat:", width="stretch")
@@ -123,16 +119,26 @@ for r in df.itertuples():
                     f"</span>", unsafe_allow_html=True)
         if r.observacoes:
             st.caption(f"⚠️ {r.observacoes}")
-        cols = st.container(key=f"linha_{r.id}").columns(4)
+        cols = st.container(key=f"linha_{r.id}").columns([1, 1, 1, 1, 1])
         for col, (k, rot) in zip(cols, BOT[trecho]):
             if col.button(rot, key=f"{k}_{r.id}", width="stretch",
                           type="primary" if st_atual == k else "secondary"):
                 repo.marcar(cid, van_id, r.id, dia, trecho, None if st_atual == k else k)
                 st.rerun()
-        msg = ("Bom dia! A van está chegando para buscar " if trecho == "ida" else "Olá! A van está chegando com ")
-        link = link_whats(r.telefone, msg + f"{r.nome.split()[0]}. 🚐")
+        nome1 = r.nome.split()[0]
+        link = link_whats(r.telefone, M.chegando(trecho, nome1, apelido, agora().hour))
         if link:
-            cols[3].link_button("Avisar", link, icon=":material/chat:", width="stretch")
+            cols[3].link_button("Avisar", link, icon=":material/chat:", width="stretch",
+                                help="\"Está chegando\" no WhatsApp do responsável.")
+            if link_mapa:
+                cols[4].link_button("+ Local", link_whats(r.telefone, M.chegando(trecho, nome1, apelido,
+                                                                                    agora().hour, link_mapa)),
+                                    icon=":material/share_location:", width="stretch",
+                                    help="Avisa que está chegando e manda o link da van no mapa.")
+            else:
+                cols[4].button("+ Local", key=f"loc_{r.id}", disabled=True, width="stretch",
+                               icon=":material/share_location:",
+                               help="Inicie a rota e ligue a localização ao vivo (no topo) para mandar o mapa.")
 
 st.divider()
 with st.expander("Ordem da rota"):

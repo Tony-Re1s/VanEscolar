@@ -470,3 +470,7 @@ create table if not exists suporte_mensagens (
 );
 create index if not exists ix_suporte_condutor on suporte_mensagens(condutor_id, criado_em);
 create index if not exists ix_suporte_tg on suporte_mensagens(tg_msg_id);
+
+-- v18 — como as famílias chamam quem dirige ("Tio Jô", "Tia Rose"): vai nas mensagens de WhatsApp da rota
+alter table vans add column if not exists motorista_apelido text;
+alter table condutores add column if not exists apelido text;

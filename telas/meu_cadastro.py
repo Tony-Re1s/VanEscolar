@@ -10,7 +10,11 @@ st.title("Minha empresa")
 
 with st.form("empresa"):
     nome = st.text_input("Nome / nome do transporte *", value=c["nome"])
-    telefone = st.text_input("WhatsApp", value=c.get("telefone") or "")
+    t1, t2 = st.columns(2)
+    telefone = t1.text_input("WhatsApp", value=c.get("telefone") or "")
+    apelido = t2.text_input("Como as famílias te chamam", value=c.get("apelido") or "", placeholder="Tio Jô, Tia Rose…",
+                            help="Vai nas mensagens da rota: \"O tio Jô está a caminho para buscar a Helena\". "
+                                 "Vale para as vans que você mesmo dirige.")
     c1, c2 = st.columns(2)
     chave_pix = c1.text_input("Chave Pix", value=c.get("chave_pix") or "",
                               help="Aparece para os pais na área da família e na mensagem de cobrança.")
@@ -23,7 +27,7 @@ if ok:
         st.error("Preencha o nome.")
         st.stop()
     repo.atualizar_empresa(c["id"], dict(nome=nome.strip(), telefone=telefone or None, chave_pix=chave_pix or None,
-                                         dia_vencimento=int(dia)))
+                                         dia_vencimento=int(dia), apelido=apelido))
     auth.perfil(st.session_state["usuario"])
     st.success("Salvo.")
     st.rerun()
