@@ -7,3 +7,4 @@ pandas>=2.2
 altair>=5
 reportlab>=4.0
 cryptography>=42
+streamlit-js-eval>=1.0

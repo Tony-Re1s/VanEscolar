@@ -36,6 +36,11 @@ _ui.css()
 st.logo(str(_ST / "logo.svg"), size="large", icon_image=str(_ST / "van.svg"))
 
 db.migrar(db.banco_ativo(), db.versao_schema())
+if st.query_params.get("van"):          # link "ver a van no mapa" que os pais recebem — abre sem login
+    st.navigation([st.Page("telas/van_mapa.py", title="Onde está a van", icon=":material/location_on:")],
+                  position="hidden").run()
+    st.stop()
+
 PRIVACIDADE = st.Page("telas/privacidade.py", title="Privacidade", icon=":material/shield_lock:")
 TERMOS = st.Page("telas/termos.py", title="Termos de uso", icon=":material/gavel:")
 
@@ -65,6 +70,18 @@ if cond and usuario.get("bloqueado"):
     # assinatura/degustação venceu: o gestor só vê a tela do plano para pagar (nada foi apagado)
     paginas["Assinatura"] = [st.Page("telas/meu_plano.py", title="Meu plano", icon=":material/workspace_premium:",
                                      default=True)]
+elif cond and (cond.get("modo") or "completo") == "facil":
+    # modo fácil: só o essencial — os dados são os mesmos do modo completo
+    paginas["Modo fácil"] = [
+        st.Page("telas/facil_rota.py", title="Rota", icon=":material/airport_shuttle:", default=True),
+        st.Page("telas/facil_alunos.py", title="Alunos", icon=":material/groups:"),
+        st.Page("telas/mensalidades.py", title="Mensalidades", icon=":material/payments:"),
+    ]
+    paginas["Conta"] = [
+        st.Page("telas/meu_cadastro.py", title="Minha empresa", icon=":material/storefront:"),
+        st.Page("telas/meu_plano.py", title="Meu plano", icon=":material/workspace_premium:"),
+        st.Page("telas/indicacao.py", title="Indique e ganhe", icon=":material/redeem:"),
+    ]
 elif cond:
     paginas["Dia a dia"] = [
         st.Page("telas/hoje.py", title="Hoje", icon=":material/today:", default=True),
@@ -106,6 +123,19 @@ elif not cond and not vans_mot and not usuario.get("filhos"):
 paginas["Sobre"] = [PRIVACIDADE, TERMOS]
 
 nav = st.navigation(paginas, expanded=True)
+
+if cond and not usuario.get("bloqueado"):
+    # botão no topo: modo fácil × completo (só muda o que aparece; os dados são os mesmos)
+    _, topo = st.columns([3, 2])
+    modo_atual = cond.get("modo") or "completo"
+    escolhido = topo.segmented_control("Modo", ["facil", "completo"], default=modo_atual, key="modo_app",
+                                       format_func={"facil": "Modo fácil", "completo": "Modo completo"}.get,
+                                       label_visibility="collapsed", width="stretch")
+    if escolhido and escolhido != modo_atual:
+        from core import repo as _repo
+        _repo.definir_modo(cond["id"], escolhido)
+        cond["modo"] = escolhido
+        st.rerun()
 if st.session_state.get("_boas_vindas_msg"):
     st.toast(st.session_state.pop("_boas_vindas_msg"), icon="🎉")
 

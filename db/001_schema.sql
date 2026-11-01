@@ -372,3 +372,12 @@ begin
     insert into config (chave, valor) values ('mig_v10_precos', 'true');
   end if;
 end $$;
+
+-- v11 — modo fácil e localização da van ao vivo (link público que expira)
+alter table condutores add column if not exists modo text not null default 'completo';   -- facil | completo
+alter table vans add column if not exists loc_token text unique;      -- link "ver a van no mapa"
+alter table vans add column if not exists loc_lat double precision;
+alter table vans add column if not exists loc_lng double precision;
+alter table vans add column if not exists loc_precisao double precision;
+alter table vans add column if not exists loc_em timestamptz;         -- hora da última posição
+alter table vans add column if not exists loc_ate timestamptz;        -- o link vale até aqui

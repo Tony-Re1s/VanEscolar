@@ -141,6 +141,9 @@ button[data-testid="stBaseButton-secondary"]:hover, .stLinkButton > a:hover {bor
 .ve-plano .promo {display:inline-block; margin-top:4px; background:#FFF3D6; color:#8A5A00; border-radius:999px; padding:2px 10px; font-size:.75rem; font-weight:800;}
 .ve-faixa {background: linear-gradient(90deg, #FFF3D6, #FFE6A8); border:1px solid #F5D78A; color:#5C4300; border-radius:18px; padding:12px 16px; margin:.4rem 0 .8rem; font-weight:600;}
 .ve-faixa b {color:#3D2C00;}
+/* componente invisível do GPS (streamlit-js-eval): não ocupa espaço na tela */
+[data-testid="stElementContainer"]:has(iframe[title*="streamlit_js_eval"]) {height: 0 !important; min-height: 0 !important; margin: 0 !important; overflow: hidden;}
+[data-testid="stElementContainer"]:has(iframe[title*="streamlit_js_eval"]) + * {margin-top: 0;}
 .ve-rodape {text-align:center; color: var(--ve-cinza); font-size:.85rem; margin-top: 2rem;}
 .ve-doc {background:#fff; border:1px solid #E1F0EF; border-radius:20px; padding: 6px 24px 18px; box-shadow: var(--sombra);}
 @media (max-width: 640px) {
@@ -310,3 +313,54 @@ def faixa_vip(emp: dict | None = None):
 def sem_formula(t: str) -> str:
     """Escapa o '$' para o st.markdown não tratar 'R$ … R$' como fórmula matemática."""
     return t.replace("$", "\\$")
+
+
+# ---------------------------------------------------------------- localização ao vivo da van
+def link_mapa(token: str) -> str:
+    return f"{APP_URL}/?van={token}"
+
+
+def localizacao_ao_vivo(cid, van_id) -> str | None:
+    """Liga/desliga a localização ao vivo da van. Ligada, o celular manda a posição a cada ~30 s enquanto este app
+    estiver aberto e os pais veem a van num link público que expira. Devolve o link (ou None se desligada)."""
+    from core import repo
+    loc = repo.localizacao_van(cid, van_id)
+    if not (loc and loc.get("ativa")):
+        if st.button("Ligar localização ao vivo", key=f"loc_on_{van_id}", icon=":material/my_location:",
+                     width="stretch", help="O celular pede permissão de localização na primeira vez."):
+            repo.ligar_localizacao(cid, van_id)
+            st.rerun()
+        return None
+    _enviar_posicao(cid, str(van_id))
+    a, b = st.container(key=f"linha_loc_{van_id}").columns(2)
+    a.link_button("Ver o mapa", link_mapa(loc["loc_token"]), icon=":material/map:", width="stretch")
+    if b.button("Parar localização", key=f"loc_off_{van_id}", icon=":material/location_off:", width="stretch"):
+        repo.parar_localizacao(cid, van_id)
+        st.rerun()
+    return link_mapa(loc["loc_token"])
+
+
+@st.fragment(run_every=30)
+def _enviar_posicao(cid, van_id: str):
+    import time
+    from streamlit_js_eval import get_geolocation
+    from core import repo
+    from core.fmt import agora
+    pos = get_geolocation(component_key=f"geo_{van_id}_{int(time.time() // 30)}")
+    if isinstance(pos, dict) and isinstance(pos.get("coords"), dict):
+        c = pos["coords"]
+        repo.salvar_posicao(cid, van_id, float(c["latitude"]), float(c["longitude"]), c.get("accuracy"))
+        st.session_state[f"_gps_{van_id}"] = (agora(), c.get("accuracy"))
+        st.session_state.pop(f"_gps_erro_{van_id}", None)
+    elif isinstance(pos, dict) and pos.get("error"):
+        st.session_state[f"_gps_erro_{van_id}"] = True
+    if st.session_state.get(f"_gps_erro_{van_id}"):
+        st.warning("Não consegui pegar a localização. Permita o acesso à localização para este site no navegador "
+                   "do celular e deixe o GPS ligado.", icon=":material/location_disabled:")
+    ult = st.session_state.get(f"_gps_{van_id}")
+    if ult:
+        prec = f" · precisão ~{int(ult[1])} m" if ult[1] else ""
+        st.caption(f"📍 Localização ao vivo ligada — posição enviada às {ult[0]:%H:%M:%S}{prec}. "
+                   "Atualiza a cada 30 s enquanto este app estiver aberto.")
+    else:
+        st.caption("📍 Localização ao vivo ligada — pegando a posição do celular…")

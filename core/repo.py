@@ -24,7 +24,7 @@ def _filtro_van(col: str) -> str:
 def criar_empresa(usuario_id, email: str, nome: str, telefone: str | None, dirige: bool) -> dict:
     """Cadastro inicial: só nome e WhatsApp. Se o gestor também dirige, já cria a 'Van 1' com ele de motorista."""
     c = db.gravar("""
-        insert into condutores (usuario_id, nome, telefone) values (:u, :nome, :tel)
+        insert into condutores (usuario_id, nome, telefone, modo) values (:u, :nome, :tel, 'facil')
         on conflict (usuario_id) do update set nome = excluded.nome, telefone = excluded.telefone
         returning *""", u=usuario_id, nome=nome, tel=telefone)
     garantir_codigo_indicacao(c["id"])
@@ -911,3 +911,92 @@ def empresas_por_id(ids: list) -> dict:
         return {}
     df = db.ao_vivo("select * from condutores where id = any(cast(:ids as uuid[]))", ids=[str(i) for i in ids])
     return {str(r["id"]): r for r in df.to_dict("records")}
+
+
+# ------------------------------------------------------------------ modo fácil
+def definir_modo(cid, modo: str):
+    db.gravar("update condutores set modo = :m where id = cast(:cid as uuid)", m=modo, cid=str(cid))
+
+
+def alunos_facil(cid, van=None) -> pd.DataFrame:
+    """Lista enxuta: aluno, WhatsApp e nome do responsável principal, valor e vencimento."""
+    return db.ao_vivo(f"""
+        select p.id, p.nome, p.mensalidade as valor, coalesce(p.dia_vencimento, c.dia_vencimento) as vencimento,
+               p.ativo, r.id as responsavel_id, r.nome as responsavel, r.telefone as whatsapp
+        from passageiros p join condutores c on c.id = p.condutor_id
+        left join lateral (select r.* from passageiro_responsavel pr join responsaveis r on r.id = pr.responsavel_id
+                           where pr.passageiro_id = p.id order by pr.financeiro desc, r.criado_em limit 1) r on true
+        where p.condutor_id = :cid and {_filtro_van('p.van_id')}
+        order by p.ativo desc, p.ordem_rota, p.nome""", cid=cid, van=van)
+
+
+def cadastro_rapido(cid, van, nome: str, whatsapp: str | None, valor: float, dia: int | None,
+                    responsavel: str | None = None) -> str:
+    """Aluno em 4 campos: cria o aluno na van e o responsável (financeiro) com o WhatsApp."""
+    from core.fmt import hoje
+    pid = salvar_passageiro(cid, dict(nome=nome.strip(), turno="manha", mensalidade=valor or 0, van_id=van,
+                                      dia_vencimento=dia, faz_ida=True, faz_volta=True, ativo=True,
+                                      inicio=hoje()))
+    if whatsapp or responsavel:
+        vincular_responsavel(cid, pid, dict(nome=(responsavel or "").strip() or f"Responsável de {nome.split()[0]}",
+                                            telefone=whatsapp or None), financeiro=True)
+    return pid
+
+
+def atualizar_facil(cid, pid, nome: str, whatsapp: str | None, valor: float, dia: int | None, ativo: bool,
+                    responsavel_id=None):
+    db.gravar("""update passageiros set nome=:n, mensalidade=:v, dia_vencimento=:d, ativo=:a
+                 where id = cast(:p as uuid) and condutor_id = :cid""",
+              n=nome.strip(), v=valor or 0, d=dia, a=ativo, p=str(pid), cid=cid)
+    if responsavel_id:
+        db.gravar("update responsaveis set telefone=:t where id = cast(:r as uuid) and condutor_id = :cid",
+                  t=whatsapp or None, r=str(responsavel_id), cid=cid)
+    elif whatsapp:
+        vincular_responsavel(cid, str(pid), dict(nome=f"Responsável de {nome.split()[0]}", telefone=whatsapp),
+                             financeiro=True)
+
+
+# ------------------------------------------------------------------ localização da van (link "ver a van no mapa")
+def ligar_localizacao(cid, van, horas: int = 4) -> str:
+    """Liga o compartilhamento: mantém o link se ainda estiver valendo, senão cria outro. Devolve o token."""
+    import secrets
+    r = db.ao_vivo("""select loc_token, loc_ate from vans where id = cast(:v as uuid) and condutor_id = :cid""",
+                   v=str(van), cid=cid)
+    if not len(r):
+        raise ValueError("Van não encontrada.")
+    tok = r.iloc[0]["loc_token"]
+    ate = r.iloc[0]["loc_ate"]
+    ainda = ate is not None and db.um("select now() < cast(:a as timestamptz) as ok", a=ate)["ok"]
+    if not tok or not ainda:
+        tok = secrets.token_urlsafe(9)
+    db.gravar(f"""update vans set loc_token = :t, loc_ate = now() + interval '{int(horas)} hours'
+                  where id = cast(:v as uuid) and condutor_id = :cid""", t=tok, v=str(van), cid=cid)
+    return tok
+
+
+def salvar_posicao(cid, van, lat: float, lng: float, precisao: float | None):
+    db.gravar("""update vans set loc_lat=:la, loc_lng=:lo, loc_precisao=:p, loc_em=now()
+                 where id = cast(:v as uuid) and condutor_id = :cid and loc_ate > now()""",
+              la=lat, lo=lng, p=precisao, v=str(van), cid=cid)
+
+
+def parar_localizacao(cid, van):
+    db.gravar("""update vans set loc_ate = now(), loc_lat = null, loc_lng = null, loc_em = null
+                 where id = cast(:v as uuid) and condutor_id = :cid""", v=str(van), cid=cid)
+
+
+def localizacao_van(cid, van) -> dict | None:
+    df = db.ao_vivo("""select loc_token, loc_lat, loc_lng, loc_precisao, loc_em, loc_ate, (loc_ate > now()) as ativa
+                       from vans where id = cast(:v as uuid) and condutor_id = :cid""", v=str(van), cid=cid)
+    return df.iloc[0].to_dict() if len(df) else None
+
+
+def posicao_publica(token: str) -> dict | None:
+    """Para a página pública do link: só a van e a empresa — nenhum dado de criança."""
+    if not token or len(token) > 40:
+        return None
+    df = db.ao_vivo("""select v.nome as van, c.nome as empresa, v.loc_lat, v.loc_lng, v.loc_precisao, v.loc_em,
+                              v.loc_ate, (v.loc_ate > now()) as ativa
+                       from vans v join condutores c on c.id = v.condutor_id
+                       where v.loc_token = :t""", t=token)
+    return df.iloc[0].to_dict() if len(df) else None

@@ -69,6 +69,10 @@ else:
                icon=":material/directions_bus:")
     vao_hoje = df[~df["avisou"] & (df["status"] != "faltou")]
     saud = "Bom dia" if agora().hour < 12 else "Boa tarde" if agora().hour < 18 else "Boa noite"
+    with st.container(border=True, key="card_loc_chamada"):
+        st.markdown("**📍 Localização ao vivo** <span class='ve-sub'>— com ela ligada, as mensagens levam o link "
+                    "da van no mapa</span>", unsafe_allow_html=True)
+        link_mapa = _ui.localizacao_ao_vivo(cid, van_id)
     with st.expander(f"Avisar os responsáveis no WhatsApp ({len(vao_hoje)})", expanded=True):
         st.caption("Toque em cada um: abre a conversa do responsável cadastrado com a mensagem pronta — é só enviar.")
         for pos, r in enumerate(vao_hoje.itertuples(), start=1):
@@ -78,6 +82,8 @@ else:
                        f"deixe-o(a) pronto(a), por favor. Se não for hoje, avise pelo app Pequenos a Bordo.")
             else:
                 msg = f"{saud}! 🚐 A van saiu da escola agora e está levando {nome1} para casa."
+            if link_mapa:
+                msg += f" Acompanhe a van ao vivo: {link_mapa}"
             lk = link_whats(r.telefone, msg)
             if lk:
                 st.link_button(f"{pos}. {r.nome}", lk, icon=":material/chat:", width="stretch")
@@ -85,6 +91,7 @@ else:
                 st.button(f"{pos}. {r.nome} — sem WhatsApp cadastrado", disabled=True, width="stretch",
                           key=f"semzap_{r.id}")
     if st.button("Desfazer início da rota", type="tertiary"):
+        repo.parar_localizacao(cid, van_id)
         repo.desfazer_inicio_rota(cid, van_id, dia, trecho)
         st.rerun()
 
