@@ -53,7 +53,7 @@ def empresas_todas() -> pd.DataFrame:
     return db.ao_vivo("""
         select c.id, c.nome, u.email, c.telefone, c.ativo, c.criado_em::date as desde, c.plano, c.plano_ate, c.plano_tipo, c.periodo, c.preco_mensal, c.desconto_origem,
                c.desconto_ate, c.preco_combinado, c.vip, c.pedido, c.meses_gratis, c.indicacoes_pagas,
-               c.asaas_assinatura,
+               c.asaas_assinatura, c.pausa_ate, c.cancelado_em, c.perdeu_vip, c.dados_apagados_em,
                (select count(*) from vans v where v.condutor_id = c.id and v.ativo) as vans,
                (select count(*) from passageiros p where p.condutor_id = c.id and p.ativo) as alunos,
                u.ultimo_acesso
@@ -1040,3 +1040,75 @@ def conectar_asaas_gestor(cid, chave_cifrada: str, ambiente: str):
 
 def desconectar_asaas_gestor(cid):
     db.gravar("update condutores set asaas_gestor_chave = null where id = cast(:cid as uuid)", cid=str(cid))
+
+
+# ------------------------------------------------------------------ fidelização: pausa de férias, cancelamento, dados
+def pausar(cid, hoje: date, api=None) -> date:
+    """Liga a pausa de férias (preço reduzido por N dias). Com assinatura no Asaas, as próximas cobranças já vêm
+    com o valor da pausa; quando a pausa acaba, a sincronização volta o valor normal sozinha."""
+    from datetime import timedelta
+    from core import planos as pl
+    cfg = pl.config("fidelidade")
+    ate = hoje + timedelta(days=int(cfg.get("pausa_dias") or 60))
+    db.gravar("""update condutores set pausa_ate = :a, pausa_ultima = :h, cancelado_em = null
+                 where id = cast(:c as uuid)""", a=ate, h=hoje, c=str(cid))
+    _ajustar_valor_asaas(cid, hoje, api)
+    return ate
+
+
+def encerrar_pausa(cid, hoje: date, api=None):
+    from datetime import timedelta
+    db.gravar("update condutores set pausa_ate = :a where id = cast(:c as uuid) and pausa_ate >= :h",
+              a=hoje - timedelta(days=1), h=hoje, c=str(cid))
+    _ajustar_valor_asaas(cid, hoje, api)
+
+
+def _ajustar_valor_asaas(cid, hoje: date, api):
+    from core import planos as pl
+    emp = empresa(cid)
+    if not (api and emp and emp.get("asaas_assinatura")):
+        return
+    mensal = pl.preco_vigente(dict(emp, plano_ate=None), hoje)
+    valor = round(mensal * (12 if (emp.get("periodo") or "mensal") == "anual" else 1), 2)
+    if valor and abs(valor - float(emp.get("asaas_valor") or 0)) > 0.009:
+        api.atualizar_valor(emp["asaas_assinatura"], valor)
+        db.gravar("update condutores set asaas_valor = :v where id = cast(:c as uuid)", v=valor, c=str(cid))
+
+
+def cancelar_plano(cid, hoje: date, api=None):
+    """Cancela de vez: para a cobrança automática, marca o cancelamento e (pela regra) perde o Passageiro VIP.
+    O plano segue até o fim do período já pago."""
+    from core import planos as pl
+    emp = empresa(cid)
+    if api and emp and emp.get("asaas_assinatura"):
+        from core import asaas
+        asaas.cancelar_assinatura(api, db.conexao(db.banco_ativo()).engine, emp)
+    perde = bool(pl.config("fidelidade").get("perde_vip", True))
+    db.gravar(f"""update condutores set cancelado_em = :h, pausa_ate = null, pedido = null
+                  {", vip = false, perdeu_vip = true" if perde else ""}
+                  where id = cast(:c as uuid)""", h=hoje, c=str(cid))
+
+
+def dados_vencidos(hoje: date) -> pd.DataFrame:
+    """Empresas sem plano há mais que o prazo de guarda (e com dados ainda não apagados)."""
+    from core import planos as pl
+    dias = int(pl.config("fidelidade").get("dados_dias") or 60)
+    return db.ao_vivo("""
+        select c.id, c.nome, c.plano, c.plano_tipo, c.plano_ate, c.cancelado_em,
+               (select count(*) from passageiros p where p.condutor_id = c.id) as alunos,
+               (select count(*) from vans v where v.condutor_id = c.id) as vans
+        from condutores c
+        where c.dados_apagados_em is null and coalesce(c.plano_tipo, 'pago') <> 'cortesia'
+          and c.plano_ate is not null and c.plano_ate + cast(:d as int) < :h
+        order by c.plano_ate""", d=dias, h=hoje)
+
+
+def apagar_dados_empresa(cid, hoje: date):
+    """Apaga os dados de operação (alunos, responsáveis, vans, escolas, mensalidades, contratos, financeiro, chamadas,
+    suporte). A conta e o histórico de assinatura ficam — a pessoa pode assinar de novo e começar do zero."""
+    with db.transacao() as s:
+        for t in ("chamadas", "mensalidades", "contratos", "lancamentos", "passageiros", "responsaveis", "vans",
+                  "escolas", "suporte_mensagens"):
+            s.execute(text(f"delete from {t} where condutor_id = cast(:c as uuid)"), {"c": str(cid)})
+        s.execute(text("update condutores set dados_apagados_em = :h where id = cast(:c as uuid)"),
+                  {"h": hoje, "c": str(cid)})

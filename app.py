@@ -81,15 +81,18 @@ if cond and not cond.get("ativo", True):
     st.stop()
 
 paginas: dict[str, list] = {}
+from core import planos as _plp  # noqa: E402
+from core.fmt import hoje as _hjp  # noqa: E402
+EM_PAUSA = bool(cond) and _plp.em_pausa(cond, _hjp())     # pausa de férias: rota e chamada ficam de fora
 if cond and usuario.get("bloqueado"):
     # assinatura/degustação venceu: o gestor só vê a tela do plano para pagar (nada foi apagado)
     paginas["Assinatura"] = [st.Page("telas/meu_plano.py", title="Meu plano", icon=":material/workspace_premium:",
                                      default=True)]
 elif cond and (cond.get("modo") or "completo") == "facil":
     # modo fácil: só o essencial — os dados são os mesmos do modo completo
-    paginas["Modo fácil"] = [
-        st.Page("telas/facil_rota.py", title="Rota", icon=":material/airport_shuttle:", default=True),
-        st.Page("telas/facil_alunos.py", title="Alunos", icon=":material/groups:"),
+    paginas["Modo fácil"] = ([] if EM_PAUSA else [
+        st.Page("telas/facil_rota.py", title="Rota", icon=":material/airport_shuttle:", default=True)]) + [
+        st.Page("telas/facil_alunos.py", title="Alunos", icon=":material/groups:", default=EM_PAUSA),
         st.Page("telas/mensalidades.py", title="Mensalidades", icon=":material/payments:"),
     ]
     paginas["Conta"] = [
@@ -98,10 +101,8 @@ elif cond and (cond.get("modo") or "completo") == "facil":
         st.Page("telas/indicacao.py", title="Indique e ganhe", icon=":material/redeem:"),
     ]
 elif cond:
-    paginas["Dia a dia"] = [
-        st.Page("telas/hoje.py", title="Hoje", icon=":material/today:", default=True),
-        st.Page("telas/chamada.py", title="Rota e chamada", icon=":material/fact_check:"),
-    ]
+    paginas["Dia a dia"] = [st.Page("telas/hoje.py", title="Hoje", icon=":material/today:", default=True)] + (
+        [] if EM_PAUSA else [st.Page("telas/chamada.py", title="Rota e chamada", icon=":material/fact_check:")])
     paginas["Dinheiro"] = [
         st.Page("telas/mensalidades.py", title="Mensalidades", icon=":material/payments:"),
         st.Page("telas/financeiro.py", title="Financeiro", icon=":material/monitoring:"),

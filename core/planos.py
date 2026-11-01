@@ -36,6 +36,7 @@ CONFIG_PADRAO = {
     "comissao": {"ativo": True, "ate": "2027-12-31",
                  "faixas": [{"min": 50, "pct": 10}, {"min": 100, "pct": 20}]},
     "laboratorio": {},
+    "fidelidade": {"pausa_preco": 9.9, "pausa_dias": 60, "dados_dias": 60, "perde_vip": True},
     "divulgacao": {"textos": [
         {"titulo": "Convite curto (WhatsApp)",
          "texto": "Oi! 🚐 Conhece o Turminha a Bordo? Rota, chamada, mensalidades e contrato da van escolar, tudo no "
@@ -222,7 +223,8 @@ def calcular(empresa: dict | None, plano: str, hoje: date, periodo: str = "mensa
     if pv is not None and pv < base:
         if emp.get("vip"):
             cands.append((pv, 0, "vip", "Passageiro VIP", None, {}))
-        elif vip_livres(cfg_vip if cfg_vip is not None else config("vip"), vip_usadas, hoje) > 0:
+        elif not emp.get("perdeu_vip") and \
+                vip_livres(cfg_vip if cfg_vip is not None else config("vip"), vip_usadas, hoje) > 0:
             cands.append((pv, 0, "vip", "Passageiro VIP", None, {"vip_novo": True}))
     camp = campanha_ativa(campanhas or [], plano, hoje)
     if camp:
@@ -271,6 +273,8 @@ def preco_vigente(empresa: dict, hoje: date, cat: dict | None = None) -> float:
     plano = plano_da_empresa(empresa, hoje, cat)
     if plano is None or tipo_da_empresa(empresa) != "pago":
         return 0.0
+    if em_pausa(empresa, hoje):
+        return float(config("fidelidade").get("pausa_preco") or 0)
     combinado = _num(empresa.get("preco_combinado"))
     if combinado is not None and combinado > 0:
         return combinado
@@ -314,3 +318,31 @@ def liberado(empresa: dict | None, chave: str, hoje: date, admin: bool = False) 
     if modo != "exclusivo" or admin:
         return True
     return eh_exclusivo(empresa or {}, hoje)
+
+
+# ---------------------------------------------------------------- fidelização (pausa de férias, guarda dos dados)
+def em_pausa(empresa: dict, hoje: date) -> bool:
+    ate = (empresa or {}).get("pausa_ate")
+    return bool(ate) and ate >= hoje
+
+
+def pode_pausar(empresa: dict, hoje: date) -> bool:
+    """Pausa só para plano mensal pago (não anual, não Exclusivo/degustação), no máx. 1 vez a cada 12 meses."""
+    from datetime import timedelta
+    e = empresa or {}
+    if not e.get("plano") or tipo_da_empresa(e) != "pago" or (e.get("periodo") or "mensal") == "anual":
+        return False
+    if em_pausa(e, hoje):
+        return False
+    ult = e.get("pausa_ultima")
+    return not ult or ult <= hoje - timedelta(days=365)
+
+
+def prazo_dados(empresa: dict, hoje: date) -> date | None:
+    """Sem plano em vigor: até quando os dados ficam guardados (vencimento + N dias). None = está em dia."""
+    from datetime import timedelta
+    e = empresa or {}
+    if liberada(e, hoje) or e.get("dados_apagados_em"):
+        return None
+    base = e.get("plano_ate") or (e.get("criado_em").date() if hasattr(e.get("criado_em"), "date") else hoje)
+    return base + timedelta(days=int(config("fidelidade").get("dados_dias") or 60))

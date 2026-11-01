@@ -35,9 +35,14 @@ responsável pelo conteúdo das cláusulas.
 Os planos são pagos, por número de vans, com valores informados na página de Planos. Toda conta nova ganha um
 período de degustação gratuita. Os planos são mensais ou anuais e podem ser cancelados a qualquer momento; o acesso
 segue até o fim do período já pago. Quando a degustação ou a assinatura vence sem pagamento, o acesso ao app fica
-**suspenso** para o gestor, seus motoristas e os responsáveis, **sem perda de dados**, e volta assim que o pagamento
-é confirmado. Valores podem mudar com aviso prévio de 30 dias; quem já assina pode manter o preço contratado
-conforme a oferta vigente.
+**suspenso** para o gestor e seus motoristas, e volta assim que o pagamento é confirmado. Os dados ficam
+**guardados por 60 dias** depois do vencimento (ou do fim do período pago, em caso de cancelamento); passado esse
+prazo, os dados de operação (alunos, responsáveis, vans, escolas, mensalidades, contratos e financeiro) podem ser
+**apagados definitivamente**. O gestor é avisado no app antes disso e pode pedir uma cópia pelo contato informado nestes Termos.
+Ao cancelar ou ao vencer sem pagar, o plano mensal pode oferecer uma **pausa de férias** com valor reduzido e
+prazo limitado, mantendo os dados e o preço. Quem **cancela** perde o preço promocional de **Passageiro VIP**.
+Valores podem mudar com aviso prévio de 30 dias; quem já assina pode manter o preço contratado conforme a oferta
+vigente.
 
 #### 6. Uso adequado
 Não é permitido usar o app para fins ilegais, cadastrar dados de terceiros sem autorização, tentar acessar dados de

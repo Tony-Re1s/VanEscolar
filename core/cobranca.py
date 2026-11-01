@@ -2,7 +2,7 @@
 (que também roda fora do Streamlit, no GitHub Actions). Só SQL: recebe a conexão/sessão já aberta."""
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 
 from sqlalchemy import text
 
@@ -43,11 +43,18 @@ def aplicar_pagamento(s, emp: dict, hoje: date, pedido: dict | None = None) -> d
     base = max(emp["plano_ate"], hoje) if renovando else hoje
     ate = somar_meses(base, meses)
     cid = str(emp["id"])
-    if pedido:
+    if pedido and pedido.get("pausa"):
+        dias = int(pedido.get("pausa_dias") or 60)
+        s.execute(text("""update condutores set plano=:plano, plano_tipo='pago', plano_ate=:ate, periodo='mensal',
+                            pausa_ate=:pa, pausa_ultima=:hoje, cancelado_em=null, pedido=null
+                          where id = cast(:cid as uuid)"""),
+                  dict(plano=plano, ate=ate, pa=hoje + timedelta(days=dias), hoje=hoje, cid=cid))
+    elif pedido:
         dur = pedido.get("duracao_meses")
         s.execute(text("""update condutores set plano=:plano, plano_tipo='pago', plano_ate=:ate, periodo=:periodo,
                             preco_mensal=:preco, desconto_origem=:origem, desconto_ate=:dat,
-                            vip = vip or :vip, cupom_id = coalesce(cast(:cupom as uuid), cupom_id), pedido = null
+                            vip = vip or :vip, cupom_id = coalesce(cast(:cupom as uuid), cupom_id), pedido = null,
+                            cancelado_em = null
                           where id = cast(:cid as uuid)"""),
                   dict(plano=plano, ate=ate, periodo=periodo, preco=pedido.get("preco"),
                        origem=pedido.get("origem"), dat=somar_meses(hoje, int(dur)) if dur else None,
@@ -58,7 +65,7 @@ def aplicar_pagamento(s, emp: dict, hoje: date, pedido: dict | None = None) -> d
                               values (cast(:c as uuid), cast(:cid as uuid)) on conflict do nothing"""),
                       dict(c=str(pedido["cupom_id"]), cid=cid))
     else:
-        s.execute(text("""update condutores set plano_tipo='pago', plano_ate=:ate, periodo=:periodo
+        s.execute(text("""update condutores set plano_tipo='pago', plano_ate=:ate, periodo=:periodo, cancelado_em=null
                           where id = cast(:cid as uuid)"""), dict(ate=ate, periodo=periodo, cid=cid))
     contar_indicacao(s, emp)
     return ate

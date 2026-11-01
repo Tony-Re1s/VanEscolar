@@ -65,6 +65,59 @@ elif tipo == "teste" and venc:
             f"({'hoje é o último dia' if faltam <= 0 else 'falta 1 dia' if faltam == 1 else f'faltam {faltam} dias'})."
             " Depois disso o acesso é bloqueado até assinar — nada do que você cadastrou se perde.",
             icon=":material/celebration:")
+FID = pl.config("fidelidade")
+PAUSA_TXT = pl.brl(float(FID.get("pausa_preco") or 0))
+if p and pl.em_pausa(emp, HOJE):
+    with st.container(border=True, key="card_pausa"):
+        st.markdown(f"⏸️ **Pausa de férias até {data_br(emp['pausa_ate'])}** · {PAUSA_TXT}/mês  \n"
+                    "<span class='ve-sub'>Rota e chamada ficam pausadas; alunos, mensalidades, contratos e a área dos "
+                    "pais continuam funcionando. Seus dados e seu preço continuam guardados. Quando a pausa acabar, o "
+                    "plano volta ao normal sozinho.</span>", unsafe_allow_html=True)
+        if st.button("Voltar ao normal agora", icon=":material/play_arrow:", type="primary"):
+            repo.encerrar_pausa(c["id"], HOJE, API)
+            auth.perfil(st.session_state["usuario"])
+            st.toast("Pausa encerrada — rota e chamada liberadas.")
+            st.rerun()
+if p and emp.get("cancelado_em") and venc:
+    st.warning(f"Você cancelou a assinatura em {data_br(emp['cancelado_em'])}. O plano vale até **{data_br(venc)}**; "
+               f"depois o acesso é bloqueado e os dados ficam guardados por {int(FID.get('dados_dias') or 60)} dias. "
+               "Para continuar, é só assinar de novo abaixo.", icon=":material/event_busy:")
+_prazo = pl.prazo_dados(emp, HOJE) if p is None and not st.session_state["usuario"].get("admin") else None
+if _prazo:
+    st.warning(f"🗂️ Seus dados ficam guardados até **{data_br(_prazo)}**. Depois dessa data, alunos, mensalidades, "
+               "contratos e o resto do cadastro são **apagados** e não dá para recuperar.", icon=":material/delete_forever:")
+if p is None and contratado in cat and pl.pode_pausar(emp, HOJE):
+    with st.container(border=True, key="card_pausa_oferta"):
+        st.markdown(f"**Está nas férias? Pause por {PAUSA_TXT}/mês** em vez de perder tudo  \n"
+                    f"<span class='ve-sub'>Por até {int(FID.get('pausa_dias') or 60)} dias: seus dados e seu preço "
+                    "ficam guardados, mensalidades e a área dos pais funcionam; só rota e chamada ficam pausadas. "
+                    "Depois volta ao plano normal.</span>", unsafe_allow_html=True)
+        doc_p = st.text_input("CPF ou CNPJ de quem paga", value=emp.get("documento") or "", key="doc_pausa") \
+            if API else None
+        if st.button(f"Pausar por {PAUSA_TXT}/mês", type="primary", icon=":material/pause_circle:"):
+            ped = dict(plano=contratado, plano_nome=cat[contratado]["nome"], periodo="mensal",
+                       preco=float(FID.get("pausa_preco") or 0), base=float(FID.get("pausa_preco") or 0),
+                       total=float(FID.get("pausa_preco") or 0), origem="pausa", rotulo="Pausa de férias",
+                       pausa=True, pausa_dias=int(FID.get("pausa_dias") or 60),
+                       em=agora().isoformat(timespec="minutes"),
+                       mensagem=f"Olá! Quero a pausa de férias ({PAUSA_TXT}/mês) do Turminha a Bordo. "
+                                f"Empresa: {c['nome']} ({st.session_state['usuario']['email']}).")
+            if API:
+                if not asaas.documento_valido(doc_p):
+                    st.error("Digite um CPF ou CNPJ válido.")
+                    st.stop()
+                repo.salvar_documento(c["id"], asaas.so_digitos(doc_p))
+                try:
+                    asaas.assinar(API, db.conexao(db.banco_ativo()).engine, repo.empresa(c["id"]),
+                                  st.session_state["usuario"]["email"], ped, HOJE)
+                except asaas.AsaasErro as e:
+                    db._mudou()
+                    st.error(f"O Asaas recusou: {e}")
+                    st.stop()
+                db._mudou()
+            else:
+                repo.salvar_pedido(c["id"], ped)
+            st.rerun()
 if p and tipo == "pago" and emp.get("desconto_origem") and emp.get("desconto_ate"):
     st.caption(f"Preço promocional ({pl.ORIGENS.get(emp['desconto_origem'], '')}) até {data_br(emp['desconto_ate'])}; "
                "depois volta ao preço normal do plano.")
@@ -149,15 +202,36 @@ elif API and emp.get("asaas_assinatura"):
                 st.markdown(_ui.sem_formula(f"{linha} · [pagar]({x['link']})"))
             else:
                 st.caption(("✅ " if pago else "") + linha)
-        with st.expander("Cancelar assinatura"):
-            st.caption("O plano continua até o fim do período já pago; depois disso o acesso é bloqueado até assinar "
-                       "de novo. Nada é apagado.")
-            if st.checkbox("Quero cancelar a cobrança automática", key="conf_cancel_asaas") and \
-                    st.button("Cancelar assinatura", icon=":material/cancel:"):
-                asaas.cancelar_assinatura(API, db.conexao(db.banco_ativo()).engine, emp)
-                db._mudou()
-                st.toast("Assinatura cancelada.")
+
+# ---------------------------------------------------------------- cancelar (com a oferta de pausa antes)
+if p and tipo == "pago" and not emp.get("cancelado_em") and not pedido:
+    with st.expander("Cancelar assinatura", icon=":material/cancel:"):
+        if pl.pode_pausar(emp, HOJE):
+            st.markdown(f"**Antes de cancelar: que tal uma pausa de férias?** Por **{PAUSA_TXT}/mês**, por até "
+                        f"{int(FID.get('pausa_dias') or 60)} dias, você mantém **todos os dados** e o **seu preço** "
+                        + ("de **Passageiro VIP** " if emp.get("vip") else "") +
+                        "— só rota e chamada ficam pausadas. Depois volta ao normal sozinho.")
+            if st.button(f"Pausar por {PAUSA_TXT}/mês", type="primary", icon=":material/pause_circle:",
+                         key="pausar_ativo"):
+                ate_p = repo.pausar(c["id"], HOJE, API)
+                auth.perfil(st.session_state["usuario"])
+                st.toast(f"Pausa de férias ligada até {data_br(ate_p)}.")
                 st.rerun()
+            st.divider()
+        perde = bool(FID.get("perde_vip", True))
+        st.markdown("**Se cancelar:**  \n"
+                    f"- o plano continua até **{data_br(venc) if venc else 'o fim do período pago'}** e depois o "
+                    "acesso é bloqueado (para você, motoristas e pais);  \n"
+                    + (f"- você **perde o preço de Passageiro VIP** ({pl.brl(vigente)}/mês) — se voltar, paga o preço "
+                       "normal;  \n" if perde and emp.get("vip") else "") +
+                    f"- seus dados ficam guardados por **{int(FID.get('dados_dias') or 60)} dias** depois do "
+                    "vencimento e então são **apagados**.")
+        if st.checkbox("Entendi e quero cancelar", key="conf_cancel") and \
+                st.button("Cancelar assinatura", icon=":material/cancel:", key="btn_cancelar"):
+            repo.cancelar_plano(c["id"], HOJE, API)
+            db._mudou()
+            st.toast("Assinatura cancelada.")
+            st.rerun()
 
 # ---------------------------------------------------------------- assinar
 st.subheader("Assinar")

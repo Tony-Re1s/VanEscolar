@@ -474,3 +474,14 @@ create index if not exists ix_suporte_tg on suporte_mensagens(tg_msg_id);
 -- v18 — como as famílias chamam quem dirige ("Tio Jô", "Tia Rose"): vai nas mensagens de WhatsApp da rota
 alter table vans add column if not exists motorista_apelido text;
 alter table condutores add column if not exists apelido text;
+
+-- v19 — fidelização: "pausa de férias" (oferecida só ao cancelar ou ao vencer sem pagar), perda do VIP ao cancelar
+--       e prazo de guarda dos dados de quem ficou sem plano
+alter table condutores add column if not exists pausa_ate date;          -- em pausa até esta data (preço reduzido)
+alter table condutores add column if not exists pausa_ultima date;       -- início da última pausa (1 por ano)
+alter table condutores add column if not exists cancelado_em date;       -- pediu o cancelamento
+alter table condutores add column if not exists dados_apagados_em date;  -- dados apagados depois do prazo
+insert into config (chave, valor) values
+  ('fidelidade', '{"pausa_preco": 9.9, "pausa_dias": 60, "dados_dias": 60, "perde_vip": true}')
+on conflict (chave) do nothing;
+alter table condutores add column if not exists perdeu_vip boolean not null default false;   -- cancelou: não volta a ser VIP

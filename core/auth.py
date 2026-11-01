@@ -84,9 +84,11 @@ def perfil(usuario: dict) -> dict:
     emps = repo.empresas_por_id({c for _, c in filhos} | {str(v["condutor_id"]) for v in vans})
     cat = pl.catalogo()
     bloq = {i for i, e in emps.items() if not pl.liberada(e, hoje(), cat)}
+    pausa = {i for i, e in emps.items() if pl.em_pausa(e, hoje())}
     usuario["filhos"] = [p for p, c in filhos if c not in bloq]
-    usuario["vans_motorista"] = [v for v in vans if str(v["condutor_id"]) not in bloq]
-    usuario["bloqueios"] = sorted({emps[i]["nome"] for i in bloq})
+    usuario["vans_motorista"] = [v for v in vans if str(v["condutor_id"]) not in bloq | pausa]
+    usuario["bloqueios"] = sorted({emps[i]["nome"] for i in bloq} |
+                                  {emps[i]["nome"] for i in pausa if any(str(v["condutor_id"]) == i for v in vans)})
     usuario["admin"] = usuario["email"] in admins()
     cond = usuario["condutor"]
     usuario["bloqueado"] = bool(cond) and not usuario["admin"] and not pl.liberada(cond, hoje(), cat)

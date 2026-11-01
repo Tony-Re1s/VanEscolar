@@ -10,6 +10,8 @@ c = exigir_condutor()
 u = st.session_state["usuario"]
 cid = c["id"]
 
+if _ui.aviso_pausa(c):
+    st.stop()
 vans = repo.vans(cid)
 if vans.empty:      # modo fácil: ninguém precisa cadastrar van antes — cria a "Van 1"
     repo.salvar_van(cid, dict(nome="Van 1", veiculo=None, placa=None, capacidade=15, motorista_nome=c["nome"],

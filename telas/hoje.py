@@ -56,7 +56,11 @@ else:
 prox = aus[aus["data"] > h] if not aus.empty else aus
 if not prox.empty:
     st.caption("Próximas faltas avisadas: " + "; ".join(f"{r.nome} ({data_br(r.data)})" for r in prox.itertuples()))
-st.page_link("telas/chamada.py", label="Abrir rota e chamada", icon=":material/fact_check:")
+from core import planos as _pl  # noqa: E402
+if _pl.em_pausa(repo.empresa(c["id"]), h):
+    st.caption("⏸️ Pausa de férias: rota e chamada estão pausadas (veja em Meu plano).")
+else:
+    st.page_link("telas/chamada.py", label="Abrir rota e chamada", icon=":material/fact_check:")
 
 # a receber
 st.subheader("Mensalidades para cobrar")

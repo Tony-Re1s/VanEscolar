@@ -218,6 +218,19 @@ def sincronizar_suporte(intervalo: int = 60) -> dict | None:
         return None
 
 
+def aviso_pausa(cond: dict) -> bool:
+    """Empresa em pausa de férias: avisa que rota/chamada estão pausadas (True = pare a tela)."""
+    from core import planos as pl, repo
+    from core.fmt import data_br, hoje
+    emp = repo.empresa(cond["id"])
+    if not pl.em_pausa(emp, hoje()):
+        return False
+    st.info(f"⏸️ **Pausa de férias até {data_br(emp['pausa_ate'])}** — rota e chamada estão pausadas. "
+            "Para voltar antes, vá em **Meu plano → Voltar ao normal agora**.", icon=":material/pause_circle:")
+    st.page_link("telas/meu_plano.py", label="Meu plano", icon=":material/workspace_premium:")
+    return True
+
+
 def link_contato(assunto: str = "Contato — Turminha a Bordo") -> str:
     import urllib.parse
     return f"mailto:{EMAIL_CONTATO}?subject={urllib.parse.quote(assunto)}"

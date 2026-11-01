@@ -35,7 +35,8 @@ cat = pl.catalogo()
 SIT = {"pago": ("pago", "Em dia"), "vence": ("vence_logo", "Vence logo"), "vencido": ("vencido", "Vencido"),
        "teste": ("embarcou", "Degustação"), "acabou": ("vencido", "Degustação acabou"),
        "cortesia": ("desembarcou", "Exclusivo"),
-       "sem_plano": ("vencido", "Sem plano"), "off": ("faltou", "Desativada")}
+       "sem_plano": ("vencido", "Sem plano"), "off": ("faltou", "Desativada"),
+       "pausa": ("aviso", "Pausa de férias")}
 
 
 def _situacao(r) -> str:
@@ -52,6 +53,8 @@ def _situacao(r) -> str:
         return tipo
     if ate and ate < HOJE:
         return "vencido"
+    if pl.em_pausa(r, HOJE):
+        return "pausa"
     if ate and ate <= HOJE + timedelta(days=AVISO_DIAS):
         return "vence"
     return "pago"
@@ -63,7 +66,7 @@ for r in df.to_dict("records"):
     r["vig"] = pl.plano_da_empresa(r, HOJE, cat)
     linhas.append(r)
 
-pagos = [r for r in linhas if r["sit"] in ("pago", "vence")]
+pagos = [r for r in linhas if r["sit"] in ("pago", "vence", "pausa")]
 testes = [r for r in linhas if r["sit"] == "teste"]
 testes_7 = sum(1 for r in testes if r["plano_ate"] and r["plano_ate"] <= HOJE + timedelta(days=AVISO_DIAS))
 receita = sum(pl.preco_vigente(r, HOJE, cat) for r in pagos)
@@ -241,3 +244,27 @@ for r in sel:
                      icon=":material/block:" if r["ativo"] else ":material/check_circle:"):
             repo.ativar_empresa(r["id"], not r["ativo"])
             st.rerun()
+
+
+# ---------------------------------------------------------------- guarda dos dados (fidelização)
+st.divider()
+_dias = int(pl.config("fidelidade").get("dados_dias") or 60)
+st.subheader("Dados para apagar")
+venc_dados = repo.dados_vencidos(HOJE)
+if venc_dados.empty:
+    st.caption(f"Ninguém passou do prazo de guarda ({_dias} dias depois do vencimento sem pagar).")
+else:
+    st.caption(f"Empresas sem plano há mais de {_dias} dias. Os gestores foram avisados em **Meu plano**. Apagar "
+               "remove alunos, responsáveis, vans, escolas, mensalidades, contratos, financeiro e conversas — a conta "
+               "e o histórico de assinatura ficam. Não dá para desfazer.")
+    for r in venc_dados.to_dict("records"):
+        with st.container(border=True, key=f"card_apagar_{r['id']}"):
+            st.markdown(f"**{_ui.esc(r['nome'])}** <span class='ve-sub'>· venceu em {data_br(r['plano_ate'])} · "
+                        f"{int(r['alunos'])} aluno(s) · {int(r['vans'])} van(s)"
+                        + (f" · cancelou em {data_br(r['cancelado_em'])}" if r.get("cancelado_em") else "")
+                        + "</span>", unsafe_allow_html=True)
+            if st.checkbox("Confirmo apagar os dados desta empresa", key=f"conf_ap_{r['id']}") and \
+                    st.button("Apagar dados", key=f"ap_{r['id']}", icon=":material/delete_forever:"):
+                repo.apagar_dados_empresa(r["id"], HOJE)
+                st.toast(f"Dados de {r['nome']} apagados.")
+                st.rerun()

@@ -57,8 +57,9 @@ Alguns fornecedores ficam fora do Brasil; nesses casos a transferência segue o 
 
 #### 6. Por quanto tempo guardamos
 Enquanto a conta do gestor estiver ativa e pelo tempo necessário para cumprir obrigações legais (por exemplo,
-contratos e registros de pagamento). Quando o gestor encerra a conta, os dados são excluídos ou anonimizados em
-até 90 dias, salvo o que a lei exigir guardar. As cópias de segurança são substituídas em até 30 dias.
+contratos e registros de pagamento). Quando a assinatura do gestor é cancelada ou vence sem pagamento, os dados de
+operação ficam guardados por 60 dias (para ele poder voltar sem perder nada) e depois são excluídos, salvo o que a
+lei exigir guardar. As cópias de segurança são substituídas em até 30 dias.
 
 #### 7. Seus direitos
 Você pode pedir, a qualquer momento: confirmação e acesso aos seus dados, correção, anonimização, bloqueio ou

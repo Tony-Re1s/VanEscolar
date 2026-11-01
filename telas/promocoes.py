@@ -19,7 +19,7 @@ st.caption("Regra: entre cupom, campanha, Passageiro VIP e anual, o cliente paga
 
 cat = pl.catalogo()
 abas = st.tabs(["Planos e preços", "Cupons", "Campanhas", "Passageiro VIP", "Degustação", "Indicação",
-               "Divulgadores", "Laboratório"])
+               "Divulgadores", "Laboratório", "Fidelidade"])
 PLANOS = list(cat)
 
 
@@ -473,4 +473,24 @@ with abas[7]:
         if st.form_submit_button("Salvar laboratório", type="primary"):
             repo.salvar_config("laboratorio", novo)
             st.toast("Laboratório salvo.")
+            st.rerun()
+
+# ================================================================ fidelização
+with abas[8]:
+    fd = pl.config("fidelidade")
+    st.markdown("A **pausa de férias** só aparece quando o gestor clica em **Cancelar assinatura** ou quando o plano "
+                "**vence sem pagar** — nunca como opção solta. Na pausa ele paga o valor reduzido, mantém dados e "
+                "preço; só rota e chamada ficam pausadas. Plano anual não tem pausa; no máximo 1 pausa a cada 12 meses.")
+    with st.form("fid_form"):
+        a, b, cc = st.columns(3)
+        pp = a.number_input("Pausa: valor por mês (R$)", min_value=0.0, step=1.0, value=float(fd.get("pausa_preco") or 9.9),
+                            format="%.2f")
+        pd_ = b.number_input("Pausa: até quantos dias", min_value=7, step=1, value=int(fd.get("pausa_dias") or 60))
+        dd = cc.number_input("Guardar dados por (dias após vencer)", min_value=30, step=1,
+                             value=int(fd.get("dados_dias") or 60))
+        pv = st.checkbox("Quem cancela perde o preço de Passageiro VIP", value=bool(fd.get("perde_vip", True)))
+        if st.form_submit_button("Salvar fidelização", type="primary"):
+            repo.salvar_config("fidelidade", dict(pausa_preco=round(float(pp), 2), pausa_dias=int(pd_),
+                                                  dados_dias=int(dd), perde_vip=bool(pv)))
+            st.toast("Fidelização salva.")
             st.rerun()

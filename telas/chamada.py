@@ -9,6 +9,8 @@ from telas import _ui
 u = st.session_state["usuario"]
 st.title("Rota e chamada")
 
+if u.get("condutor") and _ui.aviso_pausa(u["condutor"]):
+    st.stop()
 vans = _ui.vans_acessiveis(u)
 if not vans:
     st.info("Nenhuma van cadastrada. Cadastre em **Vans e motoristas**." if u.get("condutor")
