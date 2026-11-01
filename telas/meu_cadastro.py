@@ -74,7 +74,8 @@ else:
                 except AsaasErro as e:
                     st.error(f"Não consegui conectar: {e}")
 
-st.page_link("telas/vans.py", label="Vans e motoristas", icon=":material/airport_shuttle:")
+if (c.get("modo") or "completo") != "facil":      # no modo fácil a tela de vans não aparece no menu
+    st.page_link("telas/vans.py", label="Vans e motoristas", icon=":material/airport_shuttle:")
 
 st.divider()
 st.subheader("Contrato")
