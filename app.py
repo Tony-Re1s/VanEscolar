@@ -19,6 +19,9 @@ db.migrar(db.banco_ativo(), db.versao_schema())
 PRIVACIDADE = st.Page("telas/privacidade.py", title="Privacidade", icon=":material/shield_lock:")
 TERMOS = st.Page("telas/termos.py", title="Termos de uso", icon=":material/gavel:")
 
+if st.query_params.get("indicacao"):          # link "Indique e ganhe": guarda o código para o cadastro
+    st.session_state["_indicacao"] = str(st.query_params["indicacao"]).strip().upper()[:20]
+
 usuario = auth.usuario_logado()
 if usuario is None:
     # visitante: página inicial (com o botão de entrar), privacidade e termos — sem login
@@ -53,6 +56,7 @@ if cond:
         st.Page("telas/escolas.py", title="Escolas", icon=":material/school:"),
         st.Page("telas/meu_cadastro.py", title="Minha empresa", icon=":material/storefront:"),
         st.Page("telas/meu_plano.py", title="Meu plano", icon=":material/workspace_premium:"),
+        st.Page("telas/indicacao.py", title="Indique e ganhe", icon=":material/redeem:"),
     ]
 elif vans_mot:   # motorista contratado: só a(s) van(s) dele
     paginas["Minha van"] = [
@@ -65,6 +69,7 @@ if usuario.get("filhos"):
                 default=not cond and not vans_mot))
 if usuario.get("admin"):
     paginas["Administração"] = [st.Page("telas/admin.py", title="Assinantes", icon=":material/admin_panel_settings:"),
+                                st.Page("telas/promocoes.py", title="Promoções", icon=":material/sell:"),
                                 st.Page("telas/banco.py", title="Banco e backup", icon=":material/database:")]
 if not cond and not vans_mot and not usuario.get("filhos"):
     paginas.setdefault("Começar", []).append(
@@ -74,6 +79,8 @@ if not cond and not vans_mot and not usuario.get("filhos"):
 paginas["Sobre"] = [PRIVACIDADE, TERMOS]
 
 nav = st.navigation(paginas, expanded=True)
+if st.session_state.get("_boas_vindas_msg"):
+    st.toast(st.session_state.pop("_boas_vindas_msg"), icon="🎉")
 
 with st.sidebar:
     st.markdown(f"**{_ui.esc(usuario.get('nome') or usuario['email'])}**  \n"

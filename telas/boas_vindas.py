@@ -1,7 +1,8 @@
 """1º acesso: criar a empresa (gestor). Só o essencial — vans, Pix e vencimento ficam para depois."""
 import streamlit as st
 
-from core import auth, repo
+from core import auth, planos as pl, repo
+from core.fmt import data_br, hoje
 
 u = st.session_state["usuario"]
 
@@ -24,6 +25,9 @@ st.caption("Você vira o **gestor**: cadastra as vans, os motoristas, os alunos 
 with st.form("nova_empresa"):
     nome = st.text_input("Seu nome ou nome do transporte *", value=u.get("nome") or "")
     telefone = st.text_input("WhatsApp", placeholder="(11) 99999-9999")
+    cod_ind = st.text_input("Código de indicação (opcional)", value=st.session_state.get("_indicacao") or "",
+                            placeholder="Se um colega te indicou, digite o código dele",
+                            help="Quem é indicado ganha uns dias de plano pago de presente.")
     dirige = st.checkbox("Eu também dirijo uma van", value=True,
                          help="Já cria a 'Van 1' com você de motorista. Dá para mudar em Vans e motoristas.")
     ok = st.form_submit_button("Criar", type="primary", width="stretch")
@@ -32,6 +36,19 @@ if ok:
     if not nome.strip():
         st.error("Preencha o nome.")
         st.stop()
-    repo.criar_empresa(u["id"], u["email"], nome.strip(), telefone or None, dirige)
+    indicador = None
+    if cod_ind.strip():
+        indicador = repo.empresa_por_codigo(cod_ind)
+        if not indicador:
+            st.error("Código de indicação não encontrado. Confira com quem te indicou ou deixe em branco.")
+            st.stop()
+    nova = repo.criar_empresa(u["id"], u["email"], nome.strip(), telefone or None, dirige)
+    if indicador:
+        presente = repo.aplicar_indicacao(nova["id"], indicador["id"], hoje())
+        if presente:
+            st.session_state["_boas_vindas_msg"] = (
+                f"Indicação de {indicador['nome']} aplicada: plano {pl.catalogo()[presente[0]]['nome']} liberado "
+                f"de graça até {data_br(presente[1])}! 🎉")
+    st.session_state.pop("_indicacao", None)
     auth.perfil(u)
     st.rerun()

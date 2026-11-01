@@ -137,6 +137,10 @@ button[data-testid="stBaseButton-secondary"]:hover, .stLinkButton > a:hover {bor
 .ve-plano .p {font-size:1.6rem; font-weight:800; color: var(--ve-azul);} .ve-plano .p small {font-size:.85rem;
   color: var(--ve-cinza); font-weight:600;}
 .ve-plano ul {padding-left: 1.1rem; margin:.5rem 0 0; color: #33475B;} .ve-plano li {margin: .15rem 0;}
+.ve-plano .de {color:#8A9BAA; text-decoration: line-through; font-weight:700; font-size:.95rem; margin-bottom:-4px;}
+.ve-plano .promo {display:inline-block; margin-top:4px; background:#FFF3D6; color:#8A5A00; border-radius:999px; padding:2px 10px; font-size:.75rem; font-weight:800;}
+.ve-faixa {background: linear-gradient(90deg, #FFF3D6, #FFE6A8); border:1px solid #F5D78A; color:#5C4300; border-radius:18px; padding:12px 16px; margin:.4rem 0 .8rem; font-weight:600;}
+.ve-faixa b {color:#3D2C00;}
 .ve-rodape {text-align:center; color: var(--ve-cinza); font-size:.85rem; margin-top: 2rem;}
 .ve-doc {background:#fff; border:1px solid #E1F0EF; border-radius:20px; padding: 6px 24px 18px; box-shadow: var(--sombra);}
 @media (max-width: 640px) {
@@ -196,17 +200,24 @@ def aviso_modo_teste():
                "**Google Cloud → Google Auth Platform → Público → Usuários de teste**, senão o Google bloqueia a entrada.")
 
 
-def cartoes_planos(atual: str | None = None):
-    """Cartões dos planos lado a lado (no celular, empilhados)."""
+def cartoes_planos(atual: str | None = None, precos: dict | None = None):
+    """Cartões dos planos lado a lado (no celular, empilhados). `precos`: plano → planos.Preco (mostra a promoção
+    com o preço cheio riscado)."""
     from core import planos as pl
+    cat = pl.catalogo()
     cols = st.columns(len(pl.ORDEM))
     for col, k in zip(cols, pl.ORDEM):
-        p = pl.PLANOS[k]
+        p = cat[k]
+        pr = (precos or {}).get(k)
         cls = "ve-plano" + (" atual" if k == atual else "") + (" top" if k == "pro" and k != atual else "")
         selo = "Seu plano" if k == atual else p["destaque"]
         itens = "".join(f"<li>{esc(i)}</li>" for i in p["itens"])
-        col.markdown(f"<div class='{cls}'><div class='d'>{esc(selo)}</div><h3>{esc(p['nome'])}</h3>"
-                     f"<div class='p'>{pl.preco_txt(p)}<small>{'/mês' if p['preco'] else ''}</small></div>"
+        if pr and pr.tem_desconto:
+            valor = (f"<div class='de'>{pl.brl(pr.base)}</div><div class='p'>{pl.brl(pr.final)}<small>/mês</small></div>"
+                     f"<div class='promo'>{esc(pr.rotulo)}</div>")
+        else:
+            valor = f"<div class='p'>{pl.preco_txt(p)}<small>{'/mês' if p['preco'] else ''}</small></div>"
+        col.markdown(f"<div class='{cls}'><div class='d'>{esc(selo)}</div><h3>{esc(p['nome'])}</h3>{valor}"
                      f"<ul>{itens}</ul></div>", unsafe_allow_html=True)
 
 
@@ -254,7 +265,7 @@ def checar_limite(c: dict, recurso: str, novos: int = 1) -> bool:
     if pl.cabe(plano, recurso, atual, novos):
         return True
     lim = pl.limite(plano, recurso)
-    st.error(f"O plano **{pl.PLANOS[plano]['nome']}** permite até **{lim} {recurso}** ativos e você já tem {atual}. "
+    st.error(f"O plano **{pl.catalogo()[plano]['nome']}** permite até **{lim} {recurso}** ativos e você já tem {atual}. "
              "Mude de plano para cadastrar mais.", icon=":material/upgrade:")
     st.page_link("telas/meu_plano.py", label="Ver planos", icon=":material/workspace_premium:")
     return False
@@ -267,3 +278,30 @@ def exigir_condutor() -> dict:
         st.warning("Esta tela é do condutor.")
         st.stop()
     return c
+
+
+def precos_planos(emp: dict | None, cupom: dict | None = None, periodo: str = "mensal") -> dict:
+    """Preço de cada plano para esta empresa (ou para um visitante, se emp=None), com a melhor promoção."""
+    from core import planos as pl, repo
+    from core.fmt import hoje
+    cat, camps, cfg_vip, usadas = pl.catalogo(), repo.campanhas(), pl.config("vip"), repo.vip_usadas()
+    return {k: pl.calcular(emp, k, hoje(), periodo, cupom, cat, camps, cfg_vip, usadas) for k in pl.ORDEM}
+
+
+def faixa_vip(emp: dict | None = None):
+    """Faixa do Passageiro VIP: vagas restantes (ou 'você é VIP')."""
+    from core import planos as pl, repo
+    from core.fmt import hoje
+    if emp and emp.get("vip"):
+        st.markdown("<div class='ve-faixa'>💎 Você é <b>Passageiro VIP</b>: seu preço está travado para sempre.</div>",
+                    unsafe_allow_html=True)
+        return
+    livres = pl.vip_livres(pl.config("vip"), repo.vip_usadas(), hoje())
+    if livres > 0:
+        st.markdown(f"<div class='ve-faixa'>💎 <b>Passageiro VIP</b>: assine agora e trave o preço VIP para sempre. "
+                    f"Restam <b>{livres} vaga{'s' if livres != 1 else ''}</b>.</div>", unsafe_allow_html=True)
+
+
+def sem_formula(t: str) -> str:
+    """Escapa o '$' para o st.markdown não tratar 'R$ … R$' como fórmula matemática."""
+    return t.replace("$", "\\$")

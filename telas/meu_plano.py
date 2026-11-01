@@ -1,15 +1,17 @@
-"""Meu plano: plano em vigor, uso (vans/alunos) e troca de plano."""
+"""Meu plano: plano em vigor, uso (vans/alunos), promoções (cupom, anual, campanha, VIP) e pedido de assinatura."""
 import streamlit as st
 
 from core import auth, planos as pl, repo
-from core.fmt import data_br, hoje, link_whats
+from core.fmt import agora, data_br, hoje, link_whats
 from telas import _ui
 from telas._ui import exigir_condutor
 
 c = exigir_condutor()
 emp = repo.empresa(c["id"])
-atual = pl.plano_da_empresa(emp, hoje())
-p = pl.PLANOS[atual]
+HOJE = hoje()
+cat = pl.catalogo()
+atual = pl.plano_da_empresa(emp, HOJE)
+p = cat[atual]
 uso = repo.uso_empresa(c["id"])
 
 st.title("Meu plano")
@@ -19,9 +21,11 @@ def _uso(n, lim):
     return f"{n} · sem limite" if lim is None else f"{n} de {lim}"
 
 
+# ---------------------------------------------------------------- situação
 venc = emp.get("plano_ate")
 contratado = emp.get("plano") or "gratis"
 tipo = pl.tipo_da_empresa(emp) if contratado != "gratis" else "pago"
+vigente = pl.preco_vigente(emp, HOJE, cat)
 if atual == "gratis":
     sub = pl.preco_txt(p)
 elif tipo == "teste":
@@ -29,7 +33,7 @@ elif tipo == "teste":
 elif tipo == "cortesia":
     sub = "cortesia" + (" até " + data_br(venc) if venc else "")
 else:
-    sub = ("até " + data_br(venc)) if venc else pl.preco_txt(p) + "/mês"
+    sub = f"{pl.brl(vigente)}/mês" + (f" · até {data_br(venc)}" if venc else "")
 if contratado != atual:
     situacao = "Degustação acabou" if tipo == "teste" else "Venceu → Grátis"
 else:
@@ -40,38 +44,138 @@ _ui.kpis([("Plano atual", p["nome"], sub),
           ("Situação", situacao)])
 
 if contratado != atual and tipo == "teste":
-    st.warning(f"Sua degustação do plano {pl.PLANOS[contratado]['nome']} terminou e a conta voltou ao plano Grátis. "
+    st.warning(f"Sua degustação do plano {cat[contratado]['nome']} terminou e a conta voltou ao plano Grátis. "
                "Nada foi apagado — assine para continuar com tudo liberado.", icon=":material/info:")
 elif contratado != atual:
     st.warning("Sua assinatura venceu e a conta voltou ao plano Grátis. Nada foi apagado — renove para voltar a "
                "cadastrar acima do limite.", icon=":material/info:")
 elif tipo == "teste" and venc:
-    faltam = (venc - hoje()).days
+    faltam = (venc - HOJE).days
     st.info(f"Você está experimentando o plano **{p['nome']}** de graça até **{data_br(venc)}** "
-            f"({'hoje é o último dia' if faltam <= 0 else 'falta 1 dia' if faltam == 1 else f'faltam {faltam} dias'}). Para continuar depois disso, "
-            "assine abaixo — nada do que você cadastrou se perde.", icon=":material/celebration:")
+            f"({'hoje é o último dia' if faltam <= 0 else 'falta 1 dia' if faltam == 1 else f'faltam {faltam} dias'})."
+            " Para continuar depois disso, assine abaixo — nada do que você cadastrou se perde.",
+            icon=":material/celebration:")
+if tipo == "pago" and atual != "gratis" and emp.get("desconto_origem") and emp.get("desconto_ate"):
+    st.caption(f"Preço promocional ({pl.ORIGENS.get(emp['desconto_origem'], '')}) até {data_br(emp['desconto_ate'])}; "
+               "depois volta ao preço normal do plano.")
 for rec, nome in (("vans", "vans"), ("alunos", "alunos")):
     lim = p[rec]
     if lim is not None and uso[rec] >= lim:
         st.info(f"Você atingiu o limite de {nome} do plano {p['nome']}.", icon=":material/upgrade:")
+mg = int(emp.get("meses_gratis") or 0)
+if mg:
+    st.success(f"Você tem **{mg} mês(es) grátis** ganhos por indicação — eles entram nas próximas renovações.",
+               icon=":material/redeem:")
+
+_ui.faixa_vip(emp)
+
+# ---------------------------------------------------------------- cupom e período (lidos antes dos cartões)
+cupom = None
+cod = st.session_state.get("mp_cupom")
+if cod:
+    cupom, erro_cupom = repo.validar_cupom(cod, c["id"], HOJE)
+    if erro_cupom:
+        st.session_state.pop("mp_cupom", None)
+        st.session_state["mp_cupom_erro"] = erro_cupom
+periodo = st.session_state.get("mp_periodo") or "mensal"
+cupom_preco = cupom if cupom and cupom["tipo"] in ("pct", "valor") else None
+precos = _ui.precos_planos(emp, cupom_preco, periodo)
 
 st.subheader("Planos")
-_ui.cartoes_planos(atual)
+_ui.cartoes_planos(atual, precos)
 
-st.markdown("")
+# ---------------------------------------------------------------- pedido em andamento
 contato = auth.cfg("contato_whatsapp")
-# em degustação, o próprio plano também aparece para assinar
-opcoes = [k for k in pl.ORDEM if k != "gratis" and (k != atual or tipo == "teste")]
-if opcoes:
-    a, b = st.columns([2, 1])
-    escolha = a.selectbox("Quero assinar", opcoes, index=opcoes.index(atual) if atual in opcoes else 0, format_func=lambda k: f"{pl.PLANOS[k]['nome']} — "
-                          f"{pl.preco_txt(pl.PLANOS[k])}/mês", label_visibility="collapsed")
-    msg = (f"Olá! Quero assinar o plano {pl.PLANOS[escolha]['nome']} ({pl.preco_txt(pl.PLANOS[escolha])}/mês) do "
-           f"Pequenos a Bordo para a empresa {c['nome']} ({st.session_state['usuario']['email']}).")
-    lk = link_whats(contato, msg) if contato else None
-    if lk:
-        b.link_button("Assinar", lk, icon=":material/workspace_premium:", type="primary", width="stretch")
+pedido = emp.get("pedido")
+if pedido:
+    with st.container(border=True, key="card_pedido"):
+        em = str(pedido.get("em") or "")
+        st.markdown(_ui.sem_formula(f"**Pedido enviado** em {em[8:10]}/{em[5:7]} · "
+                    f"plano **{cat[pedido['plano']]['nome']}** {pl.PERIODOS[pedido['periodo']].lower()} · "
+                    f"**{pl.brl(pedido['preco'])}/mês**" + (f" · {pedido['rotulo']}" if pedido.get("rotulo") else "") +
+                    "  \n<span class='ve-sub'>Assim que o pagamento for confirmado, o plano é liberado aqui.</span>"),
+                    unsafe_allow_html=True)
+        x1, x2 = st.container(key="linha_pedido").columns(2)
+        lk = link_whats(contato, pedido.get("mensagem", "")) if contato else None
+        if lk:
+            x1.link_button("Enviar no WhatsApp", lk, icon=":material/send:", width="stretch")
+        if x2.button("Cancelar pedido", icon=":material/close:", width="stretch"):
+            repo.salvar_pedido(c["id"], None)
+            st.rerun()
+
+# ---------------------------------------------------------------- assinar
+st.subheader("Assinar")
+pagos = [k for k in pl.ORDEM if k != "gratis"]
+with st.container(border=True, key="card_assinar"):
+    a, b = st.columns([3, 2])
+    escolha = a.selectbox("Plano", pagos, index=pagos.index(atual) if atual in pagos else pagos.index("pro"),
+                          format_func=lambda k: f"{cat[k]['nome']} — {pl.preco_txt(cat[k])}/mês")
+    anual_max = max(float(cat[k]["anual_desconto"] or 0) for k in pagos)
+    rotulos = {"mensal": "Mensal", "anual": f"Anual (-{anual_max:.0f}%)" if anual_max else "Anual"}
+    b.segmented_control("Período", list(rotulos), format_func=rotulos.get, key="mp_periodo", default="mensal")
+
+    # cupom
+    if cupom:
+        cc1, cc2 = st.columns([3, 1])
+        cc1.success(f"Cupom **{cupom['codigo']}** aplicado: " + (
+            f"{cupom['valor']:g}% de desconto" if cupom["tipo"] == "pct" else
+            f"{pl.brl(cupom['valor'])} de desconto" if cupom["tipo"] == "valor" else
+            f"{int(cupom['valor'])} dias grátis") +
+            (f" por {cupom['duracao_meses']} mês(es)" if cupom["tipo"] != "dias" and cupom.get("duracao_meses") else ""),
+            icon=":material/sell:")
+        if cc2.button("Remover", key="rm_cupom", width="stretch"):
+            st.session_state.pop("mp_cupom", None)
+            st.rerun()
     else:
-        b.button("Assinar", disabled=True, width="stretch",
-                 help="Contato de vendas ainda não configurado ([app] contato_whatsapp nos Secrets).")
+        with st.form("cupom", border=False):
+            cc1, cc2 = st.columns([3, 1], vertical_alignment="bottom")
+            codigo = cc1.text_input("Cupom de desconto", placeholder="Tem um cupom? Digite aqui")
+            if cc2.form_submit_button("Aplicar", width="stretch"):
+                ok, erro = repo.validar_cupom(codigo, c["id"], HOJE)
+                if ok:
+                    st.session_state["mp_cupom"] = ok["codigo"]
+                    st.session_state.pop("mp_cupom_erro", None)
+                    st.rerun()
+                st.session_state["mp_cupom_erro"] = erro
+        if st.session_state.get("mp_cupom_erro"):
+            st.error(st.session_state["mp_cupom_erro"])
+
+    # cupom de dias grátis: libera degustação na hora
+    if cupom and cupom["tipo"] == "dias":
+        plano_cupom = (cupom.get("planos") or ["pro"])[0]
+        if tipo == "pago" and atual != "gratis":
+            st.info("Esse cupom é de dias grátis e vale para quem ainda não é assinante.")
+        elif st.button(f"Ativar {int(cupom['valor'])} dias grátis do {cat[plano_cupom]['nome']}", type="primary",
+                       icon=":material/celebration:"):
+            pl_, ate = repo.ativar_cupom_dias(c["id"], cupom, HOJE)
+            st.session_state.pop("mp_cupom", None)
+            st.toast(f"Pronto! {cat[pl_]['nome']} liberado até {data_br(ate)}.")
+            st.rerun()
+    else:
+        if cupom and not pl.cupom_vale_para(cupom, escolha):
+            st.warning(f"O cupom {cupom['codigo']} não vale para o plano {cat[escolha]['nome']}.")
+        pr = precos[escolha]
+        if pr.tem_desconto:
+            linha = (f"<span style='text-decoration:line-through;color:#8A9BAA'>{pl.brl(pr.base)}</span> "
+                     f"por <b style='font-size:1.25rem'>{pl.brl(pr.final)}/mês</b> · {_ui.esc(pr.rotulo)}")
+            if pr.duracao_meses:
+                linha += f" — por {pr.duracao_meses} mês(es), depois {pl.brl(pr.base)}"
+        else:
+            linha = f"<b style='font-size:1.25rem'>{pl.brl(pr.final)}/mês</b>"
+        if periodo == "anual":
+            linha += f"<br><span class='ve-sub'>Pagamento anual: {pl.brl(pr.total)} por 12 meses</span>"
+        st.markdown(_ui.sem_formula(linha), unsafe_allow_html=True)
+
+        if st.button("Assinar", type="primary", icon=":material/workspace_premium:"):
+            msg = (f"Olá! Quero assinar o Pequenos a Bordo: plano {cat[escolha]['nome']} "
+                   f"{pl.PERIODOS[periodo].lower()}, {pl.brl(pr.final)}/mês"
+                   + (f" ({pr.rotulo})" if pr.tem_desconto else "")
+                   + (f", total {pl.brl(pr.total)}" if periodo == "anual" else "")
+                   + f". Empresa: {c['nome']} ({st.session_state['usuario']['email']}).")
+            repo.salvar_pedido(c["id"], dict(
+                plano=escolha, periodo=periodo, preco=pr.final, base=pr.base, total=pr.total, origem=pr.origem,
+                rotulo=pr.rotulo if pr.tem_desconto else "", duracao_meses=pr.duracao_meses,
+                cupom_id=str(pr.cupom["id"]) if pr.cupom else None, vip_novo=pr.vip_novo,
+                em=agora().isoformat(timespec="minutes"), mensagem=msg))
+            st.rerun()
     st.caption("Pagamento por Pix, boleto ou cartão. Assim que confirmado, o plano é liberado na sua conta.")

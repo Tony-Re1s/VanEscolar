@@ -27,6 +27,7 @@ def criar_empresa(usuario_id, email: str, nome: str, telefone: str | None, dirig
         insert into condutores (usuario_id, nome, telefone) values (:u, :nome, :tel)
         on conflict (usuario_id) do update set nome = excluded.nome, telefone = excluded.telefone
         returning *""", u=usuario_id, nome=nome, tel=telefone)
+    garantir_codigo_indicacao(c["id"])
     if dirige and vans(c["id"], so_ativas=False).empty:
         salvar_van(c["id"], dict(nome="Van 1", veiculo=None, placa=None, capacidade=15, motorista_nome=nome,
                                  motorista_email=email, motorista_telefone=telefone, motorista_cnh=None, ativo=True))
@@ -40,7 +41,8 @@ def atualizar_empresa(cid, d: dict):
 
 def empresas_todas() -> pd.DataFrame:
     return db.ao_vivo("""
-        select c.id, c.nome, u.email, c.telefone, c.ativo, c.criado_em::date as desde, c.plano, c.plano_ate, c.plano_tipo,
+        select c.id, c.nome, u.email, c.telefone, c.ativo, c.criado_em::date as desde, c.plano, c.plano_ate, c.plano_tipo, c.periodo, c.preco_mensal, c.desconto_origem,
+               c.desconto_ate, c.preco_combinado, c.vip, c.pedido, c.meses_gratis, c.indicacoes_pagas,
                (select count(*) from vans v where v.condutor_id = c.id and v.ativo) as vans,
                (select count(*) from passageiros p where p.condutor_id = c.id and p.ativo) as alunos,
                u.ultimo_acesso
@@ -570,3 +572,232 @@ def definir_plano(cid, plano: str, ate, tipo: str = "pago"):
     """tipo: pago | teste (degustação, volta ao Grátis em `ate`) | cortesia (sem cobrar; `ate` opcional)."""
     db.gravar("update condutores set plano = :p, plano_ate = :a, plano_tipo = :t where id = :cid",
               p=plano, a=ate, t=("pago" if plano == "gratis" else tipo), cid=cid)
+
+
+# ------------------------------------------------------------------ promoções (cupons, campanhas, VIP, indicação)
+import json as _json  # noqa: E402
+
+_CODIGO_SQL = ("upper(left(regexp_replace(split_part(nome, ' ', 1), '[^A-Za-z]', '', 'g'), 6)) "
+               "|| upper(substr(md5(id::text), 1, 3))")
+
+
+def garantir_codigo_indicacao(cid):
+    db.gravar(f"update condutores set codigo_indicacao = {_CODIGO_SQL} where id = :cid and codigo_indicacao is null",
+              cid=cid)
+
+
+def salvar_config_planos(linhas: list[dict]):
+    with db.transacao() as s:
+        for r in linhas:
+            s.execute(text("""update config_planos set nome=:nome, preco=:preco, preco_vip=:preco_vip,
+                                anual_desconto=:anual_desconto, vans=:vans, alunos=:alunos, destaque=:destaque,
+                                itens=cast(:itens as jsonb) where plano=:plano"""),
+                      dict(r, itens=_json.dumps(r["itens"], ensure_ascii=False)))
+
+
+def salvar_config(chave: str, valor: dict):
+    db.gravar("""insert into config (chave, valor) values (:c, cast(:v as jsonb))
+                 on conflict (chave) do update set valor = excluded.valor""",
+              c=chave, v=_json.dumps(valor, ensure_ascii=False, default=str))
+
+
+def _cupom_dict(r: dict | None) -> dict | None:
+    if not r:
+        return None
+    r = dict(r)
+    r["valor"] = float(r["valor"])
+    return r
+
+
+def cupons() -> pd.DataFrame:
+    return db.ao_vivo("""select c.*, (select count(*) from cupons_usos u where u.cupom_id = c.id) as usos
+                         from cupons c order by c.ativo desc, c.criado_em desc""")
+
+
+def cupom_por_id(cupom_id) -> dict | None:
+    if not cupom_id:
+        return None
+    return _cupom_dict(db.um("select * from cupons where id = cast(:i as uuid)", i=str(cupom_id)))
+
+
+def salvar_cupom(d: dict, cupom_id=None) -> dict:
+    d = dict(d, codigo=d["codigo"].strip().upper(),
+             planos=_json.dumps(d["planos"]) if d.get("planos") else None)
+    if cupom_id:
+        return db.gravar("""update cupons set codigo=:codigo, tipo=:tipo, valor=:valor, planos=cast(:planos as jsonb),
+                              duracao_meses=:duracao_meses, valido_ate=:valido_ate, limite_usos=:limite_usos,
+                              ativo=:ativo where id = cast(:id as uuid) returning *""", id=str(cupom_id), **d)
+    return db.gravar("""insert into cupons (codigo, tipo, valor, planos, duracao_meses, valido_ate, limite_usos, ativo)
+                        values (:codigo, :tipo, :valor, cast(:planos as jsonb), :duracao_meses, :valido_ate,
+                                :limite_usos, :ativo) returning *""", **d)
+
+
+def cupom_usos(cupom_id) -> pd.DataFrame:
+    return db.ao_vivo("""select c.nome, u.usado_em from cupons_usos u join condutores c on c.id = u.condutor_id
+                         where u.cupom_id = cast(:i as uuid) order by u.usado_em desc""", i=str(cupom_id))
+
+
+def validar_cupom(codigo: str, cid, hoje: date, plano: str | None = None) -> tuple[dict | None, str | None]:
+    """Devolve (cupom, None) se pode usar, ou (None, motivo)."""
+    codigo = (codigo or "").strip().upper()
+    if not codigo:
+        return None, "Digite o código do cupom."
+    c = _cupom_dict(db.um("""select c.*, (select count(*) from cupons_usos u where u.cupom_id = c.id) as usos,
+                                    exists(select 1 from cupons_usos u where u.cupom_id = c.id
+                                           and u.condutor_id = cast(:cid as uuid)) as ja_usou
+                             from cupons c where c.codigo = :cod""", cod=codigo, cid=str(cid)))
+    if not c or not c["ativo"]:
+        return None, "Cupom não encontrado."
+    if c["valido_ate"] and c["valido_ate"] < hoje:
+        return None, f"Esse cupom venceu em {c['valido_ate']:%d/%m/%Y}."
+    if c["ja_usou"]:
+        return None, "Você já usou esse cupom."
+    if c["limite_usos"] is not None and c["usos"] >= c["limite_usos"]:
+        return None, "Esse cupom já atingiu o limite de usos."
+    if plano and c.get("planos") and plano not in c["planos"]:
+        return None, "Esse cupom não vale para o plano escolhido."
+    return c, None
+
+
+def ativar_cupom_dias(cid, cupom: dict, hoje: date) -> tuple[str, date]:
+    """Cupom de dias grátis: libera degustação do plano do cupom (ou Pro) e registra o uso."""
+    from datetime import timedelta
+    plano = (cupom.get("planos") or ["pro"])[0]
+    ate = hoje + timedelta(days=int(cupom["valor"]))
+    with db.transacao() as s:
+        s.execute(text("""update condutores set plano=:p, plano_ate=:a, plano_tipo='teste' where id=cast(:cid as uuid)"""),
+                  dict(p=plano, a=ate, cid=str(cid)))
+        s.execute(text("""insert into cupons_usos (cupom_id, condutor_id) values (cast(:c as uuid), cast(:cid as uuid))
+                          on conflict do nothing"""), dict(c=str(cupom["id"]), cid=str(cid)))
+    return plano, ate
+
+
+def campanhas() -> list[dict]:
+    df = db.consultar("select * from campanhas order by ativo desc, inicio desc")
+    out = df.to_dict("records")
+    for c in out:
+        c["preco"] = float(c["preco"])
+    return out
+
+
+def salvar_campanha(d: dict, camp_id=None):
+    if camp_id:
+        db.gravar("""update campanhas set nome=:nome, plano=:plano, preco=:preco, inicio=:inicio, fim=:fim,
+                       duracao_meses=:duracao_meses, ativo=:ativo where id = cast(:id as uuid)""", id=str(camp_id), **d)
+    else:
+        db.gravar("""insert into campanhas (nome, plano, preco, inicio, fim, duracao_meses, ativo)
+                     values (:nome, :plano, :preco, :inicio, :fim, :duracao_meses, :ativo)""", **d)
+
+
+def vip_usadas() -> int:
+    r = db.um("select count(*) as n from condutores where vip")
+    return int(r["n"]) if r else 0
+
+
+def vips() -> pd.DataFrame:
+    return db.ao_vivo("select nome, plano, preco_mensal from condutores where vip order by nome")
+
+
+def salvar_pedido(cid, pedido: dict | None):
+    db.gravar("update condutores set pedido = cast(:p as jsonb) where id = cast(:cid as uuid)",
+              p=_json.dumps(pedido, ensure_ascii=False, default=str) if pedido else None, cid=str(cid))
+
+
+def definir_preco_combinado(cid, valor: float | None):
+    db.gravar("update condutores set preco_combinado = :v where id = cast(:cid as uuid)",
+              v=valor if valor else None, cid=str(cid))
+
+
+def _contar_indicacao(s, emp: dict):
+    """1º pagamento de quem foi indicado: soma 1 para quem indicou e, a cada meta, dá os meses grátis."""
+    if not emp.get("indicado_por") or emp.get("indicacao_contada"):
+        return
+    from core import planos as pl
+    cfg = pl.config("indicacao")
+    meta, premio = max(1, int(cfg.get("meta") or 10)), int(cfg.get("premio_meses") or 0)
+    s.execute(text("update condutores set indicacao_contada = true where id = cast(:i as uuid)"), dict(i=str(emp["id"])))
+    s.execute(text(f"""update condutores set indicacoes_pagas = indicacoes_pagas + 1,
+                         meses_gratis = meses_gratis + case when (indicacoes_pagas + 1) % {meta} = 0
+                                                            then {premio} else 0 end
+                       where id = cast(:i as uuid)"""), dict(i=str(emp["indicado_por"])))
+
+
+def registrar_pagamento(cid, hoje: date, pedido: dict | None = None) -> date:
+    """Confirma um pagamento. Com `pedido`, aplica o plano/preço pedido; sem, renova o plano atual
+    (1 mês, ou 12 no anual). Também conta a indicação no 1º pagamento."""
+    from core import planos as pl
+    emp = empresa(cid)
+    plano = (pedido or {}).get("plano") or emp["plano"]
+    periodo = (pedido or {}).get("periodo") or emp.get("periodo") or "mensal"
+    meses = 12 if periodo == "anual" else 1
+    renovando = emp["plano"] == plano and pl.tipo_da_empresa(emp) == "pago" and emp.get("plano_ate")
+    base = max(emp["plano_ate"], hoje) if renovando else hoje
+    ate = somar_meses(base, meses)
+    with db.transacao() as s:
+        if pedido:
+            dur = pedido.get("duracao_meses")
+            s.execute(text("""update condutores set plano=:plano, plano_tipo='pago', plano_ate=:ate, periodo=:periodo,
+                                preco_mensal=:preco, desconto_origem=:origem, desconto_ate=:dat,
+                                vip = vip or :vip, cupom_id = coalesce(cast(:cupom as uuid), cupom_id), pedido = null
+                              where id = cast(:cid as uuid)"""),
+                      dict(plano=plano, ate=ate, periodo=periodo, preco=pedido.get("preco"),
+                           origem=pedido.get("origem"), dat=somar_meses(hoje, int(dur)) if dur else None,
+                           vip=bool(pedido.get("vip_novo") or pedido.get("origem") == "vip"),
+                           cupom=pedido.get("cupom_id"), cid=str(cid)))
+            if pedido.get("cupom_id"):
+                s.execute(text("""insert into cupons_usos (cupom_id, condutor_id)
+                                  values (cast(:c as uuid), cast(:cid as uuid)) on conflict do nothing"""),
+                          dict(c=str(pedido["cupom_id"]), cid=str(cid)))
+        else:
+            s.execute(text("""update condutores set plano_tipo='pago', plano_ate=:ate, periodo=:periodo
+                              where id = cast(:cid as uuid)"""), dict(ate=ate, periodo=periodo, cid=str(cid)))
+        _contar_indicacao(s, emp)
+    return ate
+
+
+def usar_mes_gratis(cid, hoje: date) -> date | None:
+    emp = empresa(cid)
+    if not emp or int(emp.get("meses_gratis") or 0) <= 0 or (emp.get("plano") or "gratis") == "gratis":
+        return None
+    ate = somar_meses(max(emp.get("plano_ate") or hoje, hoje), 1)
+    db.gravar("""update condutores set plano_ate = :a, meses_gratis = meses_gratis - 1, plano_tipo = 'pago'
+                 where id = cast(:cid as uuid) and meses_gratis > 0""", a=ate, cid=str(cid))
+    return ate
+
+
+def empresa_por_codigo(codigo: str) -> dict | None:
+    codigo = (codigo or "").strip().upper()
+    if not codigo:
+        return None
+    return db.um("select id, nome from condutores where codigo_indicacao = :c and ativo", c=codigo)
+
+
+def aplicar_indicacao(cid, indicador_id, hoje: date) -> tuple[str, date] | None:
+    """Liga o novo gestor a quem indicou e dá a degustação maior (se a indicação estiver ligada)."""
+    from datetime import timedelta
+    from core import planos as pl
+    if not indicador_id or str(indicador_id) == str(cid):
+        return None
+    cfg = pl.config("indicacao")
+    db.gravar("update condutores set indicado_por = cast(:i as uuid) where id = cast(:cid as uuid) "
+              "and indicado_por is null", i=str(indicador_id), cid=str(cid))
+    if not cfg.get("ativo"):
+        return None
+    plano = cfg.get("plano_degustacao") or "pro"
+    ate = hoje + timedelta(days=int(cfg.get("dias_degustacao") or 30))
+    definir_plano(cid, plano, ate, "teste")
+    return plano, ate
+
+
+def indicados(cid) -> pd.DataFrame:
+    return db.ao_vivo("""select nome, plano, plano_tipo, plano_ate, indicacao_contada, criado_em::date as desde
+                         from condutores where indicado_por = cast(:cid as uuid) order by criado_em desc""",
+                      cid=str(cid))
+
+
+def ranking_indicacoes() -> pd.DataFrame:
+    return db.ao_vivo("""select c.nome, c.codigo_indicacao, c.indicacoes_pagas, c.meses_gratis,
+                                (select count(*) from condutores x where x.indicado_por = c.id) as indicados
+                         from condutores c
+                         where c.indicacoes_pagas > 0 or exists(select 1 from condutores x where x.indicado_por = c.id)
+                         order by c.indicacoes_pagas desc, indicados desc, c.nome""")

@@ -19,6 +19,7 @@ if df.empty:
 
 HOJE = hoje()
 AVISO_DIAS = 7
+cat = pl.catalogo()
 
 # situação de cada empresa
 SIT = {"pago": ("pago", "Em dia"), "vence": ("vence_logo", "Vence logo"), "vencido": ("vencido", "Vencido"),
@@ -43,7 +44,7 @@ def _situacao(r) -> str:
         if ate and ate <= HOJE + timedelta(days=AVISO_DIAS):
             return "vence"
         return "pago"
-    g = pl.PLANOS["gratis"]
+    g = cat["gratis"]
     if r["vans"] >= g["vans"] or r["alunos"] >= g["alunos"] - 2:
         return "limite"
     return "gratis"
@@ -58,7 +59,8 @@ for r in df.to_dict("records"):
 pagos = [r for r in linhas if r["sit"] in ("pago", "vence")]
 testes = [r for r in linhas if r["sit"] == "teste"]
 testes_7 = sum(1 for r in testes if r["plano_ate"] and r["plano_ate"] <= HOJE + timedelta(days=AVISO_DIAS))
-receita = sum(pl.PLANOS[r["vig"]]["preco"] for r in pagos)
+receita = sum(pl.preco_vigente(r, HOJE, cat) for r in pagos)
+pedidos = [r for r in linhas if r.get("pedido")]
 cont = {k: sum(1 for r in linhas if r["sit"] == k) for k in SIT}
 
 _ui.kpis([("Receita por mês", brl(receita), f"{len(pagos)} assinante(s) pagante(s)"),
@@ -67,13 +69,17 @@ _ui.kpis([("Receita por mês", brl(receita), f"{len(pagos)} assinante(s) pagante
           ("No Grátis", str(cont["gratis"] + cont["limite"]), f"{cont['limite']} perto do limite")])
 
 por_plano = {k: sum(1 for r in linhas if r["vig"] == k and r["ativo"]) for k in pl.ORDEM}
-st.markdown(" ".join(_ui.tag("pago" if k != "gratis" else "aberto", f"{pl.PLANOS[k]['nome']}: {n}")
+st.markdown(" ".join(_ui.tag("pago" if k != "gratis" else "aberto", f"{cat[k]['nome']}: {n}")
                      for k, n in por_plano.items()) +
             f" <span class='ve-sub'>· {len(linhas)} empresa(s) · {int(df['vans'].sum())} van(s) · "
             f"{int(df['alunos'].sum())} alunos ativos</span>", unsafe_allow_html=True)
 
+if pedidos:
+    st.warning(f"**{len(pedidos)} pedido(s) de assinatura** aguardando confirmação de pagamento — estão no topo da "
+               "lista (filtro *Pedidos*).", icon=":material/shopping_cart:")
+
 # filtros
-FILTROS = {"Todos": None, "Vencem logo": {"vence"}, "Vencidos": {"vencido"}, "Pagantes": {"pago", "vence"},
+FILTROS = {"Todos": None, "Pedidos": "pedido", "Vencem logo": {"vence"}, "Vencidos": {"vencido"}, "Pagantes": {"pago", "vence"},
            "Degustação": {"teste", "acabou"}, "Cortesia": {"cortesia"}, "Grátis no limite": {"limite"},
            "Grátis": {"gratis", "limite"}, "Desativadas": {"off"}}
 a, b = st.columns([3, 2])
@@ -83,23 +89,25 @@ busca = b.text_input("Buscar", placeholder="Buscar nome ou e-mail", label_visibi
 ORDEM_SIT = {"vencido": 0, "acabou": 1, "vence": 2, "teste": 3, "limite": 4, "pago": 5, "cortesia": 6, "gratis": 7,
              "off": 8}
 sel = [r for r in linhas
-       if (FILTROS[filtro] is None or r["sit"] in FILTROS[filtro])
+       if (FILTROS[filtro] is None or (FILTROS[filtro] == "pedido" and r.get("pedido"))
+           or (FILTROS[filtro] != "pedido" and r["sit"] in FILTROS[filtro]))
        and (not busca or busca in (r["nome"] or "").lower() or busca in (r["email"] or "").lower())]
-sel.sort(key=lambda r: (ORDEM_SIT[r["sit"]], r["plano_ate"] or HOJE, r["nome"] or ""))
+sel.sort(key=lambda r: (not r.get("pedido"), ORDEM_SIT[r["sit"]], r["plano_ate"] or HOJE, r["nome"] or ""))
 if not sel:
     st.info("Nenhuma empresa neste filtro.")
 
 
 def _mensagem(r) -> str | None:
     primeiro = (r["nome"] or "").split(" ")[0]
-    p = pl.PLANOS[r["plano"] or "gratis"]
+    p = cat[r["plano"] or "gratis"]
+    valor = pl.brl(pl.preco_vigente(dict(r, plano_ate=HOJE), HOJE, cat) or p["preco"])
     if r["sit"] == "vence":
         return (f"Olá, {primeiro}! Sua assinatura do plano {p['nome']} do Pequenos a Bordo vence em "
-                f"{data_br(r['plano_ate'])}. Quer que eu envie o Pix de {pl.preco_txt(p)} para renovar? 🚐")
+                f"{data_br(r['plano_ate'])}. Quer que eu envie o Pix de {valor} para renovar? 🚐")
     if r["sit"] == "vencido":
         return (f"Olá, {primeiro}! Sua assinatura do plano {p['nome']} do Pequenos a Bordo venceu em "
                 f"{data_br(r['plano_ate'])} e a conta voltou ao Grátis (nada foi apagado). Quer renovar por "
-                f"{pl.preco_txt(p)}/mês? 🚐")
+                f"{valor}/mês? 🚐")
     if r["sit"] == "teste" and r["plano_ate"]:
         return (f"Olá, {primeiro}! Sua degustação do plano {p['nome']} do Pequenos a Bordo vai até "
                 f"{data_br(r['plano_ate'])}. Está gostando? Para continuar com tudo liberado depois disso, é "
@@ -109,23 +117,50 @@ def _mensagem(r) -> str | None:
                 f"ao Grátis (nada foi apagado). Quer continuar no {p['nome']} por {pl.preco_txt(p)}/mês? 🚐")
     if r["sit"] == "limite":
         return (f"Olá, {primeiro}! Vi que você já está usando bastante o Pequenos a Bordo 🚐 O plano Grátis vai até "
-                f"1 van e 10 alunos. Com o Básico ({pl.preco_txt(pl.PLANOS['basico'])}/mês) os alunos ficam "
-                f"ilimitados, e o Pro ({pl.preco_txt(pl.PLANOS['pro'])}/mês) vai até 3 vans. Posso te ajudar a assinar?")
+                f"{cat['gratis']['vans']} van e {cat['gratis']['alunos']} alunos. Com o Básico ({pl.preco_txt(cat['basico'])}/mês) "
+                f"os alunos ficam ilimitados, e o Pro ({pl.preco_txt(cat['pro'])}/mês) vai até {cat['pro']['vans']} vans. "
+                "Posso te ajudar a assinar?")
     return None
 
 
 for r in sel:
     chave, rotulo = SIT[r["sit"]]
-    p = pl.PLANOS[r["plano"] or "gratis"]
+    p = cat[r["plano"] or "gratis"]
     with st.container(border=True, key=f"card_{r['id']}"):
         ate = f" até {data_br(r['plano_ate'])}" if r["plano_ate"] and (r["plano"] or "gratis") != "gratis" else ""
         if (r["plano"] or "gratis") != "gratis" and pl.tipo_da_empresa(r) != "pago":
             ate = f" · {pl.TIPOS[pl.tipo_da_empresa(r)]}" + (ate or " sem prazo")
         ultimo = f" · último acesso {data_br(r['ultimo_acesso'])}" if r.get("ultimo_acesso") else ""
-        st.markdown(f"**{_ui.esc(r['nome'])}** {_ui.tag(chave, rotulo)} {_ui.tag('pago', p['nome'] + ate)}  \n"
+        extras = ""
+        if r.get("vip"):
+            extras += " " + _ui.tag("vence_logo", "💎 VIP")
+        if int(r.get("meses_gratis") or 0):
+            extras += " " + _ui.tag("embarcou", f"🎁 {int(r['meses_gratis'])} mês(es) grátis")
+        vig = pl.preco_vigente(r, HOJE, cat)
+        if vig:
+            orig = pl.ORIGENS.get(r.get("desconto_origem") or "", "")
+            extras += (f" <span class='ve-sub'>· {pl.brl(vig)}/mês" + (f" ({orig})" if orig and vig < p["preco"] else "")
+                       + (" · anual" if r.get("periodo") == "anual" else "") + "</span>")
+        st.markdown(_ui.sem_formula(f"**{_ui.esc(r['nome'])}** {_ui.tag(chave, rotulo)} {_ui.tag('pago', p['nome'] + ate)}{extras}  \n"
                     f"<span class='ve-sub'>{_ui.esc(r['email'])} · {_ui.esc(r['telefone'] or 'sem telefone')} · "
-                    f"{r['vans']} van(s) · {r['alunos']} aluno(s) · desde {data_br(r['desde'])}{ultimo}</span>",
+                    f"{r['vans']} van(s) · {r['alunos']} aluno(s) · desde {data_br(r['desde'])}{ultimo}</span>"),
                     unsafe_allow_html=True)
+        ped = r.get("pedido")
+        if ped:
+            st.info(_ui.sem_formula(f"**Pedido:** {cat[ped['plano']]['nome']} {pl.PERIODOS[ped['periodo']].lower()} · "
+                    f"**{pl.brl(ped['preco'])}/mês**" + (f" · {ped['rotulo']}" if ped.get("rotulo") else "")
+                    + (f" · total {pl.brl(ped['total'])}" if ped["periodo"] == "anual" else "")
+                    + (f" · por {ped['duracao_meses']} mês(es)" if ped.get("duracao_meses") else "")),
+                    icon=":material/shopping_cart:")
+            p1, p2 = st.container(key=f"linha_p_{r['id']}").columns(2)
+            if p1.button("Confirmar pagamento", key=f"conf_{r['id']}", type="primary", icon=":material/check:",
+                         width="stretch"):
+                ate_ = repo.registrar_pagamento(r["id"], HOJE, ped)
+                st.toast(f"{r['nome']}: {cat[ped['plano']]['nome']} liberado até {data_br(ate_)}.")
+                st.rerun()
+            if p2.button("Descartar pedido", key=f"desc_{r['id']}", icon=":material/close:", width="stretch"):
+                repo.salvar_pedido(r["id"], None)
+                st.rerun()
         c1, c2 = st.container(key=f"linha_a_{r['id']}").columns(2)
         c3, c4 = st.container(key=f"linha_b_{r['id']}").columns(2)
         msg = _mensagem(r)
@@ -135,16 +170,24 @@ for r in sel:
                            "Convidar a assinar" if r["sit"] in ("teste", "acabou") else "Oferecer plano", lk,
                            icon=":material/chat:", width="stretch")
         if (r["plano"] or "gratis") != "gratis" and r["ativo"] and r["sit"] != "cortesia":
-            base = max(r["plano_ate"] or HOJE, HOJE)
-            if c2.button("Pagou: +1 mês", key=f"mes_{r['id']}", icon=":material/payments:", width="stretch",
-                         help=f"Marca como pago e libera o {p['nome']} até {data_br(somar_meses(base, 1))}"):
-                repo.definir_plano(r["id"], r["plano"], somar_meses(base, 1), "pago")
-                st.toast(f"{r['nome']}: {p['nome']} renovado até {data_br(somar_meses(base, 1))}.")
+            anual = r.get("periodo") == "anual"
+            if c2.button("Pagou: +12 meses" if anual else "Pagou: +1 mês", key=f"mes_{r['id']}",
+                         icon=":material/payments:", width="stretch",
+                         help=f"Marca como pago e renova o {p['nome']}"):
+                ate_ = repo.registrar_pagamento(r["id"], HOJE)
+                st.toast(f"{r['nome']}: {p['nome']} renovado até {data_br(ate_)}.")
+                st.rerun()
+        mg = int(r.get("meses_gratis") or 0)
+        if mg and (r["plano"] or "gratis") != "gratis" and r["ativo"]:
+            if st.button(f"Usar mês grátis da indicação ({mg} disponível(is))", key=f"mg_{r['id']}",
+                         icon=":material/redeem:", width="stretch"):
+                ate_ = repo.usar_mes_gratis(r["id"], HOJE)
+                st.toast(f"{r['nome']}: +1 mês grátis, até {data_br(ate_)}.")
                 st.rerun()
         with c3.popover("Plano", icon=":material/workspace_premium:", width="stretch"):
             with st.form(f"plano_{r['id']}"):
                 novo = st.selectbox("Plano", pl.ORDEM, index=pl.ORDEM.index(r["plano"] or "gratis"),
-                                    format_func=lambda k: f"{pl.PLANOS[k]['nome']} ({pl.preco_txt(pl.PLANOS[k])})")
+                                    format_func=lambda k: f"{cat[k]['nome']} ({pl.preco_txt(cat[k])})")
                 tipos = list(pl.TIPOS)
                 tipo = st.radio("Como liberar", tipos, index=tipos.index(pl.tipo_da_empresa(r)), horizontal=True,
                                 format_func=pl.TIPOS.get,
@@ -155,6 +198,10 @@ for r in sel:
                 validade = st.date_input("Válido até (Pago e Cortesia)", value=r["plano_ate"] or somar_meses(HOJE, 1),
                                          format="DD/MM/YYYY")
                 sem_prazo = st.checkbox("Cortesia sem prazo", value=r["sit"] == "cortesia" and not r["plano_ate"])
+                combinado = st.number_input("Preço combinado (R$/mês)", min_value=0.0, step=1.0, format="%.2f",
+                                            value=float(r.get("preco_combinado") or 0),
+                                            help="Preço negociado só com esta empresa. 0 = usa o preço normal "
+                                                 "(com as promoções).")
                 if st.form_submit_button("Salvar plano", type="primary"):
                     if novo == "gratis":
                         ate_novo = None
@@ -165,7 +212,8 @@ for r in sel:
                     else:
                         ate_novo = validade
                     repo.definir_plano(r["id"], novo, ate_novo, tipo)
-                    st.toast(f"{r['nome']}: {pl.PLANOS[novo]['nome']}"
+                    repo.definir_preco_combinado(r["id"], combinado or None)
+                    st.toast(f"{r['nome']}: {cat[novo]['nome']}"
                              + ("" if novo == "gratis" else f" · {pl.TIPOS[tipo]}")
                              + (f" até {data_br(ate_novo)}" if ate_novo else ""))
                     st.rerun()

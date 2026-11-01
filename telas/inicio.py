@@ -9,6 +9,17 @@ st.markdown(f"""<div class='ve-hero'><div class='logo'>{auth.VAN_SVG}</div>
 <p>O app do transporte escolar: rota e chamada, mensalidades, contrato digital e uma área para os pais
 acompanharem tudo — no celular.</p></div>""", unsafe_allow_html=True)
 
+cod = st.session_state.get("_indicacao")
+if cod:
+    from core import planos as pl, repo
+    quem = repo.empresa_por_codigo(cod)
+    cfg = pl.config("indicacao")
+    if quem and cfg.get("ativo"):
+        st.markdown(f"<div class='ve-faixa' style='text-align:center'>🎁 <b>{_ui.esc(quem['nome'])}</b> te indicou! "
+                    f"Crie sua conta com o código <b>{_ui.esc(cod)}</b> e ganhe <b>{cfg['dias_degustacao']} dias do "
+                    f"plano {pl.catalogo()[cfg['plano_degustacao']]['nome']}</b> de presente.</div>",
+                    unsafe_allow_html=True)
+
 _, meio, _ = st.columns([1, 2, 1])
 with meio:
     auth.botao_entrar("entrar_topo")
@@ -27,7 +38,8 @@ st.markdown("<div class='ve-grade'>" + "".join(
     for i, t, d in FEATS) + "</div>", unsafe_allow_html=True)
 
 st.subheader("Planos")
-_ui.cartoes_planos()
+_ui.faixa_vip()
+_ui.cartoes_planos(precos=_ui.precos_planos(None))
 st.caption("Comece grátis. Os planos pagos liberam mais vans e alunos.")
 
 st.markdown("<div class='ve-rodape'>Pequenos a Bordo · São Paulo/SP · "

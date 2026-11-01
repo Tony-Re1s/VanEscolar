@@ -249,3 +249,90 @@ alter table condutores add column if not exists plano_ate date;
 
 -- v7 — tipo do plano: pago, teste (degustação com prazo) ou cortesia (liberado sem cobrar)
 alter table condutores add column if not exists plano_tipo text not null default 'pago';
+
+-- v8 — promoções: preços editáveis, cupons, campanhas, plano anual, Passageiro VIP e indicação
+create table if not exists config_planos (
+  plano           text primary key,             -- gratis | basico | pro | frota
+  nome            text not null,
+  preco           numeric(10,2) not null default 0,
+  preco_vip       numeric(10,2),                -- preço travado do Passageiro VIP (null = sem VIP neste plano)
+  anual_desconto  numeric(5,2) not null default 0,   -- % de desconto pagando 12 meses
+  vans            int,                          -- null = ilimitado
+  alunos          int,
+  destaque        text,
+  itens           jsonb not null default '[]'::jsonb,
+  ordem           int not null default 0
+);
+
+create table if not exists config (
+  chave  text primary key,
+  valor  jsonb not null
+);
+
+create table if not exists cupons (
+  id             uuid primary key default gen_random_uuid(),
+  codigo         text not null unique,          -- sempre maiúsculo
+  tipo           text not null check (tipo in ('pct', 'valor', 'dias')),
+  valor          numeric(10,2) not null check (valor > 0),   -- % | R$ | dias
+  planos         jsonb,                         -- ["pro","frota"]; null = todos
+  duracao_meses  int,                           -- desconto por N meses; null = para sempre
+  valido_ate     date,
+  limite_usos    int,
+  ativo          boolean not null default true,
+  criado_em      timestamptz not null default now()
+);
+
+create table if not exists campanhas (
+  id             uuid primary key default gen_random_uuid(),
+  nome           text not null,
+  plano          text not null,
+  preco          numeric(10,2) not null check (preco >= 0),
+  inicio         date not null,
+  fim            date not null,
+  duracao_meses  int,                           -- preço promocional por N meses; null = para sempre
+  ativo          boolean not null default true,
+  criado_em      timestamptz not null default now()
+);
+
+alter table condutores add column if not exists periodo text not null default 'mensal';        -- mensal | anual
+alter table condutores add column if not exists preco_mensal numeric(10,2);     -- valor por mês combinado na assinatura
+alter table condutores add column if not exists desconto_origem text;           -- cupom|campanha|vip|anual|combinado
+alter table condutores add column if not exists desconto_ate date;              -- fim do preço promocional (null = sempre)
+alter table condutores add column if not exists preco_combinado numeric(10,2);  -- preço negociado pelo admin
+alter table condutores add column if not exists vip boolean not null default false;
+alter table condutores add column if not exists cupom_id uuid references cupons(id) on delete set null;
+alter table condutores add column if not exists pedido jsonb;                   -- pedido de assinatura aguardando pagamento
+alter table condutores add column if not exists codigo_indicacao text unique;
+alter table condutores add column if not exists indicado_por uuid references condutores(id) on delete set null;
+alter table condutores add column if not exists indicacao_contada boolean not null default false;
+alter table condutores add column if not exists indicacoes_pagas int not null default 0;
+alter table condutores add column if not exists meses_gratis int not null default 0;
+
+create table if not exists cupons_usos (
+  cupom_id     uuid not null references cupons(id) on delete cascade,
+  condutor_id  uuid not null references condutores(id) on delete cascade,
+  usado_em     timestamptz not null default now(),
+  primary key (cupom_id, condutor_id)
+);
+
+-- valores iniciais (só entram se ainda não existem — depois tudo se ajusta na tela Promoções)
+insert into config_planos (plano, nome, preco, preco_vip, anual_desconto, vans, alunos, destaque, itens, ordem) values
+  ('gratis', 'Grátis', 0, null, 0, 1, 10, 'Para conhecer',
+   '["1 van", "Até 10 alunos", "Rota, chamada e mensalidades", "Área dos pais"]', 1),
+  ('basico', 'Básico', 29.90, 24.90, 16.67, 1, null, 'Motorista autônomo',
+   '["1 van", "Alunos ilimitados", "Contrato digital com assinatura", "Financeiro e painel"]', 2),
+  ('pro', 'Pro', 59.90, 49.90, 16.67, 3, null, 'Mais escolhido',
+   '["Até 3 vans", "Motoristas contratados", "Financeiro por van", "Tudo do Básico"]', 3),
+  ('frota', 'Frota', 99.90, 84.90, 16.67, null, null, 'Empresas maiores',
+   '["Vans ilimitadas", "Motoristas ilimitados", "Suporte prioritário", "Tudo do Pro"]', 4)
+on conflict (plano) do nothing;
+
+insert into config (chave, valor) values
+  ('vip', '{"ativo": true, "vagas": 50, "ate": null}'),
+  ('indicacao', '{"ativo": true, "meta": 10, "premio_meses": 2, "plano_degustacao": "pro", "dias_degustacao": 30}'),
+  ('degustacao', '{"dias_padrao": 15}')
+on conflict (chave) do nothing;
+
+update condutores set codigo_indicacao =
+  upper(left(regexp_replace(split_part(nome, ' ', 1), '[^A-Za-z]', '', 'g'), 6)) || upper(substr(md5(id::text), 1, 3))
+where codigo_indicacao is null;
