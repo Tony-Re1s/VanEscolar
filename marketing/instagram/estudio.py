@@ -62,7 +62,7 @@ body{width:var(--w);height:var(--h);font-family:Nunito,sans-serif;color:var(--na
 .marca .ic{width:56px;height:56px;border-radius:16px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.12)}
 .pag{position:absolute;top:56px;right:96px;font-weight:900;font-size:28px;padding:8px 22px;border-radius:999px;background:rgba(22,50,79,.10)}
 .grad .pag,.navy .pag{background:rgba(255,255,255,.22)}
-.arrasta{position:absolute;right:96px;bottom:150px;font-weight:900;font-size:30px}
+.arrasta{position:absolute;right:96px;bottom:160px;font-weight:900;font-size:30px}
 .item{display:flex;gap:26px;align-items:center;margin:30px 0}
 .item .b{flex:0 0 72px;height:72px;border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:900}
 .item .h3{font-size:48px}
@@ -125,9 +125,9 @@ def slide(s: dict, i: int, n: int) -> str:
     arrasta = "<div class='arrasta'>arrasta →</div>" if (m == "capa" and n > 1) else ""
     if m == "capa":
         emoji = f"<div class='emoji' style='margin-top:40px'>{s['emoji']}</div>" if s.get("emoji") else ""
-        corpo = f"""<div class='pad'>{selo}{emoji}
-          <div class='h1' style='margin-top:{40 if emoji else 60}px'>{fmt(s.get('titulo'))}</div>
-          <div class='txt' style='margin-top:44px;max-width:820px;opacity:.95'>{fmt(s.get('texto'))}</div>{arrasta}</div>"""
+        corpo = f"""<div class='pad' style='display:flex;flex-direction:column;justify-content:center;padding-bottom:230px'>{selo}{emoji}
+          <div class='h1' style='margin-top:{40 if emoji else 60}px;font-size:{s.get('tamanho') or 104}px'>{fmt(s.get('titulo'))}</div>
+          <div class='txt' style='margin-top:44px;max-width:860px;opacity:.95;font-size:42px'>{fmt(s.get('texto'))}</div>{arrasta}</div>"""
     elif m == "lista":
         marca = s.get("icone", "✓")
         itens = "".join(
