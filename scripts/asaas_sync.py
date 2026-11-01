@@ -23,8 +23,9 @@ def main():
     r = asaas.sincronizar(api, backup.motor(url), hoje)
     print(f"{r['empresas']} assinatura(s) · {r['pagamentos_novos']} pagamento(s) novo(s) · "
           f"{r['valores_atualizados']} valor(es) atualizado(s)")
+    # o registro do GitHub Actions pode ser público: sem nome de empresa, só o motivo
     for e in r["erros"]:
-        print("ERRO:", e)
+        print("ERRO:", e.split(": ", 1)[-1])
 
 
 if __name__ == "__main__":
