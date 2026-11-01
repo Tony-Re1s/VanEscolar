@@ -499,6 +499,67 @@ def sincronizar_asaas(cid=None, forcar: bool = False) -> dict | None:
     return res
 
 
+# ---------------------------------------------------------------- Mercado Pago (alternativa ao Asaas)
+GATEWAYS = {"asaas": "Asaas", "mercadopago": "Mercado Pago"}
+
+
+def mp_api():
+    """Cliente do Mercado Pago a partir dos Secrets ([mercadopago] access_token), ou None se não configurado."""
+    try:
+        c = st.secrets["mercadopago"]
+    except Exception:  # noqa: BLE001
+        return None
+    if not c.get("access_token"):
+        return None
+    from core.mercadopago import MercadoPago
+    return MercadoPago(str(c["access_token"]), c.get("base_url"))
+
+
+def gateway_ativo() -> str | None:
+    """Quem recebe as NOVAS assinaturas (escolha do admin). Se o escolhido não tem credencial, usa o outro."""
+    from core import planos as pl
+    escolha = (pl.config("gateway") or {}).get("ativo") or "asaas"
+    tem = {"asaas": asaas_api() is not None, "mercadopago": mp_api() is not None}
+    if tem.get(escolha):
+        return escolha
+    return next((g for g, ok in tem.items() if ok), None)
+
+
+def sincronizar_mp(cid=None, forcar: bool = False) -> dict | None:
+    """Consulta o Mercado Pago (no máximo 1x por minuto por tela, a não ser que `forcar`)."""
+    import time
+    from core import db, mercadopago
+    from core.fmt import hoje
+    api = mp_api()
+    if not api:
+        return None
+    chave = f"_mp_sync_{cid or 'todos'}"
+    if not forcar and time.time() - st.session_state.get(chave, 0) < 60:
+        return None
+    st.session_state[chave] = time.time()
+    try:
+        res = mercadopago.sincronizar(api, db.conexao(db.banco_ativo()).engine, hoje(), str(cid) if cid else None)
+    except mercadopago.MPErro as e:
+        return {"erros": [str(e)], "pagamentos_novos": 0, "empresas": 0, "valores_atualizados": 0}
+    if res["pagamentos_novos"] or res["valores_atualizados"]:
+        db._mudou()
+    return res
+
+
+def sincronizar_pagamentos(cid=None, forcar: bool = False) -> dict | None:
+    """Asaas + Mercado Pago juntos (cada um só se estiver configurado). Soma os resumos."""
+    out = None
+    for r in (sincronizar_asaas(cid, forcar), sincronizar_mp(cid, forcar)):
+        if r is None:
+            continue
+        if out is None:
+            out = {"empresas": 0, "pagamentos_novos": 0, "valores_atualizados": 0, "erros": []}
+        for k in ("empresas", "pagamentos_novos", "valores_atualizados"):
+            out[k] += r.get(k, 0)
+        out["erros"] += r.get("erros") or []
+    return out
+
+
 # ---------------------------------------------------------------- laboratório (novidades só para Exclusivo)
 def recurso_liberado(chave: str, cid=None) -> bool:
     """Recurso em teste no laboratório? Então só Exclusivo e admin veem (os outros veem um aviso de 'em breve')."""

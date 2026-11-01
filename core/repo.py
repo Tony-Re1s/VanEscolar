@@ -56,7 +56,7 @@ def empresas_todas() -> pd.DataFrame:
     return db.ao_vivo("""
         select c.id, c.nome, u.email, c.telefone, c.ativo, c.criado_em::date as desde, c.plano, c.plano_ate, c.plano_tipo, c.periodo, c.preco_mensal, c.desconto_origem,
                c.desconto_ate, c.preco_combinado, c.vip, c.pedido, c.meses_gratis, c.indicacoes_pagas,
-               c.asaas_assinatura, c.pausa_ate, c.cancelado_em, c.perdeu_vip, c.dados_apagados_em,
+               c.asaas_assinatura, c.mp_assinatura, c.gateway, c.pausa_ate, c.cancelado_em, c.perdeu_vip, c.dados_apagados_em,
                (select count(*) from vans v where v.condutor_id = c.id and v.ativo) as vans,
                (select count(*) from passageiros p where p.condutor_id = c.id and p.ativo) as alunos,
                u.ultimo_acesso
@@ -1059,7 +1059,7 @@ def salvar_documento(cid, doc: str):
 
 
 def cobrancas_asaas(cid, assinatura: str | None = None) -> list[dict]:
-    df = db.ao_vivo("""select id, assinatura, valor, status, vencimento, link from asaas_pagamentos
+    df = db.ao_vivo("""select id, assinatura, valor, status, vencimento, link, gateway from asaas_pagamentos
                        where condutor_id = cast(:cid as uuid) and (cast(:a as text) is null or assinatura = :a)
                        order by vencimento desc""", cid=str(cid), a=assinatura)
     return df.to_dict("records")
@@ -1097,7 +1097,7 @@ def desconectar_asaas_gestor(cid):
 
 
 # ------------------------------------------------------------------ fidelização: pausa de férias, cancelamento, dados
-def pausar(cid, hoje: date, api=None) -> date:
+def pausar(cid, hoje: date, api=None, mp=None) -> date:
     """Liga a pausa de férias (preço reduzido por N dias). Com assinatura no Asaas, as próximas cobranças já vêm
     com o valor da pausa; quando a pausa acaba, a sincronização volta o valor normal sozinha."""
     from datetime import timedelta
@@ -1106,30 +1106,34 @@ def pausar(cid, hoje: date, api=None) -> date:
     ate = hoje + timedelta(days=int(cfg.get("pausa_dias") or 60))
     db.gravar("""update condutores set pausa_ate = :a, pausa_ultima = :h, cancelado_em = null
                  where id = cast(:c as uuid)""", a=ate, h=hoje, c=str(cid))
-    _ajustar_valor_asaas(cid, hoje, api)
+    _ajustar_valor_asaas(cid, hoje, api, mp)
     return ate
 
 
-def encerrar_pausa(cid, hoje: date, api=None):
+def encerrar_pausa(cid, hoje: date, api=None, mp=None):
     from datetime import timedelta
     db.gravar("update condutores set pausa_ate = :a where id = cast(:c as uuid) and pausa_ate >= :h",
               a=hoje - timedelta(days=1), h=hoje, c=str(cid))
-    _ajustar_valor_asaas(cid, hoje, api)
+    _ajustar_valor_asaas(cid, hoje, api, mp)
 
 
-def _ajustar_valor_asaas(cid, hoje: date, api):
+def _ajustar_valor_asaas(cid, hoje: date, api, mp=None):
+    """Pausa ligada/desligada: a assinatura automática (Asaas ou cartão no Mercado Pago) passa a cobrar o valor novo."""
     from core import planos as pl
     emp = empresa(cid)
-    if not (api and emp and emp.get("asaas_assinatura")):
+    if not emp or not ((api and emp.get("asaas_assinatura")) or (mp and emp.get("mp_assinatura"))):
         return
     mensal = pl.preco_vigente(dict(emp, plano_ate=None), hoje)
     valor = round(mensal * (12 if (emp.get("periodo") or "mensal") == "anual" else 1), 2)
-    if valor and abs(valor - float(emp.get("asaas_valor") or 0)) > 0.009:
+    if api and emp.get("asaas_assinatura") and valor and abs(valor - float(emp.get("asaas_valor") or 0)) > 0.009:
         api.atualizar_valor(emp["asaas_assinatura"], valor)
         db.gravar("update condutores set asaas_valor = :v where id = cast(:c as uuid)", v=valor, c=str(cid))
+    if mp and emp.get("mp_assinatura") and valor and abs(valor - float(emp.get("mp_valor") or 0)) > 0.009:
+        mp.atualizar_valor(emp["mp_assinatura"], valor)
+        db.gravar("update condutores set mp_valor = :v where id = cast(:c as uuid)", v=valor, c=str(cid))
 
 
-def cancelar_plano(cid, hoje: date, api=None):
+def cancelar_plano(cid, hoje: date, api=None, mp=None):
     """Cancela de vez: para a cobrança automática, marca o cancelamento e (pela regra) perde o Passageiro VIP.
     O plano segue até o fim do período já pago."""
     from core import planos as pl
@@ -1137,6 +1141,9 @@ def cancelar_plano(cid, hoje: date, api=None):
     if api and emp and emp.get("asaas_assinatura"):
         from core import asaas
         asaas.cancelar_assinatura(api, db.conexao(db.banco_ativo()).engine, emp)
+    if emp and (emp.get("mp_assinatura") or emp.get("gateway") == "mercadopago"):
+        from core import mercadopago
+        mercadopago.cancelar_assinatura(mp, db.conexao(db.banco_ativo()).engine, emp)
     perde = bool(pl.config("fidelidade").get("perde_vip", True))
     db.gravar(f"""update condutores set cancelado_em = :h, pausa_ate = null, pedido = null
                   {", vip = false, perdeu_vip = true" if perde else ""}

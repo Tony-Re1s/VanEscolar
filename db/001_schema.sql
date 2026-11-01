@@ -514,3 +514,10 @@ alter table avisos add column if not exists publico text not null default 'pais'
 alter table rotas_iniciadas add column if not exists finalizada_em timestamptz;
 alter table rotas_iniciadas add column if not exists finalizada_por text;
 alter table rotas_iniciadas add column if not exists pendentes_ao_finalizar int;
+
+-- v24 — Mercado Pago como alternativa ao Asaas (o admin escolhe qual recebe as NOVAS assinaturas; quem já assina
+--       continua onde está). Cartão = assinatura (preapproval); Pix/boleto = um link por período.
+alter table condutores add column if not exists gateway text;            -- onde está a assinatura: asaas | mercadopago
+alter table condutores add column if not exists mp_assinatura text;      -- id da assinatura no cartão (preapproval)
+alter table condutores add column if not exists mp_valor numeric(10,2);
+alter table asaas_pagamentos add column if not exists gateway text not null default 'asaas';

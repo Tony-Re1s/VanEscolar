@@ -1,15 +1,20 @@
 """Meu plano: plano em vigor, uso (vans/alunos), promoções (cupom, anual, campanha, VIP) e pedido de assinatura."""
 import streamlit as st
 
-from core import asaas, auth, db, planos as pl, repo
+from core import asaas, auth, db, mercadopago, planos as pl, repo
 from core.fmt import agora, data_br, hoje, link_whats
 from telas import _ui
 from telas._ui import exigir_condutor
 
 c = exigir_condutor()
-API = _ui.asaas_api()          # None = Asaas não configurado: assinatura pelo WhatsApp e o admin libera
-if API:
-    _sync = _ui.sincronizar_asaas(c["id"])
+API = _ui.asaas_api()          # cliente do Asaas (None = não configurado)
+MP = _ui.mp_api()              # cliente do Mercado Pago (None = não configurado)
+GW = _ui.gateway_ativo()       # quem recebe as NOVAS assinaturas; None = nenhum: pedido pelo WhatsApp e o admin libera
+GW_NOME = _ui.GATEWAYS.get(GW or "", "")
+STATUS_PAG = {**asaas.STATUS, **mercadopago.STATUS}
+METODOS = {"cartao": "Cartão de crédito — renova sozinho", "avulso": "Pix ou boleto — paga a cada período"}
+if API or MP:
+    _sync = _ui.sincronizar_pagamentos(c["id"])
     if _sync and _sync.get("pagamentos_novos"):
         auth.perfil(st.session_state["usuario"])
         st.toast("Pagamento confirmado! Seu plano está liberado. 🎉")
@@ -19,6 +24,46 @@ cat = pl.catalogo()
 atual = pl.plano_da_empresa(emp, HOJE, cat)       # None = sem plano em vigor (acesso bloqueado)
 p = cat.get(atual)
 uso = repo.uso_empresa(c["id"])
+ENGINE = db.conexao(db.banco_ativo()).engine
+
+
+def _criar_online(ped: dict, doc, metodo) -> bool:
+    """Gera a cobrança no gateway ativo (encerrando a assinatura antiga, esteja onde estiver). False = erro mostrado."""
+    if GW == "asaas" and not asaas.documento_valido(doc):
+        st.error("Digite um CPF ou CNPJ válido.")
+        return False
+    try:
+        if GW == "asaas":
+            repo.salvar_documento(c["id"], asaas.so_digitos(doc))
+            e_ = repo.empresa(c["id"])
+            if e_.get("mp_assinatura") or e_.get("gateway") == "mercadopago":
+                mercadopago.cancelar_assinatura(MP, ENGINE, e_)
+            asaas.assinar(API, ENGINE, repo.empresa(c["id"]), st.session_state["usuario"]["email"], ped, HOJE)
+            db.gravar("update condutores set gateway = 'asaas' where id = cast(:c as uuid)", c=str(c["id"]))
+        else:
+            e_ = repo.empresa(c["id"])
+            if e_.get("asaas_assinatura") and API:
+                asaas.cancelar_assinatura(API, ENGINE, e_)
+            mercadopago.cancelar_assinatura(MP, ENGINE, repo.empresa(c["id"]))
+            mercadopago.assinar(MP, ENGINE, repo.empresa(c["id"]), st.session_state["usuario"]["email"], ped, HOJE,
+                                metodo or "cartao")
+    except (asaas.AsaasErro, mercadopago.MPErro) as e:
+        db._mudou()
+        st.error(f"O {GW_NOME} recusou: {e}")
+        return False
+    db._mudou()
+    return True
+
+
+def _campos_pagamento(chave: str):
+    """CPF/CNPJ (Asaas exige) ou a forma de pagar (Mercado Pago). Devolve (documento, método)."""
+    if GW == "asaas":
+        return st.text_input("CPF ou CNPJ de quem paga", value=emp.get("documento") or "", key=f"doc_{chave}",
+                             help="O Asaas exige para emitir a cobrança (Pix, boleto ou cartão)."), None
+    if GW == "mercadopago":
+        return None, st.radio("Como pagar", list(METODOS), format_func=METODOS.get, key=f"met_{chave}")
+    return None, None
+
 
 st.title("Meu plano")
 
@@ -74,7 +119,7 @@ if p and pl.em_pausa(emp, HOJE):
                     "pais continuam funcionando. Seus dados e seu preço continuam guardados. Quando a pausa acabar, o "
                     "plano volta ao normal sozinho.</span>", unsafe_allow_html=True)
         if st.button("Voltar ao normal agora", icon=":material/play_arrow:", type="primary"):
-            repo.encerrar_pausa(c["id"], HOJE, API)
+            repo.encerrar_pausa(c["id"], HOJE, API, MP)
             auth.perfil(st.session_state["usuario"])
             st.toast("Pausa encerrada — rota e chamada liberadas.")
             st.rerun()
@@ -92,8 +137,7 @@ if p is None and contratado in cat and pl.pode_pausar(emp, HOJE):
                     f"<span class='ve-sub'>Por até {int(FID.get('pausa_dias') or 60)} dias: seus dados e seu preço "
                     "ficam guardados, mensalidades e a área dos pais funcionam; só rota e chamada ficam pausadas. "
                     "Depois volta ao plano normal.</span>", unsafe_allow_html=True)
-        doc_p = st.text_input("CPF ou CNPJ de quem paga", value=emp.get("documento") or "", key="doc_pausa") \
-            if API else None
+        doc_p, met_p = _campos_pagamento("pausa")
         if st.button(f"Pausar por {PAUSA_TXT}/mês", type="primary", icon=":material/pause_circle:"):
             ped = dict(plano=contratado, plano_nome=cat[contratado]["nome"], periodo="mensal",
                        preco=float(FID.get("pausa_preco") or 0), base=float(FID.get("pausa_preco") or 0),
@@ -102,19 +146,9 @@ if p is None and contratado in cat and pl.pode_pausar(emp, HOJE):
                        em=agora().isoformat(timespec="minutes"),
                        mensagem=f"Olá! Quero a pausa de férias ({PAUSA_TXT}/mês) do Turminha a Bordo. "
                                 f"Empresa: {c['nome']} ({st.session_state['usuario']['email']}).")
-            if API:
-                if not asaas.documento_valido(doc_p):
-                    st.error("Digite um CPF ou CNPJ válido.")
+            if GW:
+                if not _criar_online(ped, doc_p, met_p):
                     st.stop()
-                repo.salvar_documento(c["id"], asaas.so_digitos(doc_p))
-                try:
-                    asaas.assinar(API, db.conexao(db.banco_ativo()).engine, repo.empresa(c["id"]),
-                                  st.session_state["usuario"]["email"], ped, HOJE)
-                except asaas.AsaasErro as e:
-                    db._mudou()
-                    st.error(f"O Asaas recusou: {e}")
-                    st.stop()
-                db._mudou()
             else:
                 repo.salvar_pedido(c["id"], ped)
             st.rerun()
@@ -180,6 +214,27 @@ if pedido:
                 asaas.cancelar_assinatura(API, db.conexao(db.banco_ativo()).engine, emp)
                 db._mudou()
                 st.rerun()
+        elif pedido.get("gateway") == "mercadopago" and MP:
+            cartao = bool(pedido.get("mp_assinatura"))
+            if pedido.get("mp_link"):
+                x1.link_button("Cadastrar o cartão e pagar" if cartao else "Pagar agora (Pix, boleto ou cartão)",
+                               pedido["mp_link"], icon=":material/payments:", type="primary", width="stretch")
+            if x2.button("Já paguei — verificar", icon=":material/refresh:", width="stretch", key="mp_verificar"):
+                r = _ui.sincronizar_mp(c["id"], forcar=True)
+                if r and r.get("erros"):
+                    st.error("; ".join(r["erros"]))
+                elif not (r and r.get("pagamentos_novos")):
+                    st.info("Ainda não chegou a confirmação do Mercado Pago. Pix e cartão costumam cair em segundos; "
+                            "boleto em até 3 dias úteis. O app confere sozinho a cada 30 minutos.")
+                else:
+                    auth.perfil(st.session_state["usuario"])
+                    st.rerun()
+            st.caption("Pagamento pelo Mercado Pago" + (" — depois do 1º pagamento, o cartão é cobrado sozinho a "
+                       "cada período." if cartao else "."))
+            if st.button("Cancelar pedido", icon=":material/close:", type="tertiary", key="mp_cancelar_pedido"):
+                mercadopago.cancelar_assinatura(MP, ENGINE, emp)
+                db._mudou()
+                st.rerun()
         else:
             lk = link_whats(contato, pedido.get("mensagem", "")) if contato else None
             if lk:
@@ -202,6 +257,38 @@ elif API and emp.get("asaas_assinatura"):
                 st.markdown(_ui.sem_formula(f"{linha} · [pagar]({x['link']})"))
             else:
                 st.caption(("✅ " if pago else "") + linha)
+elif MP and emp.get("mp_assinatura"):
+    # assinatura no cartão (Mercado Pago) ativa: últimas cobranças
+    with st.container(border=True, key="card_mp"):
+        anual = (emp.get("periodo") or "mensal") == "anual"
+        st.markdown(_ui.sem_formula(f"**Assinatura no cartão ativa** · {pl.brl(float(emp.get('mp_valor') or 0))}"
+                    f"{'/ano' if anual else '/mês'}  \n<span class='ve-sub'>O Mercado Pago cobra o cartão sozinho a "
+                    "cada período.</span>"), unsafe_allow_html=True)
+        for x in repo.cobrancas_asaas(c["id"], emp["mp_assinatura"])[:4]:
+            pago = x["status"] in asaas.PAGO
+            st.caption(("✅ " if pago else "") + f"{x['vencimento']:%d/%m/%Y} · {pl.brl(float(x['valor'] or 0))} · "
+                       f"{STATUS_PAG.get(x['status'], x['status'].lower())}")
+elif MP and emp.get("gateway") == "mercadopago" and tipo == "pago" and venc and not emp.get("cancelado_em"):
+    # paga por Pix/boleto no Mercado Pago: um link por período, liberado perto do vencimento
+    with st.container(border=True, key="card_mp_avulso"):
+        faltam = (venc - HOJE).days
+        st.markdown(_ui.sem_formula(f"**Você paga por Pix ou boleto (Mercado Pago)** · próximo vencimento "
+                    f"**{data_br(venc)}**  \n<span class='ve-sub'>A partir de 7 dias antes do vencimento aparece "
+                    "aqui o botão para pagar o próximo período.</span>"), unsafe_allow_html=True)
+        valor_ren = asaas._valor_esperado(emp, HOJE, cat)
+        if faltam <= 7 and valor_ren:
+            chave_lk = f"_mp_ren_{c['id']}"
+            if st.button(f"Pagar o próximo período · {pl.brl(valor_ren)}", type="primary",
+                         icon=":material/payments:", key="mp_renovar"):
+                try:
+                    st.session_state[chave_lk] = mercadopago.link_renovacao(
+                        MP, ENGINE, emp, st.session_state["usuario"]["email"], valor_ren, venc)
+                except mercadopago.MPErro as e:
+                    st.error(f"O Mercado Pago recusou: {e}")
+            if st.session_state.get(chave_lk):
+                st.link_button("Abrir o pagamento (Pix, boleto ou cartão)", st.session_state[chave_lk],
+                               icon=":material/open_in_new:", width="stretch")
+                st.caption("Depois de pagar, o plano renova sozinho em poucos minutos.")
 
 # ---------------------------------------------------------------- cancelar (com a oferta de pausa antes)
 if p and tipo == "pago" and not emp.get("cancelado_em") and not pedido:
@@ -213,7 +300,7 @@ if p and tipo == "pago" and not emp.get("cancelado_em") and not pedido:
                         "— só rota e chamada ficam pausadas. Depois volta ao normal sozinho.")
             if st.button(f"Pausar por {PAUSA_TXT}/mês", type="primary", icon=":material/pause_circle:",
                          key="pausar_ativo"):
-                ate_p = repo.pausar(c["id"], HOJE, API)
+                ate_p = repo.pausar(c["id"], HOJE, API, MP)
                 auth.perfil(st.session_state["usuario"])
                 st.toast(f"Pausa de férias ligada até {data_br(ate_p)}.")
                 st.rerun()
@@ -228,7 +315,7 @@ if p and tipo == "pago" and not emp.get("cancelado_em") and not pedido:
                     "vencimento e então são **apagados**.")
         if st.checkbox("Entendi e quero cancelar", key="conf_cancel") and \
                 st.button("Cancelar assinatura", icon=":material/cancel:", key="btn_cancelar"):
-            repo.cancelar_plano(c["id"], HOJE, API)
+            repo.cancelar_plano(c["id"], HOJE, API, MP)
             db._mudou()
             st.toast("Assinatura cancelada.")
             st.rerun()
@@ -298,9 +385,7 @@ with st.container(border=True, key="card_assinar"):
             linha += f"<br><span class='ve-sub'>Pagamento anual: {pl.brl(pr.total)} por 12 meses</span>"
         st.markdown(_ui.sem_formula(linha), unsafe_allow_html=True)
 
-        if API:
-            doc = st.text_input("CPF ou CNPJ de quem paga", value=emp.get("documento") or "",
-                                help="O Asaas exige para emitir a cobrança (Pix, boleto ou cartão).")
+        doc, metodo = _campos_pagamento("assinar")
         if st.button("Assinar", type="primary", icon=":material/workspace_premium:"):
             msg = (f"Olá! Quero assinar o Turminha a Bordo: plano {cat[escolha]['nome']} "
                    f"{pl.PERIODOS[periodo].lower()}, {pl.brl(pr.final)}/mês"
@@ -312,24 +397,17 @@ with st.container(border=True, key="card_assinar"):
                 total=pr.total, origem=pr.origem, rotulo=pr.rotulo if pr.tem_desconto else "",
                 duracao_meses=pr.duracao_meses, cupom_id=str(pr.cupom["id"]) if pr.cupom else None,
                 vip_novo=pr.vip_novo, em=agora().isoformat(timespec="minutes"), mensagem=msg)
-            if API:
-                if not asaas.documento_valido(doc):
-                    st.error("Digite um CPF ou CNPJ válido.")
+            if GW:
+                if not _criar_online(novo_pedido, doc, metodo):
                     st.stop()
-                repo.salvar_documento(c["id"], asaas.so_digitos(doc))
-                try:
-                    asaas.assinar(API, db.conexao(db.banco_ativo()).engine, repo.empresa(c["id"]),
-                                  st.session_state["usuario"]["email"], novo_pedido, HOJE)
-                except asaas.AsaasErro as e:
-                    db._mudou()
-                    st.error(f"O Asaas recusou: {e}")
-                    st.stop()
-                db._mudou()
             else:
                 repo.salvar_pedido(c["id"], novo_pedido)
             st.rerun()
     st.caption("Pagamento por Pix, boleto ou cartão. Assim que confirmado, o plano é liberado na sua conta."
-               + (" A cobrança se repete sozinha a cada período — dá para cancelar quando quiser." if API else ""))
+               + (" A cobrança se repete sozinha a cada período — dá para cancelar quando quiser." if GW == "asaas"
+                  else " No cartão, a cobrança se repete sozinha; no Pix ou boleto, perto do vencimento aparece aqui "
+                       "o botão para pagar o próximo período. Dá para cancelar quando quiser."
+                  if GW == "mercadopago" else ""))
 
 if st.session_state["usuario"].get("bloqueado"):
     st.caption(f"Dúvidas sobre a assinatura? Escreva para [{_ui.EMAIL_CONTATO}]({_ui.link_contato('Assinatura — Turminha a Bordo')}).")
