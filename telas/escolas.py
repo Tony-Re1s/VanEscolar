@@ -46,7 +46,7 @@ if not df.empty:
     st.divider()
     st.dataframe(df[["nome", "endereco", "telefone", "entrada_manha", "saida_manha", "entrada_tarde", "saida_tarde",
                      "ativo"]],
-                 hide_index=True, use_container_width=True,
+                 hide_index=True, width="stretch",
                  column_config={"nome": "Escola", "endereco": "Endereço", "telefone": "Telefone",
                                 "entrada_manha": st.column_config.TimeColumn("Entr. manhã", format="HH:mm"),
                                 "saida_manha": st.column_config.TimeColumn("Saída manhã", format="HH:mm"),

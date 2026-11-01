@@ -83,6 +83,8 @@ if ok:
                  motorista_email=(u["email"] if eu_dirijo else (mot_email or None)),
                  motorista_telefone=(mot_tel or (c.get("telefone") if eu_dirijo else None)) or None,
                  motorista_cnh=mot_cnh or None, ativo=ativo)
+    if ativo and (not v or not bool(g("ativo"))) and not _ui.checar_limite(c, "vans"):
+        st.stop()
     repo.salvar_van(cid, dados, vid=g("id"))
     auth.perfil(u)
     st.toast("Van salva." + ("" if eu_dirijo or not mot_email else

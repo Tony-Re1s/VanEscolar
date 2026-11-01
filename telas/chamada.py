@@ -60,7 +60,7 @@ _ui.kpis([("Alunos no trecho", len(df)), ("Embarcaram", int(n_emb)), ("Desembarc
 inicio = repo.rota_iniciada(van_id, dia, trecho)
 if inicio is None:
     if dia == hoje() and st.button(f"Iniciar rota — {'ida' if trecho == 'ida' else 'volta'}", type="primary",
-                                   icon=":material/play_arrow:", use_container_width=True,
+                                   icon=":material/play_arrow:", width="stretch",
                                    help="Registra a saída da van (os pais veem no app) e prepara as mensagens."):
         repo.iniciar_rota(cid, van_id, dia, trecho, u.get("nome") or u["email"])
         st.rerun()
@@ -80,9 +80,9 @@ else:
                 msg = f"{saud}! 🚐 A van saiu da escola agora e está levando {nome1} para casa."
             lk = link_whats(r.telefone, msg)
             if lk:
-                st.link_button(f"{pos}. {r.nome}", lk, icon=":material/chat:", use_container_width=True)
+                st.link_button(f"{pos}. {r.nome}", lk, icon=":material/chat:", width="stretch")
             else:
-                st.button(f"{pos}. {r.nome} — sem WhatsApp cadastrado", disabled=True, use_container_width=True,
+                st.button(f"{pos}. {r.nome} — sem WhatsApp cadastrado", disabled=True, width="stretch",
                           key=f"semzap_{r.id}")
     if st.button("Desfazer início da rota", type="tertiary"):
         repo.desfazer_inicio_rota(cid, van_id, dia, trecho)
@@ -97,7 +97,7 @@ else:
     rota = link_maps_rota(escolas + casas[::-1][:-1] if escolas else casas[::-1][:-1],
                           casas[::-1][-1] if casas else None)
 if rota:
-    st.link_button("Abrir rota no Google Maps", rota, icon=":material/map:", use_container_width=True,
+    st.link_button("Abrir rota no Google Maps", rota, icon=":material/map:", width="stretch",
                    help="Na ordem da rota, sem quem avisou falta. O Maps aceita até 9 paradas.")
     if len(casas) + len(escolas) > 10:
         st.caption("A rota tem mais de 10 paradas: o Maps mostra as 9 primeiras e o destino.")
@@ -118,21 +118,21 @@ for r in df.itertuples():
             st.caption(f"⚠️ {r.observacoes}")
         cols = st.container(key=f"linha_{r.id}").columns(4)
         for col, (k, rot) in zip(cols, BOT[trecho]):
-            if col.button(rot, key=f"{k}_{r.id}", use_container_width=True,
+            if col.button(rot, key=f"{k}_{r.id}", width="stretch",
                           type="primary" if st_atual == k else "secondary"):
                 repo.marcar(cid, van_id, r.id, dia, trecho, None if st_atual == k else k)
                 st.rerun()
         msg = ("Bom dia! A van está chegando para buscar " if trecho == "ida" else "Olá! A van está chegando com ")
         link = link_whats(r.telefone, msg + f"{r.nome.split()[0]}. 🚐")
         if link:
-            cols[3].link_button("Avisar", link, icon=":material/chat:", use_container_width=True)
+            cols[3].link_button("Avisar", link, icon=":material/chat:", width="stretch")
 
 st.divider()
 with st.expander("Ordem da rota"):
     st.caption("Defina a ordem de busca (1 = primeiro). Vale para a ida; a volta usa a ordem inversa.")
     todos = repo.passageiros(cid, van=van_id)
     ed = st.data_editor(todos[["id", "ordem_rota", "nome", "turno", "bairro"]].assign(turno=todos["turno"].map(TURNOS)),
-                        hide_index=True, use_container_width=True, disabled=["nome", "turno", "bairro"],
+                        hide_index=True, width="stretch", disabled=["nome", "turno", "bairro"],
                         column_order=["ordem_rota", "nome", "turno", "bairro"],
                         column_config={"ordem_rota": st.column_config.NumberColumn("Ordem", min_value=0, step=1),
                                        "nome": "Aluno", "turno": "Turno", "bairro": "Bairro"}, key=f"ordem_{van_id}")
@@ -144,6 +144,6 @@ with st.expander("Ordem da rota"):
 with st.expander("Frequência do mês"):
     ini = inicio_mes(dia)
     fr = repo.frequencia(cid, ini, somar_meses(ini, 1), van=van_id)
-    st.dataframe(fr, hide_index=True, use_container_width=True,
+    st.dataframe(fr, hide_index=True, width="stretch",
                  column_config={"nome": "Aluno", "presencas": "Presenças (trechos)", "faltas": "Faltas (trechos)"})
     st.caption(f"Contagem de {data_br(ini)} até hoje, por trecho (ida e volta contam separado).")

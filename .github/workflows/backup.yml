@@ -1,0 +1,34 @@
+name: Backup diário
+
+# Todo dia às 3h10 (horário de Brasília) ou na mão pela aba Actions → "Backup diário" → Run workflow.
+# Precisa dos secrets do repositório: NEON_URL e BACKUP_SENHA (e RESERVA_URL, opcional, para manter o banco reserva).
+on:
+  schedule:
+    - cron: "10 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "SQLAlchemy>=2.0" "psycopg[binary]>=3.2" "cryptography>=42"
+      - name: Gerar backup criptografado
+        env:
+          NEON_URL: ${{ secrets.NEON_URL }}
+          BACKUP_SENHA: ${{ secrets.BACKUP_SENHA }}
+          RESERVA_URL: ${{ secrets.RESERVA_URL }}
+        run: python scripts/backup.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backup-${{ github.run_number }}
+          path: backups/*.pab
+          retention-days: 30
+          if-no-files-found: error

@@ -76,7 +76,7 @@ with aba_mes:
                 y=alt.Y("categoria:N", sort="-x", title=None),
                 tooltip=[alt.Tooltip("categoria:N", title="Categoria"),
                          alt.Tooltip("valor:Q", title="R$", format=",.2f")]).properties(height=36 * len(cats) + 20),
-                use_container_width=True)
+                width="stretch")
         for r in lan.itertuples():
             a, b, x = st.container(key=f"lp_{r.id}").columns([4, 2, 1])
             sinal = "−" if r.tipo == "despesa" else "+"
@@ -106,12 +106,12 @@ with aba_ano:
     linha = alt.Chart(res).mark_line(point=True, color="#3FA9D6", strokeWidth=3).encode(
         x=alt.X("mes_txt:N", sort=ordem), y="lucro:Q",
         tooltip=[alt.Tooltip("mes_txt:N", title="Mês"), alt.Tooltip("lucro:Q", title="Lucro R$", format=",.2f")])
-    st.altair_chart(barras + linha, use_container_width=True)
+    st.altair_chart(barras + linha, width="stretch")
     tot = pd.DataFrame({"": ["Receitas", "Despesas", "Lucro"],
                         "12 meses": [brl(res["receitas"].sum()), brl(res["despesas"].sum()), brl(res["lucro"].sum())],
                         "Média/mês": [brl(res["receitas"].mean()), brl(res["despesas"].mean()),
                                       brl(res["lucro"].mean())]})
-    st.dataframe(tot, hide_index=True, use_container_width=True)
+    st.dataframe(tot, hide_index=True, width="stretch")
 
 if aba_van:
     with aba_van[0]:
@@ -121,7 +121,7 @@ if aba_van:
         pv["recebido"] = pv["recebido"].astype(float)
         pv["despesas"] = pv["despesas"].astype(float)
         pv["lucro"] = pv["recebido"] - pv["despesas"]
-        st.dataframe(pv, hide_index=True, use_container_width=True,
+        st.dataframe(pv, hide_index=True, width="stretch",
                      column_config={"van": "Van",
                                     "recebido": st.column_config.NumberColumn("Recebido", format="R$ %.2f"),
                                     "despesas": st.column_config.NumberColumn("Despesas", format="R$ %.2f"),

@@ -116,7 +116,31 @@ button[data-testid="stBaseButton-secondary"]:hover, .stLinkButton > a:hover {bor
 [class*="st-key-lp_"] [data-testid="stHorizontalBlock"] {flex-wrap: nowrap !important; gap: .5rem !important;}
 [class*="st-key-lp_"] [data-testid="stColumn"] {min-width: 0 !important;}
 [class*="st-key-linha"] button, [class*="st-key-linha"] a {padding-left: .3rem !important; padding-right: .3rem !important;}
+/* página inicial e planos */
+.ve-hero {text-align:center; padding: 1.2rem .5rem 1.4rem;}
+.ve-hero .logo {width:120px; height:120px; margin: 0 auto .4rem; filter: drop-shadow(0 12px 20px rgba(10,156,151,.25));}
+.ve-hero .logo svg {width:100%; height:100%; animation: ve-anda 1.6s ease-in-out infinite; transform-origin:50% 85%;}
+.ve-hero h1 {font-size: 2.4rem !important; margin: .2rem 0 .3rem;}
+.ve-hero p {font-size: 1.08rem; color: var(--ve-cinza); max-width: 620px; margin: 0 auto;}
+.ve-grade {display:grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: .6rem 0 1.2rem;}
+@media (max-width: 900px) {.ve-grade {grid-template-columns: repeat(2, 1fr);}}
+@media (max-width: 560px) {.ve-grade {grid-template-columns: 1fr;}}
+.ve-feat {background:#fff; border:1px solid #E1F0EF; border-radius:20px; padding:16px 18px; box-shadow: var(--sombra);}
+.ve-feat .i {font-size: 1.6rem;} .ve-feat b {display:block; margin:.3rem 0 .15rem; color: var(--ve-azul);}
+.ve-feat span {color: var(--ve-cinza); font-size: .92rem;}
+.ve-plano {background:#fff; border:1px solid #E1F0EF; border-radius:22px; padding:18px; box-shadow: var(--sombra);
+  height:100%; position:relative;}
+.ve-plano.atual {border: 2px solid var(--tif-esc);}
+.ve-plano.top {background: linear-gradient(160deg, #FFFFFF 0%, #E3F7F6 100%); border: 2px solid var(--tif);}
+.ve-plano .d {font-size:.72rem; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color: var(--tif-esc);}
+.ve-plano h3 {margin:.15rem 0 .2rem !important;}
+.ve-plano .p {font-size:1.6rem; font-weight:800; color: var(--ve-azul);} .ve-plano .p small {font-size:.85rem;
+  color: var(--ve-cinza); font-weight:600;}
+.ve-plano ul {padding-left: 1.1rem; margin:.5rem 0 0; color: #33475B;} .ve-plano li {margin: .15rem 0;}
+.ve-rodape {text-align:center; color: var(--ve-cinza); font-size:.85rem; margin-top: 2rem;}
+.ve-doc {background:#fff; border:1px solid #E1F0EF; border-radius:20px; padding: 6px 24px 18px; box-shadow: var(--sombra);}
 @media (max-width: 640px) {
+  .ve-hero h1 {font-size: 1.9rem !important;}
   .block-container {padding-left: .8rem; padding-right: .8rem; padding-top: 1rem;}
   .ve-kpis {grid-template-columns: repeat(2, minmax(0,1fr)); gap:10px;}
   .ve-kpi .v {font-size:1.12rem;}
@@ -172,6 +196,20 @@ def aviso_modo_teste():
                "**Google Cloud → Google Auth Platform → Público → Usuários de teste**, senão o Google bloqueia a entrada.")
 
 
+def cartoes_planos(atual: str | None = None):
+    """Cartões dos planos lado a lado (no celular, empilhados)."""
+    from core import planos as pl
+    cols = st.columns(len(pl.ORDEM))
+    for col, k in zip(cols, pl.ORDEM):
+        p = pl.PLANOS[k]
+        cls = "ve-plano" + (" atual" if k == atual else "") + (" top" if k == "pro" and k != atual else "")
+        selo = "Seu plano" if k == atual else p["destaque"]
+        itens = "".join(f"<li>{esc(i)}</li>" for i in p["itens"])
+        col.markdown(f"<div class='{cls}'><div class='d'>{esc(selo)}</div><h3>{esc(p['nome'])}</h3>"
+                     f"<div class='p'>{pl.preco_txt(p)}<small>{'/mês' if p['preco'] else ''}</small></div>"
+                     f"<ul>{itens}</ul></div>", unsafe_allow_html=True)
+
+
 def vans_acessiveis(u: dict) -> list[dict]:
     """Vans que a pessoa pode operar na rota/chamada: todas da empresa dela (gestor) + as que ela dirige.
     Cada item: id, nome, placa, cid (empresa dona), empresa, gestor (True se ela é a gestora dessa empresa)."""
@@ -205,6 +243,21 @@ def filtro_van(cid, chave: str, label="Van") -> str | None:
     ids = [None] + [str(x) for x in vs["id"]]
     nomes = {None: "Todas as vans"} | {str(r.id): r.nome for r in vs.itertuples()}
     return st.selectbox(label, ids, format_func=nomes.get, key=chave)
+
+
+def checar_limite(c: dict, recurso: str, novos: int = 1) -> bool:
+    """True se cabe no plano; senão mostra o aviso com link para Meu plano e devolve False."""
+    from core import planos as pl, repo
+    from core.fmt import hoje
+    plano = pl.plano_da_empresa(repo.empresa(c["id"]), hoje())
+    atual = repo.uso_empresa(c["id"])[recurso]
+    if pl.cabe(plano, recurso, atual, novos):
+        return True
+    lim = pl.limite(plano, recurso)
+    st.error(f"O plano **{pl.PLANOS[plano]['nome']}** permite até **{lim} {recurso}** ativos e você já tem {atual}. "
+             "Mude de plano para cadastrar mais.", icon=":material/upgrade:")
+    st.page_link("telas/meu_plano.py", label="Ver planos", icon=":material/workspace_premium:")
+    return False
 
 
 def exigir_condutor() -> dict:

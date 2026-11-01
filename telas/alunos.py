@@ -57,7 +57,7 @@ with aba_lista:
                         whats=df["telefone_resp"].map(lambda t: link_whats(t, "Olá!")))
         st.dataframe(vis[["nome", "van", "idade", "escola", "turno", "bairro", "mensalidade", "dia_venc",
                           "responsaveis", "whats", "ativo"]],
-                     hide_index=True, use_container_width=True,
+                     hide_index=True, width="stretch",
                      column_config={"nome": "Aluno", "van": "Van", "idade": "Idade", "escola": "Escola", "turno": "Turno",
                                     "bairro": "Bairro",
                                     "mensalidade": st.column_config.NumberColumn("Mensalidade", format="R$ %.2f"),
@@ -132,6 +132,8 @@ with aba_edit:
                      endereco=endereco or None, bairro=bairro or None, referencia=referencia or None,
                      observacoes=observacoes or None, mensalidade=mensalidade, dia_vencimento=dia_v or None,
                      inicio=inicio, fim=fim, faz_ida=faz_ida, faz_volta=faz_volta, ativo=ativo)
+        if ativo and (p is None or not bool(g("ativo"))) and not _ui.checar_limite(c, "alunos"):
+            st.stop()
         repo.salvar_passageiro(cid, dados, pid=g("id"))
         if van_id and str(g("van_id")) != van_id:
             vv = vans.set_index(vans["id"].astype(str)).loc[van_id]
@@ -322,13 +324,13 @@ with aba_ct:
                 x1, x2, x3 = st.container(key=f"linha_ct_{r.contrato_id}").columns(3)
                 if r.situacao == "assinar":
                     if x1.button("Assinar", key=f"ass_{r.contrato_id}", type="primary", icon=":material/draw:",
-                                 use_container_width=True):
+                                 width="stretch"):
                         repo.assinar_contrato_contratada(cid, r.contrato_id, eu_nome)
                         st.rerun()
                 x2.download_button("PDF", ct.pdf_cache(c_full, emp), file_name=f"contrato_{ano}_{r.aluno}.pdf",
                                    mime="application/pdf", icon=":material/download:", key=f"pdfg_{r.contrato_id}",
-                                   use_container_width=True)
-                with x3.popover("Descartar", icon=":material/delete:", use_container_width=True):
+                                   width="stretch")
+                with x3.popover("Descartar", icon=":material/delete:", width="stretch"):
                     st.caption("Apaga este contrato (inclusive as assinaturas). Depois é só preparar e liberar de novo.")
                     if st.button("Confirmar descarte", key=f"desc_{r.contrato_id}"):
                         repo.cancelar_contrato(cid, r.contrato_id)

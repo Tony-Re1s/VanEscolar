@@ -86,7 +86,7 @@ def _contrato(f, pid):
             local = st.text_input("Local da assinatura *", value=v("local", emp.get("cidade") or ""))
             aceite = st.checkbox("Li e concordo com todas as cláusulas e condições deste contrato. Entendo que este "
                                  "aceite, feito com o meu login Google, vale como minha assinatura eletrônica.")
-            enviar = st.form_submit_button("Assinar e enviar", type="primary", use_container_width=True)
+            enviar = st.form_submit_button("Assinar e enviar", type="primary", width="stretch")
         if enviar:
             obrig = (("nome", nome), ("CPF", cpf), ("telefone", tel), ("CEP", cep), ("rua", rua), ("número", numero),
                      ("bairro", bairro), ("cidade", cidade), ("UF", uf), ("local", local))

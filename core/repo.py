@@ -557,3 +557,14 @@ def atrasos_por_aluno(cid, desde: date, hoje: date, van=None) -> pd.DataFrame:
         group by p.nome
         order by vencidas desc, com_atraso desc, dias_medios desc nulls last, p.nome""",
                         cid=cid, d=desde, hoje=hoje, van=van)
+
+
+# ------------------------------------------------------------------ planos
+def uso_empresa(cid) -> dict:
+    df = db.ao_vivo("""select (select count(*) from vans where condutor_id = :cid and ativo) as vans,
+                              (select count(*) from passageiros where condutor_id = :cid and ativo) as alunos""", cid=cid)
+    return {"vans": int(df.iloc[0]["vans"]), "alunos": int(df.iloc[0]["alunos"])}
+
+
+def definir_plano(cid, plano: str, ate):
+    db.gravar("update condutores set plano = :p, plano_ate = :a where id = :cid", p=plano, a=ate, cid=cid)

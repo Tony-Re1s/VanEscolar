@@ -26,7 +26,7 @@ with st.form("nova_empresa"):
     telefone = st.text_input("WhatsApp", placeholder="(11) 99999-9999")
     dirige = st.checkbox("Eu também dirijo uma van", value=True,
                          help="Já cria a 'Van 1' com você de motorista. Dá para mudar em Vans e motoristas.")
-    ok = st.form_submit_button("Criar", type="primary", use_container_width=True)
+    ok = st.form_submit_button("Criar", type="primary", width="stretch")
 
 if ok:
     if not nome.strip():

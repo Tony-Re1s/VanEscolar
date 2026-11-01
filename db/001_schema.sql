@@ -242,3 +242,7 @@ create table if not exists rotas_iniciadas (
   iniciada_por text,
   primary key (van_id, data, trecho)
 );
+
+-- v6 — planos (cobrança por nº de vans). Até o pagamento automático, o admin libera o plano.
+alter table condutores add column if not exists plano text not null default 'gratis';
+alter table condutores add column if not exists plano_ate date;

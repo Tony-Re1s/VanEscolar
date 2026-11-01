@@ -15,11 +15,31 @@ from sqlalchemy import exc, text
 _SCHEMA = Path(__file__).resolve().parent.parent / "db" / "001_schema.sql"
 
 
+def banco_ativo() -> str:
+    """Qual conexão usar: [app] banco = "neon" (padrão) ou "reserva" nos Secrets — o switch do banco reserva."""
+    try:
+        return str(st.secrets["app"].get("banco", "neon"))
+    except Exception:  # noqa: BLE001
+        return "neon"
+
+
+def bancos_configurados() -> list[str]:
+    """Conexões com URL nos Secrets ([connections.neon], [connections.reserva]…)."""
+    try:
+        return [n for n, v in st.secrets["connections"].items() if v.get("url")]
+    except Exception:  # noqa: BLE001
+        return []
+
+
+def conexao(nome: str):
+    return st.connection(nome, type="sql", pool_pre_ping=False, pool_recycle=240,
+                         connect_args={"prepare_threshold": None})
+
+
 def _conn():
     # Sem pool_pre_ping (custava 1 ida ao banco a mais por consulta). Conexão que o Neon derrubou é
     # refeita pelo _tentar() abaixo; pool_recycle troca as conexões antigas antes do Neon fechá-las.
-    return st.connection("neon", type="sql", pool_pre_ping=False, pool_recycle=240,
-                         connect_args={"prepare_threshold": None})   # pooler do Neon: sem prepared statements
+    return conexao(banco_ativo())   # sem prepared statements: compatível com o pooler do Neon
 
 
 def _tentar(fn):
@@ -73,13 +93,13 @@ def _ler(sql: str, params: dict):
 
 
 @st.cache_data(ttl=120, max_entries=3000, show_spinner=False)
-def _ler_cache(sql: str, params: dict, versao: int):
+def _ler_cache(sql: str, params: dict, versao: int, banco: str):
     return _ler(sql, params)
 
 
 def _buscar(sql: str, params: dict):
     try:
-        return _ler_cache(sql, params, _VERSAO["n"])
+        return _ler_cache(sql, params, _VERSAO["n"], banco_ativo())
     except Exception:  # noqa: BLE001 — parâmetro que não dá para guardar: lê direto
         return _ler(sql, params)
 
@@ -133,8 +153,9 @@ def gravar(sql: str, **params) -> dict | None:
 
 
 @st.cache_resource(show_spinner="Preparando o banco…")
-def migrar() -> bool:
-    """Cria as tabelas na 1ª vez (idempotente). Roda uma vez por processo do servidor."""
+def migrar(banco: str = "") -> bool:
+    """Cria as tabelas na 1ª vez (idempotente). Roda uma vez por processo do servidor e por banco
+    (ao virar o switch para o reserva, ele também é preparado)."""
     with _conn().session as s:
         s.execute(text(_SCHEMA.read_text(encoding="utf-8")))
         s.commit()

@@ -40,7 +40,7 @@ def _tela_mes():
 
     df = repo.mensalidades_mes(cid, comp, h, van=van)
     g1, g2 = st.columns([3, 1])
-    if g2.button("Gerar mês", icon=":material/autorenew:", use_container_width=True,
+    if g2.button("Gerar mês", icon=":material/autorenew:", width="stretch",
                  help="Cria a mensalidade de quem ainda não tem neste mês (alunos ativos com valor)."):
         n = repo.gerar_mensalidades(cid, comp)
         st.toast(f"{n} mensalidade(s) criada(s)." if n else "Todos os alunos já têm mensalidade neste mês.")
@@ -89,7 +89,7 @@ def _tela_mes():
                 continue
             b.markdown(f"**{brl(r.valor)}**")
             x1, x2, x3 = st.container(key=f"linha_{r.id}").columns(3)
-            with x1.popover("Receber", icon=":material/check_circle:", use_container_width=True):
+            with x1.popover("Receber", icon=":material/check_circle:", width="stretch"):
                 with st.form(f"pg_{r.id}"):
                     d = st.date_input("Data", value=h, format="DD/MM/YYYY")
                     v = st.number_input("Valor recebido", min_value=0.0, value=float(r.valor), step=5.0)
@@ -99,10 +99,10 @@ def _tela_mes():
                         st.rerun()
             link = link_whats(r.telefone, _msg(r))
             if link:
-                x2.link_button("Cobrar", link, icon=":material/chat:", use_container_width=True)
+                x2.link_button("Cobrar", link, icon=":material/chat:", width="stretch")
             else:
-                x2.button("Sem WhatsApp", disabled=True, key=f"sw_{r.id}", use_container_width=True)
-            with x3.popover("Ajustar", icon=":material/edit:", use_container_width=True):
+                x2.button("Sem WhatsApp", disabled=True, key=f"sw_{r.id}", width="stretch")
+            with x3.popover("Ajustar", icon=":material/edit:", width="stretch"):
                 with st.form(f"aj_{r.id}"):
                     nv = st.number_input("Valor", min_value=0.0, value=float(r.valor), step=5.0)
                     nd = st.date_input("Vencimento", value=r.vencimento, format="DD/MM/YYYY")
@@ -143,9 +143,9 @@ with aba_cobrar:
             rot = f"{aluno} — {len(g)} mês(es) · {brl(total)} · {dias} dia(s) de atraso"
             lk = link_whats(r0["telefone"], txt)
             if lk:
-                st.link_button(rot, lk, icon=":material/chat:", use_container_width=True)
+                st.link_button(rot, lk, icon=":material/chat:", width="stretch")
             else:
-                st.button(rot + " — sem WhatsApp", disabled=True, use_container_width=True, key=f"cv_{aluno}")
+                st.button(rot + " — sem WhatsApp", disabled=True, width="stretch", key=f"cv_{aluno}")
 
 # ------------------------------------------------------------------ painel
 with aba_painel:
@@ -172,13 +172,13 @@ with aba_painel:
             tooltip=[alt.Tooltip("mes_txt:N", title="Mês"), alt.Tooltip("tipo:N", title=""),
                      alt.Tooltip("v:Q", title="R$", format=",.2f")])
         st.markdown("**Previsto × recebido** (por mês de competência)")
-        st.altair_chart(barras, use_container_width=True)
+        st.altair_chart(barras, width="stretch")
         se["inad"] = (se["vencido"] / se["previsto"].where(se["previsto"] > 0) * 100).fillna(0)
         linha = alt.Chart(se).mark_line(point=True, color="#FF8A80", strokeWidth=3).encode(
             x=alt.X("mes_txt:N", sort=ordem, title=None), y=alt.Y("inad:Q", title=None, axis=alt.Axis(format=".0f")),
             tooltip=[alt.Tooltip("mes_txt:N", title="Mês"), alt.Tooltip("inad:Q", title="% vencido", format=".1f")])
         st.markdown("**Inadimplência por mês** (% do previsto que está vencido e não pago)")
-        st.altair_chart(linha.properties(height=180), use_container_width=True)
+        st.altair_chart(linha.properties(height=180), width="stretch")
 
         st.markdown("**Pontualidade por aluno** (últimos 12 meses)")
         at = repo.atrasos_por_aluno(cid, ini, h, van=van)
@@ -186,7 +186,7 @@ with aba_painel:
             st.caption("Sem vencimentos no período.")
         else:
             at["em_aberto"] = at["em_aberto"].astype(float)
-            st.dataframe(at, hide_index=True, use_container_width=True,
+            st.dataframe(at, hide_index=True, width="stretch",
                          column_config={"aluno": "Aluno", "em_dia": "Pagou em dia", "com_atraso": "Pagou atrasado",
                                         "dias_medios": st.column_config.NumberColumn("Atraso médio (dias)"),
                                         "vencidas": "Vencidas hoje",

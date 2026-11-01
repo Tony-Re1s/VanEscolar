@@ -17,8 +17,8 @@ import re as _re
 _VAN_SVG = " ".join(_re.sub(r"<!--.*?-->", "", (Path(__file__).resolve().parent.parent / "static" / "van.svg")
                             .read_text(encoding="utf-8"), flags=_re.S).split())
 
-EXIGIDOS = [("connections", "neon", "url"), ("auth", "redirect_uri"), ("auth", "cookie_secret"),
-            ("auth", "client_id"), ("auth", "client_secret"), ("auth", "server_metadata_url")]
+EXIGIDOS_AUTH = [("auth", "redirect_uri"), ("auth", "cookie_secret"), ("auth", "client_id"),
+                 ("auth", "client_secret"), ("auth", "server_metadata_url")]
 
 
 def _segredo(*caminho):
@@ -37,7 +37,7 @@ def cfg(chave, padrao=None):
 
 
 def _checar_configuracao():
-    exigidos = [e for e in EXIGIDOS if e[0] != "auth"] if cfg("dev_email") else EXIGIDOS
+    exigidos = [("connections", db.banco_ativo(), "url")] + ([] if cfg("dev_email") else EXIGIDOS_AUTH)
     faltando = [".".join(c) for c in exigidos if not _segredo(*c)]
     if faltando:
         st.title("Pequenos a Bordo — falta configurar")
@@ -46,17 +46,12 @@ def _checar_configuracao():
         st.stop()
 
 
-def _tela_login():
-    st.markdown("<div style='height:10vh'></div>", unsafe_allow_html=True)
-    _, meio, _ = st.columns([1, 2, 1])
-    with meio:
-        st.markdown(f"<div class='ve-logo'>{_VAN_SVG}</div>", unsafe_allow_html=True)
-        st.title("Pequenos a Bordo")
-        st.caption("Gestão do transporte escolar: alunos, rotas, chamada, mensalidades e financeiro. "
-                   "Pais acompanham o dia a dia e avisam faltas.")
-        st.button("Entrar com Google", type="primary", icon=":material/login:", on_click=st.login,
-                  use_container_width=True)
-    st.stop()
+VAN_SVG = _VAN_SVG
+
+
+def botao_entrar(chave="entrar"):
+    st.button("Entrar com Google", type="primary", icon=":material/login:", on_click=st.login,
+              width="stretch", key=chave)
 
 
 def admins() -> list[str]:
@@ -88,7 +83,8 @@ def perfil(usuario: dict) -> dict:
     return usuario
 
 
-def exigir_login() -> dict:
+def usuario_logado() -> dict | None:
+    """Usuário logado (com perfil carregado) ou None se ninguém entrou — aí o app mostra as páginas públicas."""
     if "usuario" in st.session_state:
         return st.session_state["usuario"]
     _checar_configuracao()
@@ -97,7 +93,7 @@ def exigir_login() -> dict:
         email, nome = dev, cfg("dev_nome", dev)
     else:
         if not st.user.get("is_logged_in", False):
-            _tela_login()
+            return None
         email, nome = st.user.get("email"), st.user.get("name")
     email = (email or "").strip().lower()
     if not email:

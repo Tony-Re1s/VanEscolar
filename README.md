@@ -60,6 +60,15 @@ Dá para **reaproveitar o cliente OAuth do app de finanças**: em *Credenciais* 
 2. *Advanced settings* → **Secrets**: cole o conteúdo de `.streamlit/secrets.toml.example` preenchido.
    `cookie_secret`: qualquer frase longa e aleatória.
 
+### 4. Backup diário e banco reserva
+- **Backup:** `.github/workflows/backup.yml` roda todo dia (3h10 de Brasília) e guarda um arquivo `.pab`
+  criptografado por 30 dias em *Actions → Backup diário*. Secrets do repositório (*Settings → Secrets and
+  variables → Actions*): `NEON_URL`, `BACKUP_SENHA` e, opcional, `RESERVA_URL`.
+- **Reserva:** um segundo Postgres (outro provedor). Com `RESERVA_URL`, o backup diário copia tudo para ele.
+  No app: `[connections.reserva] url = "..."` nos Secrets.
+- **Switch:** `[app] banco = "reserva"` nos Secrets do Streamlit troca o banco na hora; `"neon"` (ou apagar a linha)
+  volta. A tela *Administração → Banco e backup* testa os dois, gera/restaura backup e copia entre eles.
+
 ### Rodar no computador
 ```bash
 pip install -r requirements.txt
@@ -68,7 +77,7 @@ streamlit run app.py
 ```
 
 ## Próximas ideias
-- Contrato em PDF para assinatura dos pais
+- Pagamento automático dos planos (Asaas)
 - Recibo de pagamento (PDF) e lembrete automático de vencimento
 - Lista de espera e reajuste anual de mensalidades em lote
 - Manutenção preventiva por km (óleo, pneus) e vencimento de vistoria/CNH
