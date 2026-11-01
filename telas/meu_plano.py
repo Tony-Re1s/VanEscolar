@@ -31,13 +31,13 @@ if p is None:
 elif tipo == "teste":
     sub = "degustação até " + data_br(venc)
 elif tipo == "cortesia":
-    sub = "cortesia" + (" até " + data_br(venc) if venc else "")
+    sub = "exclusivo" + (" até " + data_br(venc) if venc else "")
 else:
     sub = f"{pl.brl(vigente)}/mês" + (f" · até {data_br(venc)}" if venc else "")
 if p is None:
     situacao = "Bloqueado"
 else:
-    situacao = {"teste": "Degustação", "cortesia": "Cortesia"}.get(tipo, "Ativo")
+    situacao = {"teste": "Degustação", "cortesia": "Exclusivo"}.get(tipo, "Ativo")
 _ui.kpis([("Plano atual", p["nome"] if p else "Nenhum", sub),
           ("Vans", _uso(uso['vans'], p['vans'] if p else None)),
           ("Alunos ativos", _uso(uso['alunos'], p['alunos'] if p else None)),

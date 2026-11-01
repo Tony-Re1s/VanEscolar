@@ -36,7 +36,7 @@ CONFIG_PADRAO = {
 }
 
 # Como o plano foi liberado
-TIPOS = {"pago": "Pago", "teste": "Degustação", "cortesia": "Cortesia"}
+TIPOS = {"pago": "Pago", "teste": "Degustação", "cortesia": "Exclusivo"}
 DIAS_TESTE = [7, 15, 30]
 PERIODOS = {"mensal": "Mensal", "anual": "Anual"}
 ORIGENS = {"cupom": "Cupom", "campanha": "Campanha", "vip": "Passageiro VIP", "anual": "Anual",

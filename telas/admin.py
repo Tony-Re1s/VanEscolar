@@ -24,7 +24,7 @@ cat = pl.catalogo()
 # situação de cada empresa
 SIT = {"pago": ("pago", "Em dia"), "vence": ("vence_logo", "Vence logo"), "vencido": ("vencido", "Vencido"),
        "teste": ("embarcou", "Degustação"), "acabou": ("vencido", "Degustação acabou"),
-       "cortesia": ("desembarcou", "Cortesia"),
+       "cortesia": ("desembarcou", "Exclusivo"),
        "sem_plano": ("vencido", "Sem plano"), "off": ("faltou", "Desativada")}
 
 
@@ -77,7 +77,7 @@ if pedidos:
 
 # filtros
 FILTROS = {"Todos": None, "Pedidos": "pedido", "Vencem logo": {"vence"}, "Vencidos": {"vencido"}, "Pagantes": {"pago", "vence"},
-           "Degustação": {"teste", "acabou"}, "Cortesia": {"cortesia"},
+           "Degustação": {"teste", "acabou"}, "Exclusivo": {"cortesia"},
            "Bloqueados": {"vencido", "acabou", "sem_plano"}, "Desativadas": {"off"}}
 a, b = st.columns([3, 2])
 filtro = a.segmented_control("Mostrar", list(FILTROS), default="Todos", label_visibility="collapsed") or "Todos"
@@ -199,12 +199,12 @@ for r in sel:
                 tipo = st.radio("Como liberar", tipos, index=tipos.index(pl.tipo_da_empresa(r)), horizontal=True,
                                 format_func=pl.TIPOS.get,
                                 help="Pago: o cliente pagou. Degustação: grátis por alguns dias e depois o acesso "
-                                     "bloqueia sozinho até assinar. Cortesia: liberado sem cobrar.")
+                                     "bloqueia sozinho até assinar. Exclusivo: liberado sem cobrar.")
                 dias = st.selectbox("Degustação por", pl.DIAS_TESTE, index=1, format_func=lambda d: f"{d} dias",
                                     help="Só para Degustação — conta a partir de hoje.")
-                validade = st.date_input("Válido até (Pago e Cortesia)", value=r["plano_ate"] or somar_meses(HOJE, 1),
+                validade = st.date_input("Válido até (Pago e Exclusivo)", value=r["plano_ate"] or somar_meses(HOJE, 1),
                                          format="DD/MM/YYYY")
-                sem_prazo = st.checkbox("Cortesia sem prazo", value=r["sit"] == "cortesia" and not r["plano_ate"])
+                sem_prazo = st.checkbox("Exclusivo sem prazo", value=r["sit"] == "cortesia" and not r["plano_ate"])
                 combinado = st.number_input("Preço combinado (R$/mês)", min_value=0.0, step=1.0, format="%.2f",
                                             value=float(r.get("preco_combinado") or 0),
                                             help="Preço negociado só com esta empresa. 0 = usa o preço normal "

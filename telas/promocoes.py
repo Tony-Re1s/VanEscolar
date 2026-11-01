@@ -196,7 +196,7 @@ with abas[1]:
             if not cod or valor <= 0:
                 st.error("Preencha o código e o valor.")
             elif tipo == "pct" and valor >= 100:
-                st.error("Desconto em % precisa ser menor que 100. Para liberar de graça, use dias grátis ou cortesia.")
+                st.error("Desconto em % precisa ser menor que 100. Para liberar de graça, use dias grátis ou o plano Exclusivo.")
             elif atual_cp is None and cod in set(cdf["codigo"] if not cdf.empty else []):
                 st.error("Já existe um cupom com esse código.")
             else:
