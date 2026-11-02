@@ -286,13 +286,14 @@ def alterar_mensalidade(cid, mid, valor, venc: date):
 def lancamentos(cid, ini: date, fim: date, van=None, origem: str | None = None) -> pd.DataFrame:
     return db.consultar(f"""select l.*, v.nome as van from lancamentos l left join vans v on v.id = l.van_id
                             where l.condutor_id=:cid and l.data >= :i and l.data < :f and {_filtro_van('l.van_id')}
-                              and {_filtro_origem(origem, 'l.')}
+                              and {_filtro_origem(origem, 'l.')} and l.pago
                             order by l.data desc, l.criado_em desc""", cid=cid, i=ini, f=fim, van=van)
 
 
 def salvar_lancamento(cid, d: dict):
-    db.gravar("""insert into lancamentos (condutor_id, van_id, tipo, categoria, descricao, valor, data, km)
-                 select :cid, :van_id, :tipo, :categoria, :descricao, :valor, :data, :km
+    d = {"pago": True} | d
+    db.gravar("""insert into lancamentos (condutor_id, van_id, tipo, categoria, descricao, valor, data, km, pago)
+                 select :cid, :van_id, :tipo, :categoria, :descricao, :valor, :data, :km, :pago
                  where cast(:van_id as uuid) is null
                     or exists (select 1 from vans where id = cast(:van_id as uuid) and condutor_id = :cid)""",
               cid=cid, **d)
@@ -316,7 +317,7 @@ def resumo_meses(cid, ini: date, fim: date, van=None, origem: str | None = None)
         l as (select date_trunc('month', data)::date mes,
                      sum(valor) filter (where tipo='receita') rec, sum(valor) filter (where tipo='despesa') desp
               from lancamentos where condutor_id=:cid and data >= :i and data < :f and {_filtro_van('van_id')}
-                and {_filtro_origem(origem)}
+                and {_filtro_origem(origem)} and pago
               group by 1)
         select meses.mes, coalesce(m.v,0) as mensalidades, coalesce(l.rec,0) as outras_receitas,
                coalesce(l.desp,0) as despesas
@@ -330,7 +331,7 @@ def resultado_por_van(cid, ini: date, fim: date) -> pd.DataFrame:
         with m as (select p.van_id, sum(m.valor_pago) v from mensalidades m join passageiros p on p.id = m.passageiro_id
                    where m.condutor_id=:cid and m.pago_em >= :i and m.pago_em < :f group by 1),
         l as (select van_id, sum(valor) filter (where tipo='receita') rec, sum(valor) filter (where tipo='despesa') desp
-              from lancamentos where condutor_id=:cid and data >= :i and data < :f group by 1),
+              from lancamentos where condutor_id=:cid and data >= :i and data < :f and pago group by 1),
         chaves as (select id as van_id, nome from vans where condutor_id=:cid
                    union all select null, 'Geral (sem van)')
         select k.nome as van, coalesce(m.v,0) + coalesce(l.rec,0) as recebido, coalesce(l.desp,0) as despesas
@@ -342,7 +343,7 @@ def resultado_por_van(cid, ini: date, fim: date) -> pd.DataFrame:
 def despesas_por_categoria(cid, ini: date, fim: date, van=None, origem: str | None = None) -> pd.DataFrame:
     return db.consultar(f"""select categoria, sum(valor) as valor from lancamentos
                             where condutor_id=:cid and tipo='despesa' and data >= :i and data < :f
-                              and {_filtro_van('van_id')} and {_filtro_origem(origem)}
+                              and {_filtro_van('van_id')} and {_filtro_origem(origem)} and pago
                             group by 1 order by 2 desc""", cid=cid, i=ini, f=fim, van=van)
 
 
@@ -1413,3 +1414,18 @@ def pagar_documento_van(cid, did, valor: float, data, proximo):
     db.gravar("""update vans_documentos set vencimento = :p, valor = coalesce(:v, valor)
                  where id = cast(:did as uuid) and condutor_id = :cid""",
               cid=cid, did=str(did), p=proximo, v=valor or None)
+
+
+# ------------------------------------------------------------------ contas a pagar (despesa lançada antes de pagar)
+def contas_a_pagar(cid) -> pd.DataFrame:
+    """Despesas pendentes — `data` é o vencimento; só entram no resultado quando pagas."""
+    return db.ao_vivo("""select l.id, l.categoria, l.descricao, l.valor, l.data, v.nome as van
+                         from lancamentos l left join vans v on v.id = l.van_id
+                         where l.condutor_id = :cid and l.tipo = 'despesa' and not l.pago
+                         order by l.data""", cid=cid)
+
+
+def pagar_conta(cid, lid, data):
+    """Marca a conta como paga: a data vira a do pagamento (regime de caixa)."""
+    db.gravar("update lancamentos set pago = true, data = :d where id = cast(:lid as uuid) and condutor_id = :cid",
+              cid=cid, lid=str(lid), d=data)

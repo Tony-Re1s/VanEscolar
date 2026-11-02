@@ -582,3 +582,6 @@ create table if not exists vans_documentos (
   criado_em    timestamptz not null default now()
 );
 create index if not exists ix_vans_documentos on vans_documentos(condutor_id, vencimento);
+
+-- v28 — despesa a pagar (conta lançada antes de pagar; só entra no resultado quando paga)
+alter table lancamentos add column if not exists pago boolean not null default true;

@@ -15,16 +15,23 @@ st.title("Financeiro")
 _quer_lancar = st.button("Lançar despesa ou receita", icon=":material/add:", type="primary", width="stretch",
                          key="fin_lancar")
 
-meses = [somar_meses(inicio_mes(h), i) for i in range(-24, 1)]
-comp = st.select_slider("Mês", options=meses, value=inicio_mes(h), format_func=lambda d: mes_label(d, curto=True))
-prox = somar_meses(comp, 1)
-van = _ui.filtro_van(cid, "van_fin", "Ver")
+meses = [somar_meses(inicio_mes(h), i) for i in range(0, -25, -1)]
 vans = repo.vans(cid)
 ORIGENS = {"tudo": "Tudo", "escolar": "Transporte escolar", "frete": "Fretamento"}
-origem = None
-if pl.tem_fretamento(repo.empresa(cid), h):
-    origem = st.segmented_control("Mostrar", list(ORIGENS), format_func=ORIGENS.get, default="tudo", key="fin_origem")
-    origem = None if origem in (None, "tudo") else origem
+tem_frete = pl.tem_fretamento(repo.empresa(cid), h)
+# mês sempre à vista; van e "mostrar" ficam no botão Filtros (economiza tela no celular)
+f1, f2 = st.container(key="linha_fin_filtros").columns([3, 2], vertical_alignment="bottom")
+comp = f1.selectbox("Mês", meses, format_func=lambda d: mes_label(d), key="fin_mes", label_visibility="collapsed")
+prox = somar_meses(comp, 1)
+with f2.popover("Filtros", icon=":material/tune:", width="stretch"):
+    van = _ui.filtro_van(cid, "van_fin", "Van")
+    origem = None
+    if tem_frete:
+        origem = st.segmented_control("Mostrar", list(ORIGENS), format_func=ORIGENS.get, default="tudo",
+                                      key="fin_origem")
+        origem = None if origem in (None, "tudo") else origem
+    if len(vans) <= 1 and not tem_frete:
+        st.caption("Sem filtros por enquanto — eles aparecem quando você tiver mais de uma van ou fretamento.")
 
 res = repo.resumo_meses(cid, somar_meses(comp, -11), prox, van=van, origem=origem)
 mes = res.iloc[-1]
@@ -66,19 +73,46 @@ def _lancar():
         else:
             van_l = None
         desc = st.text_input("Descrição (opcional)", placeholder="Ex.: troca de óleo, posto X")
+        pago = True
+        if tipo == "despesa":
+            pago = st.toggle("Já foi paga", value=True,
+                             help="Desligue para lançar uma conta a pagar: a data vira o vencimento e ela só entra "
+                                  "no resultado quando você marcar como paga.")
         if st.form_submit_button("Lançar", type="primary", width="stretch"):
             if valor <= 0:
                 st.error("Informe o valor.")
             else:
                 repo.salvar_lancamento(cid, dict(van_id=van_l, tipo=tipo, categoria=cat, descricao=desc or None,
-                                                 valor=valor, data=data, km=km or None))
-                st.toast("Lançado. ✅")
+                                                 valor=valor, data=data, km=km or None, pago=pago))
+                st.toast("Lançado. ✅" if pago else "Conta a pagar lançada. ✅")
                 st.rerun()
     st.caption("Mensalidades entram sozinhas quando você marca como recebidas.")
 
 
 if _quer_lancar:
     _lancar()
+
+_contas = repo.contas_a_pagar(cid)
+if not _contas.empty:
+    _venc = _contas[_contas["data"] < h]
+    with st.expander(f"Contas a pagar ({len(_contas)}) · {_ui._mascara(brl(_contas['valor'].astype(float).sum()))}"
+                     + (f" · {len(_venc)} vencida(s)" if len(_venc) else ""), icon=":material/event_upcoming:",
+                     expanded=bool(len(_venc))):
+        for r in _contas.itertuples():
+            vencida = r.data < h
+            a, b = st.container(key=f"{'lpv' if vencida else 'lp'}_cp{r.id}").columns([3, 2], vertical_alignment="center")
+            a.markdown(f"**{_ui.esc(r.descricao or r.categoria)}** <span class='ve-sub'>· {_ui.esc(r.categoria)}"
+                       f"{' · ' + _ui.esc(r.van) if r.van else ''}</span>  \n"
+                       f"<span class='ve-sub'>{'venceu' if vencida else 'vence'} {data_br(r.data)} · "
+                       f"{_ui._mascara(brl(r.valor))}</span>", unsafe_allow_html=True)
+            x, y = b.columns([3, 1])
+            if x.button("Paguei", key=f"pgc_{r.id}", icon=":material/check_circle:", width="stretch"):
+                repo.pagar_conta(cid, r.id, h)
+                st.toast("Pago — entrou nas despesas de hoje.")
+                st.rerun()
+            if y.button("", key=f"exc_{r.id}", icon=":material/delete:", type="tertiary", help="Excluir"):
+                repo.excluir_lancamento(cid, r.id)
+                st.rerun()
 
 abas = ["Lançamentos do mês", "12 meses"] + (["Por van"] if len(vans) > 1 else [])
 aba_mes, aba_ano, *aba_van = st.tabs(abas)

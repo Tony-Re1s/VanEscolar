@@ -60,7 +60,10 @@ _atras = repo.vencidas_todas(cid, h)
 _semana = alunos[alunos["data_nasc"].notna()] if "data_nasc" in alunos else alunos.iloc[0:0]
 _semana = _semana[_semana["data_nasc"].map(
     lambda d: 0 <= ((d.replace(year=h.year) if not (d.month == 2 and d.day == 29) else d.replace(year=h.year, day=28)) - h).days <= 6)]
+_cp = repo.contas_a_pagar(cid)
+_cp = _cp[_cp["data"] <= h + timedelta(days=7)] if not _cp.empty else _cp
 _pend = [("telas/mensalidades.py", "Mensalidades atrasadas", len(_atras), ":material/warning:"),
+         ("telas/financeiro.py", "Contas a pagar (até 7 dias)", len(_cp), ":material/event_upcoming:"),
          ("telas/alunos.py", "Aluno sem valor de mensalidade", _sem_valor, ":material/money_off:"),
          ("telas/alunos.py", "Aluno sem WhatsApp do responsável", _sem_zap, ":material/phone_disabled:")]
 _pend = [x for x in _pend if x[2]]

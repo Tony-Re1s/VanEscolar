@@ -551,15 +551,19 @@ def rotulo_van(v: dict, varias_empresas=False) -> str:
     return base + (f" ({v['empresa']})" if varias_empresas else "")
 
 
-def filtro_van(cid, chave: str, label="Van") -> str | None:
+def filtro_van(cid, chave: str, label="Van", rotulo_oculto: bool = False) -> str | None:
     """Selectbox 'Todas as vans' + vans da empresa (só aparece se houver mais de uma). Devolve van_id ou None."""
     from core import repo
     vs = repo.vans(cid)
     if len(vs) <= 1:
         return None
-    ids = [None] + [str(x) for x in vs["id"]]
-    nomes = {None: "Todas as vans"} | {str(r.id): r.nome for r in vs.itertuples()}
-    return st.selectbox(label, ids, format_func=nomes.get, key=chave)
+    ids = ["todas"] + [str(x) for x in vs["id"]]        # "todas" (e não None): None vira "Choose an option"
+    nomes = {"todas": "Todas as vans"} | {str(r.id): r.nome for r in vs.itertuples()}
+    if st.session_state.get(chave) not in ids:
+        st.session_state[chave] = "todas"
+    v = st.selectbox(label, ids, format_func=nomes.get, key=chave,
+                     label_visibility="collapsed" if rotulo_oculto else "visible")
+    return None if v == "todas" else v
 
 
 def checar_limite(c: dict, recurso: str, novos: int = 1) -> bool:

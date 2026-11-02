@@ -80,16 +80,17 @@ def _msg(r) -> str:
 
 
 
-van = _ui.filtro_van(cid, "van_mens")
+van = _ui.filtro_van(cid, "van_mens", rotulo_oculto=True)
 aba_mes, aba_cobrar, aba_painel = st.tabs(["Mês", "Cobrar vencidos", "Painel"])
 
 
 def _tela_mes():
-    meses = [somar_meses(inicio_mes(h), i) for i in range(-12, 3)]
-    comp = st.select_slider("Mês", options=meses, value=inicio_mes(h), format_func=lambda d: mes_label(d, curto=True))
+    meses = [somar_meses(inicio_mes(h), i) for i in range(2, -13, -1)]
+    g1, g2 = st.container(key="linha_mens_mes").columns([3, 2], vertical_alignment="center")
+    comp = g1.selectbox("Mês", meses, index=meses.index(inicio_mes(h)), format_func=lambda d: mes_label(d),
+                        label_visibility="collapsed", key="mens_mes")
 
     df = repo.mensalidades_mes(cid, comp, h, van=van)
-    g1, g2 = st.columns([3, 1])
     if g2.button("Gerar mês", icon=":material/autorenew:", width="stretch",
                  help="Cria a mensalidade de quem ainda não tem neste mês (alunos ativos com valor)."):
         n = repo.gerar_mensalidades(cid, comp)
@@ -97,7 +98,7 @@ def _tela_mes():
         st.rerun()
 
     if df.empty:
-        g1.info("Nenhuma mensalidade neste mês. Cadastre alunos com valor de mensalidade e clique em **Gerar mês**.")
+        st.info("Nenhuma mensalidade neste mês. Cadastre alunos com valor de mensalidade e clique em **Gerar mês**.")
         return
 
     prev = df["valor"].astype(float).sum()
@@ -112,14 +113,17 @@ def _tela_mes():
                                      f"{(venc / base * 100 if base else 0):.0f}% do mês")])
     _ui.meta_mes(rec, prev, "Meta do mês" if comp == inicio_mes(h) else f"Meta de {mes_label(comp)}")
 
-    filtro = st.segmented_control("Mostrar", ["Todos", "Em aberto", "Vencidos", "Pagos"], default="Em aberto",
-                                  label_visibility="collapsed")
-    if filtro == "Em aberto":
-        df = df[df["situacao"] != "pago"]
-    elif filtro == "Vencidos":
-        df = df[df["situacao"] == "vencido"]
-    elif filtro == "Pagos":
-        df = df[df["situacao"] == "pago"]
+    # situação com quantidade (e valor ao passar o dedo): toque para ver só aquele grupo
+    isento = df["forma"].fillna("") == "Isento"
+    grupos = {"Em aberto": df["situacao"] != "pago", "Vencidos": df["situacao"] == "vencido",
+              "Pagos": (df["situacao"] == "pago") & ~isento, "Isentos": isento, "Todos": df["situacao"].notna()}
+    ops = [k for k in grupos if k != "Isentos" or isento.any()]
+    filtro = st.segmented_control(
+        "Mostrar", ops, default="Em aberto", label_visibility="collapsed", key="mens_filtro",
+        format_func=lambda k: f"{k} · {int(grupos[k].sum())}") or "Em aberto"
+    df = df[grupos[filtro]]
+    if filtro != "Todos" and not df.empty:
+        st.caption(f"{len(df)} mensalidade(s) · {_ui._mascara(brl(df['valor'].astype(float).sum()))}")
 
     if st.session_state.get("_aviso_mens"):
         st.warning(st.session_state.pop("_aviso_mens"), icon=":material/info:")
