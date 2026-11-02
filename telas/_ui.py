@@ -130,6 +130,7 @@ button[data-testid="stBaseButton-secondary"]:hover, .stLinkButton > a:hover {bor
 [class*="st-key-card_falta"]:hover {opacity: .85;}
 .st-key-tela_ligada {display: none !important;}
 .st-key-marca_android {display: none !important;}
+.st-key-marca_aba {display: none !important;}
 /* rota do motorista: botões grandes e por cor — amarelo = mensagem, verde = embarcou/entregue,
    vermelho = faltou, azul = caminho. Lê de relance, toca sem errar. */
 [class*="st-key-zap_"] button, [class*="st-key-zap_"] a, [class*="st-key-ok_"] button,
@@ -207,8 +208,29 @@ def esc(t) -> str:
     return html.escape("" if t is None else str(t))
 
 
+# Aba do navegador e atalho do celular: o Streamlit Cloud põe "· Streamlit" no título e o ícone dele na página de fora
+# (o app roda num iframe do MESMO endereço, então dá para corrigir a página de fora daqui de dentro).
+_MARCA_ABA = """<script>(function(){try{
+const P=window.parent; if(!P||P===window) return; const d=P.document;
+const T="Turminha a Bordo", I="https://turminhaabordo.com.br/icone-180.png";
+function link(rel){let l=d.head.querySelector('link[rel="'+rel+'"]'); if(!l){l=d.createElement('link'); l.rel=rel; d.head.appendChild(l);} return l;}
+function meta(n,v){let m=d.head.querySelector('meta[name="'+n+'"]'); if(!m){m=d.createElement('meta'); m.name=n; d.head.appendChild(m);} if(m.content!==v) m.content=v;}
+function fix(){
+  if(d.title!==T) d.title=T;
+  d.head.querySelectorAll('link[rel~="icon"]').forEach(l=>{if(l.href!==I){l.href=I; l.type="image/png";}});
+  if(!d.head.querySelector('link[rel~="icon"]')){const l=link("icon"); l.href=I; l.type="image/png";}
+  const a=link("apple-touch-icon"); if(a.href!==I) a.href=I;
+  meta("apple-mobile-web-app-title",T); meta("application-name",T); meta("theme-color","#14B8B0");
+}
+fix();
+if(!P.__tbMarca){P.__tbMarca=new P.MutationObserver(()=>fix()); P.__tbMarca.observe(d.head,{subtree:true,childList:true,characterData:true,attributes:true});}
+}catch(e){}})();</script>"""
+
+
 def css():
     st.markdown(CSS, unsafe_allow_html=True)
+    with st.container(key="marca_aba"):
+        st.html(_MARCA_ABA, unsafe_allow_javascript=True)
 
 
 def kpis(itens: list[tuple], destaque: int | None = 0):
