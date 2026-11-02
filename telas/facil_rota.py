@@ -21,14 +21,16 @@ if vans.empty:      # modo fácil: ninguém precisa cadastrar van antes — cria
 
 st.title("Rota")
 _ui.guia(c, "telas/facil_rota.py")
-a, b = st.columns([3, 2])
+a, b = st.container(key="linha_frota_top").columns([1, 1], vertical_alignment="center")
 if len(vans) > 1:
     van_id = a.selectbox("Van", list(vans["id"].astype(str)), label_visibility="collapsed",
                          format_func=lambda v: vans[vans["id"].astype(str) == v].iloc[0]["nome"])
 else:
     van_id = str(vans.iloc[0]["id"])
-trecho = b.radio("Trecho", ["ida", "volta"], format_func={"ida": "Ida", "volta": "Volta"}.get, horizontal=True,
-                 index=0 if agora().hour < 11 else 1, label_visibility="collapsed")
+trecho = (b if len(vans) > 1 else st).segmented_control(
+    "Trecho", ["ida", "volta"], format_func={"ida": "🏠→🏫 Ida", "volta": "🏫→🏠 Volta"}.get,
+    default="ida" if agora().hour < 11 else "volta", label_visibility="collapsed", width="stretch",
+    key="frota_trecho") or ("ida" if agora().hour < 11 else "volta")
 
 dia = hoje()
 df = repo.chamada_dia(cid, van_id, dia, trecho)
@@ -53,21 +55,21 @@ elif finalizada is not None:
 else:
     st.success(f"Rota iniciada às {inicio.astimezone(TZ):%H:%M}.", icon=":material/directions_bus:")
 
-# 2) localização ao vivo (opcional)
-with st.container(border=True, key="card_loc_facil"):
-    st.markdown("**📍 Localização ao vivo** <span class='ve-sub'>— os pais veem a van no mapa pelo link</span>",
-                unsafe_allow_html=True)
-    link = _ui.localizacao_ao_vivo(cid, van_id)
+# 2) localização ao vivo (opcional) — só com a rota em andamento
+link = None
+if inicio is not None and finalizada is None:
+    with st.container(border=True, key="card_loc_facil"):
+        st.markdown("**📍 Localização ao vivo** <span class='ve-sub'>— os pais veem a van no mapa pelo link</span>",
+                    unsafe_allow_html=True)
+        link = _ui.localizacao_ao_vivo(cid, van_id)
 
 # 3) avisar cada família
 vao = df[~df["avisou"] & (df["status"] != "faltou")]
 faltas = df[df["avisou"] | (df["status"] == "faltou")]
 st.subheader(f"Avisar as famílias ({len(vao)})")
-st.caption("Cada botão abre o WhatsApp do responsável com a mensagem pronta — é só enviar.")
 apelido = repo.apelido_motorista(van_id, u["email"])
 if not apelido:
-    st.caption("💡 Diga como as famílias te chamam (ex.: **Tio Jô**) em **Minha empresa** — aí a mensagem fica "
-               "\"O tio Jô está a caminho para buscar…\".")
+    st.caption("💡 Coloque como as famílias te chamam (ex.: Tio Jô) em **Minha empresa**.")
 hora = agora().hour
 for pos, r in enumerate(vao.itertuples(), start=1):
     nome1 = r.nome.split()[0]
@@ -90,7 +92,8 @@ for pos, r in enumerate(vao.itertuples(), start=1):
         else:
             x2.button("Com localização", key=f"zap_clsem_{r.id}", disabled=True, width="stretch",
                       icon=":material/share_location:",
-                      help="Ligue a localização ao vivo acima." if r.telefone else "Cadastre o WhatsApp do responsável.")
+                      help=("Inicie a rota e ligue a localização ao vivo." if r.telefone
+                            else "Cadastre o WhatsApp do responsável."))
 if not faltas.empty:
     st.caption("Não vão hoje: " + ", ".join(faltas["nome"]))
 

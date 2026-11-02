@@ -218,23 +218,27 @@ for aba, f in zip(abas, filhos.itertuples()):
                 st.info(f"🚐 A van saiu para a {'ida' if t == 'ida' else 'volta'} às "
                         f"{q['iniciada_em'].astimezone(TZ).strftime('%H:%M')}{pos}.", icon=":material/directions_bus:")
         st.markdown("  \n".join(linhas))
-        st.caption("Atualiza quando o motorista marca na chamada. Recarregue a página para ver o mais recente.")
 
-        # avisar falta
-        st.subheader("Avisar falta")
+        # avisar falta: um botão que abre um quadro rápido (cabe na tela)
         aus = repo.ausencias([pid], h)
-        with st.form(f"aus_{pid}", clear_on_submit=True):
-            a, b = st.columns(2)
-            d = a.date_input("Dia", value=h, min_value=h, max_value=h + timedelta(days=90), format="DD/MM/YYYY")
-            q = b.selectbox("Trecho", ["Ida e volta", "Só ida", "Só volta"])
-            m = st.text_input("Motivo (opcional)", placeholder="Ex.: consulta médica, vou buscar")
-            if st.form_submit_button("Avisar a van", type="primary"):
-                repo.avisar_ausencia(pid, d, q != "Só volta", q != "Só ida", m or None, u["id"])
-                st.success(f"Aviso registrado para {data_br(d)}.")
-                st.rerun()
+
+        @st.dialog(f"Avisar falta — {f.nome.split()[0]}")
+        def _avisar(pid=pid):
+            with st.form(f"aus_{pid}", clear_on_submit=True):
+                a, b = st.columns(2)
+                d = a.date_input("Dia", value=h, min_value=h, max_value=h + timedelta(days=90), format="DD/MM/YYYY")
+                q = b.selectbox("Trecho", ["Ida e volta", "Só ida", "Só volta"])
+                m = st.text_input("Motivo (opcional)", placeholder="Ex.: consulta médica, vou buscar")
+                if st.form_submit_button("Avisar a van", type="primary", width="stretch"):
+                    repo.avisar_ausencia(pid, d, q != "Só volta", q != "Só ida", m or None, u["id"])
+                    st.toast(f"Aviso registrado para {data_br(d)}. ✅")
+                    st.rerun()
+
+        if st.button("Avisar falta", icon=":material/event_busy:", width="stretch", key=f"avf_{pid}"):
+            _avisar()
         for r in aus.itertuples():
             trechos = " e ".join(t for t, v in (("ida", r.ida), ("volta", r.volta)) if v)
-            a, b = st.columns([4, 1])
+            a, b = st.container(key=f"lp_aus{r.id}").columns([4, 1], vertical_alignment="center")
             a.markdown(f"📅 **{data_br(r.data)}** — não vai ({trechos}){' · ' + _ui.esc(r.motivo) if r.motivo else ''}")
             if b.button("Cancelar", key=f"canc_{r.id}", type="tertiary"):
                 repo.cancelar_ausencia(pid, r.id)
@@ -248,10 +252,23 @@ for aba, f in zip(abas, filhos.itertuples()):
             st.code(f.chave_pix, language=None)
         if mens.empty:
             st.caption("Nenhuma mensalidade lançada ainda.")
-        for r in mens.itertuples():
+
+        def _linha_m(r):
             pago = f" · pago em {data_br(r.pago_em)}" if r.pago_em else ""
             st.markdown(f"{mes_label(r.competencia)} — **{brl(r.valor)}** · vence {data_br(r.vencimento)}{pago} "
                         f"{_ui.tag(r.situacao, _ui.ROTULO_MENS[r.situacao])}", unsafe_allow_html=True)
+
+        # em aberto sempre à vista; dos pagos, só os 2 últimos — o resto no histórico
+        abertas = mens[mens["situacao"] != "pago"] if not mens.empty else mens
+        pagas = mens[mens["situacao"] == "pago"] if not mens.empty else mens
+        for r in abertas.itertuples():
+            _linha_m(r)
+        for r in pagas.head(2).itertuples():
+            _linha_m(r)
+        if len(pagas) > 2:
+            with st.expander(f"Histórico ({len(pagas) - 2} pagas)"):
+                for r in pagas.iloc[2:].itertuples():
+                    _linha_m(r)
 
 # Instagram do app (engajamento das famílias)
 st.divider()

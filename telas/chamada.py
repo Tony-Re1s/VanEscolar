@@ -23,8 +23,8 @@ if not vans:
     st.stop()
 varias = len({v["cid"] for v in vans}) > 1
 if len(vans) > 1:
-    idx = st.selectbox("Van", range(len(vans)), format_func=lambda i: _ui.rotulo_van(vans[i], varias),
-                       key="van_chamada")
+    idx = st.selectbox("Van", range(len(vans)), format_func=lambda i: "🚐 " + _ui.rotulo_van(vans[i], varias),
+                       key="van_chamada", label_visibility="collapsed")
     van = vans[idx]
 else:
     van = vans[0]
@@ -47,11 +47,12 @@ if not van["gestor"]:
         if lk_g:
             g2.link_button("WhatsApp do gestor", lk_g, icon=":material/chat:", width="stretch")
 
-a, b = st.columns([1, 1])
-dia = a.date_input("Dia", value=hoje(), format="DD/MM/YYYY", label_visibility="collapsed")
+a, b = st.container(key="linha_ch_dia").columns([3, 2], vertical_alignment="center")
 padrao = "ida" if agora().hour < 11 or 13 <= agora().hour < 15 else "volta"
-trecho = b.segmented_control("Trecho", ["ida", "volta"], default=padrao, label_visibility="collapsed",
-                             format_func=lambda t: "🏠 → 🏫 Ida" if t == "ida" else "🏫 → 🏠 Volta") or padrao
+trecho = a.segmented_control("Trecho", ["ida", "volta"], default=padrao, label_visibility="collapsed",
+                             format_func=lambda t: "🏠→🏫 Ida" if t == "ida" else "🏫→🏠 Volta",
+                             width="stretch") or padrao
+dia = b.date_input("Dia", value=hoje(), format="DD/MM/YYYY", label_visibility="collapsed")
 
 df = repo.chamada_dia(cid, van_id, dia, trecho)
 if df.empty:
@@ -74,12 +75,15 @@ if not avisos.empty:
 
 vao = df[~df["avisou"] & (df["status"] != "faltou")]
 sit = R.situacao(df, trecho)
-if trecho == "ida":
-    _ui.kpis([("Alunos no trecho", len(df)), ("Na van", len(sit["na_van"])), ("Na escola", len(sit["concluidos"])),
-              ("Faltas / avisos", len(sit["ausentes"]))], destaque=None)
-else:
-    _ui.kpis([("Alunos no trecho", len(df)), ("Entregues", len(sit["concluidos"])),
-              ("Faltam entregar", sit["pendentes"]), ("Faltas / avisos", len(sit["ausentes"]))], destaque=None)
+# placar em uma linha (no lugar de 4 cartões): o que importa na rota cabe sem rolar
+_tot = len(df)
+_feitos = len(sit["concluidos"])
+_itens = ([("🚐", len(sit["na_van"]), "na van"), ("🏫", _feitos, "na escola")] if trecho == "ida"
+          else [("🏠", _feitos, "entregues"), ("⏳", sit["pendentes"], "faltam")]) + [("🚫", len(sit["ausentes"]), "faltas")]
+st.markdown("<div class='ve-placar'><div class='t'><div><b>" + str(_feitos) + "</b> de " + str(_tot) + " "
+            + ("na escola" if trecho == "ida" else "entregues") + "</div><span>"
+            + " · ".join(f"{e} {n} {t}" for e, n, t in _itens) + "</span></div><div class='barra'><div style='width:"
+            + f"{(_feitos / _tot * 100) if _tot else 0:.0f}%'></div></div></div>", unsafe_allow_html=True)
 
 # iniciar rota: registra a saída (os pais acompanham no app) e lista uma mensagem pronta no WhatsApp para o
 # responsável de cada criança que vai hoje, na ordem da rota (o WhatsApp comum não permite envio automático em massa)

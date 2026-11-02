@@ -299,6 +299,14 @@ button[data-testid="stBaseButton-secondary"]:hover, .stLinkButton > a:hover {bor
 .ve-ficha-topo h3 {margin:0 !important; font-size:1.3rem !important;}
 [class*="st-key-vidbtn_"] {margin: -.6rem 0 -.4rem;}
 [class*="st-key-vidbtn_"] button p {color: var(--tif-esc) !important; font-weight: 700 !important; font-size: .9rem !important;}
+/* placar da rota (uma linha) */
+.ve-placar {background:#fff; border:1px solid #E1F0EF; border-radius:16px; padding:8px 12px; margin:.2rem 0 .6rem;
+  box-shadow: var(--sombra);}
+.ve-placar .t {display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; font-size:.92rem; color: var(--ve-azul);}
+.ve-placar .t b {font-size:1.1rem;}
+.ve-placar .t span {color: var(--ve-cinza); font-size:.84rem;}
+.ve-placar .barra {height:6px; background:#EEF2F5; border-radius:999px; margin-top:6px; overflow:hidden;}
+.ve-placar .barra div {height:100%; background: linear-gradient(90deg, #14B8B0, #1E9E5A); border-radius:999px;}
 /* meta do mês */
 .ve-meta {background:#fff; border:1px solid #E1F0EF; border-radius:18px; padding:12px 16px; margin:.3rem 0 .8rem;
   box-shadow: var(--sombra);}

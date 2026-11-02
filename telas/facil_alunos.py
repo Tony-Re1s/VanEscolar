@@ -1,12 +1,9 @@
 """Modo fácil — Alunos em 4 campos (nome, WhatsApp do responsável, valor, vencimento) e "colar uma lista".
 Tudo fica no mesmo cadastro do modo completo (lá dá para completar escola, endereço, contrato…)."""
-import re
-
 import pandas as pd
 import streamlit as st
 
 from core import repo
-from core.fmt import so_digitos
 from telas import _ui
 from telas._ui import exigir_condutor
 
@@ -20,23 +17,6 @@ van_padrao = str(vans.iloc[0]["id"]) if not vans.empty else None
 
 st.title("Alunos")
 _ui.guia(c, "telas/facil_alunos.py")
-st.caption("Só o essencial. Quer endereço, escola ou contrato? Troque para o **modo completo** no topo — o que você "
-           "cadastrar aqui aparece lá.")
-
-
-def _valor(txt) -> float:
-    t = str(txt or "").replace("R$", "").strip()
-    if "," in t:
-        t = t.replace(".", "").replace(",", ".")
-    try:
-        return round(float(t), 2)
-    except ValueError:
-        return 0.0
-
-
-def _dia(txt):
-    d = so_digitos(str(txt or ""))
-    return min(28, max(1, int(d))) if d else None
 
 
 with st.form("aluno_rapido", clear_on_submit=True):
@@ -54,30 +34,7 @@ with st.form("aluno_rapido", clear_on_submit=True):
             st.toast(f"{nome.strip()} adicionado(a).")
             st.rerun()
 
-with st.expander("Colar uma lista (vários de uma vez)", icon=":material/content_paste:"):
-    st.caption("Um aluno por linha: **nome; WhatsApp; valor; dia**. Só o nome é obrigatório. "
-               "Ex.: `Maria Souza; 11 98888-7777; 350; 10`")
-    txt = st.text_area("Lista", height=140, label_visibility="collapsed",
-                       placeholder="Maria Souza; 11 98888-7777; 350; 10\nJoão Lima; 11 97777-6666; 380")
-    linhas = []
-    for ln in (txt or "").splitlines():
-        partes = [p.strip() for p in re.split(r"[;\t]", ln)]
-        if partes and partes[0]:
-            linhas.append(dict(nome=partes[0], whats=partes[1] if len(partes) > 1 else "",
-                               valor=_valor(partes[2]) if len(partes) > 2 else 0.0,
-                               dia=_dia(partes[3]) if len(partes) > 3 else dia_padrao))
-    if linhas:
-        st.dataframe(pd.DataFrame(linhas).rename(columns={"nome": "Aluno", "whats": "WhatsApp", "valor": "Valor",
-                                                          "dia": "Vence dia"}), hide_index=True, width="stretch")
-        if st.button(f"Cadastrar {len(linhas)} aluno(s)", type="primary", icon=":material/group_add:"):
-            if _ui.checar_limite(c, "alunos", novos=len(linhas)):
-                for x in linhas:
-                    repo.cadastro_rapido(cid, van_padrao, x["nome"], x["whats"] or None, x["valor"],
-                                         x["dia"] or dia_padrao)
-                st.toast(f"{len(linhas)} aluno(s) cadastrado(s).")
-                st.rerun()
-
-_ui.importar_planilha(c, van_padrao, dia_padrao, chave="imp_f")
+_ui.importar_planilha(c, van_padrao, dia_padrao, chave="imp_f")  # também aceita colar uma lista
 
 st.subheader("Seus alunos")
 df = repo.alunos_facil(cid)
@@ -85,6 +42,7 @@ if df.empty:
     st.info("Nenhum aluno ainda.")
     st.stop()
 tab = df[["nome", "whatsapp", "valor", "vencimento", "ativo"]].copy()
+tab["whatsapp"] = tab["whatsapp"].fillna("")
 tab["valor"] = pd.to_numeric(tab["valor"]).astype(float)
 ed = st.data_editor(
     tab, hide_index=True, width="stretch", num_rows="fixed", key="ed_alunos_facil",
