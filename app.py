@@ -219,6 +219,22 @@ if cond and not usuario.get("bloqueado") and not usuario.get("gratis") and not V
 if st.session_state.get("_boas_vindas_msg"):
     st.toast(st.session_state.pop("_boas_vindas_msg"), icon="🎉")
 
+# barra de abas fixa embaixo (só no celular) — o "Mais" abre o menu lateral
+if cond and not usuario.get("bloqueado") and not VER_MOT:
+    if usuario.get("gratis"):
+        _abas = [("telas/mensalidades.py", "Mensal.", ":material/payments:"),
+                 ("telas/facil_alunos.py", "Alunos", ":material/groups:"),
+                 ("telas/financeiro.py", "Financeiro", ":material/monitoring:")]
+    elif (cond.get("modo") or "completo") == "facil":
+        _abas = ([] if EM_PAUSA else [("telas/facil_rota.py", "Rota", ":material/airport_shuttle:")]) + [
+                 ("telas/facil_alunos.py", "Alunos", ":material/groups:"),
+                 ("telas/mensalidades.py", "Mensal.", ":material/payments:")]
+    else:
+        _abas = [("telas/hoje.py", "Hoje", ":material/today:")] + (
+                 [] if EM_PAUSA else [("telas/chamada.py", "Rota", ":material/fact_check:")]) + [
+                 ("telas/mensalidades.py", "Mensal.", ":material/payments:")]
+    _ui.barra_abas(_abas)
+
 with st.sidebar:
     st.markdown(f"**{_ui.esc(usuario.get('nome') or usuario['email'])}**  \n"
                 f"<span class='ve-sub'>{_ui.esc(usuario['email'])}</span>", unsafe_allow_html=True)

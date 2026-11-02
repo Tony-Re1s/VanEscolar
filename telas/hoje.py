@@ -34,6 +34,19 @@ _ui.kpis([("Lucro do mês", brl(lucro), mes_label(h)),
           ("Recebido", brl(rec), f"de {brl(prev)} previstos"),
           ("Alunos ativos", len(alunos), f"{len(vans)} van(s) · {int(vans['capacidade'].sum()) if len(vans) else 0} lugares"),
           ("Despesas do mês", brl(res["despesas"]))])
+_ui.meta_mes(rec, prev)
+
+# atalhos grandes
+from core import planos as _pl  # noqa: E402
+_em_pausa = _pl.em_pausa(repo.empresa(cid), h)
+_at = st.container(key="atalhos").columns(3)
+if not _em_pausa:
+    with _at[0].container(key="atalho_rota"):
+        st.page_link("telas/chamada.py", label="Iniciar rota", icon=":material/airport_shuttle:", width="stretch")
+with _at[1].container(key="atalho_aluno"):
+    st.page_link("telas/alunos.py", label="+ Aluno", icon=":material/person_add:", width="stretch")
+with _at[2].container(key="atalho_cobrar"):
+    st.page_link("telas/mensalidades.py", label="Cobrar", icon=":material/chat:", width="stretch")
 
 # faltas avisadas
 aus = repo.ausencias_empresa(cid, h)
@@ -56,6 +69,7 @@ if _pl.em_pausa(repo.empresa(c["id"]), h):
     st.caption("⏸️ Pausa de férias: rota e chamada estão pausadas (veja em Meu plano).")
 else:
     st.page_link("telas/chamada.py", label="Abrir rota e chamada", icon=":material/fact_check:")
+_ui.alertas_documentos(cid)
 
 # fretamentos fechados (hoje e próximos 7 dias)
 if _pl.tem_fretamento(repo.empresa(cid), h):
@@ -79,7 +93,7 @@ if abertas.empty:
     st.success("Nada vencido nem vencendo nos próximos 7 dias.", icon=":material/payments:")
 else:
     for r in abertas.itertuples():
-        a, b, x = st.container(key=f"lp_{r.id}").columns([3, 2, 1])
+        a, b, x = st.container(key=f"{'lpv' if r.situacao == 'vencido' else 'lp'}_{r.id}").columns([3, 2, 1])
         a.markdown(f"**{_ui.esc(r.aluno)}** {_ui.tag(r.situacao, _ui.ROTULO_MENS[r.situacao])}  \n"
                    f"<span class='ve-sub'>{mes_label(r.competencia, curto=True)} · vence {data_br(r.vencimento)}</span>",
                    unsafe_allow_html=True)

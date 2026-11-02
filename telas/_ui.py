@@ -119,8 +119,8 @@ button[data-testid="stBaseButton-secondary"]:hover, .stLinkButton > a:hover {bor
 [class*="st-key-linha"] [data-testid="stHorizontalBlock"] {flex-wrap: nowrap !important; gap: .4rem !important;}
 [class*="st-key-linha"] [data-testid="stColumn"] {min-width: 0 !important; width: auto !important; flex: 1 1 0 !important;}
 /* linhas proporcionais (key="lp_…"): também não quebram no celular, mas mantêm as larguras */
-[class*="st-key-lp_"] [data-testid="stHorizontalBlock"] {flex-wrap: nowrap !important; gap: .5rem !important;}
-[class*="st-key-lp_"] [data-testid="stColumn"] {min-width: 0 !important;}
+[class*="st-key-lp_"] [data-testid="stHorizontalBlock"], [class*="st-key-lpv_"] [data-testid="stHorizontalBlock"] {flex-wrap: nowrap !important; gap: .5rem !important;}
+[class*="st-key-lp_"] [data-testid="stColumn"], [class*="st-key-lpv_"] [data-testid="stColumn"] {min-width: 0 !important;}
 [class*="st-key-linha"] button, [class*="st-key-linha"] a {padding-left: .3rem !important; padding-right: .3rem !important;}
 /* chamada: botões grandes (avisar / avisar + local) e cartão esmaecido de quem não vai */
 [class*="st-key-linha_av"] button, [class*="st-key-linha_av"] a {min-height: 3.1rem !important; font-size: 1.02rem !important;
@@ -190,6 +190,58 @@ button[data-testid="stBaseButton-secondary"]:hover, .stLinkButton > a:hover {bor
 [data-testid="stElementContainer"]:has(iframe[title*="streamlit_js_eval"]) + * {margin-top: 0;}
 .ve-rodape {text-align:center; color: var(--ve-cinza); font-size:.85rem; margin-top: 2rem;}
 .ve-doc {background:#fff; border:1px solid #E1F0EF; border-radius:20px; padding: 6px 24px 18px; box-shadow: var(--sombra);}
+/* barra de abas no celular (fixa embaixo) */
+.st-key-tabbar {display: none !important;}
+@media (max-width: 640px) {
+  .st-key-tabbar {display: flex !important; position: fixed; left: 0; right: 0; bottom: 0; z-index: 999990;
+    background: rgba(255,255,255,.97); backdrop-filter: blur(8px); border-top: 1px solid #E1F0EF;
+    box-shadow: 0 -6px 20px rgba(22,50,79,.08); padding: 4px 6px calc(4px + env(safe-area-inset-bottom)) !important;}
+  .st-key-tabbar [data-testid="stHorizontalBlock"] {flex-wrap: nowrap !important; gap: 2px !important; width: 100%;}
+  .st-key-tabbar [data-testid="stColumn"] {min-width: 0 !important; flex: 1 1 0 !important; width: auto !important;}
+  .st-key-tabbar [data-testid="stPageLink"] a, .ve-mais {display: flex !important; flex-direction: column !important;
+    align-items: center !important; justify-content: center; gap: 0 !important; padding: 6px 2px !important;
+    border-radius: 14px !important; background: transparent !important; min-height: 52px; cursor: pointer;}
+  .st-key-tabbar [data-testid="stPageLink"] a span, .st-key-tabbar [data-testid="stPageLink"] a p {
+    font-size: .72rem !important; font-weight: 700 !important; color: #3E5468 !important; margin: 0 !important;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+  .st-key-tabbar [data-testid="stIconMaterial"] {font-size: 1.45rem !important; color: #3E5468 !important;}
+  .st-key-tabbar [data-testid="stPageLink"] a[aria-current="page"] {background: var(--tif-claro) !important;}
+  .st-key-tabbar [data-testid="stPageLink"] a[aria-current="page"] * {color: var(--tif-esc) !important;}
+  .ve-mais {font-size: .72rem; font-weight: 700; color: #3E5468; line-height: 1.2;}
+  .ve-mais .i {font-size: 1.35rem; line-height: 1.1;}
+  .block-container {padding-bottom: 6.5rem !important;}
+}
+/* meta do mês */
+.ve-meta {background:#fff; border:1px solid #E1F0EF; border-radius:18px; padding:12px 16px; margin:.3rem 0 .8rem;
+  box-shadow: var(--sombra);}
+.ve-meta .t {display:flex; justify-content:space-between; gap:8px; font-weight:700; color: var(--ve-azul);
+  font-size:.95rem; flex-wrap: wrap;}
+.ve-meta .t span {color: var(--ve-cinza); font-weight:600;}
+.ve-meta .barra {height:12px; background:#EEF2F5; border-radius:999px; overflow:hidden; margin:.5rem 0 .3rem;}
+.ve-meta .barra div {height:100%; border-radius:999px; background: linear-gradient(90deg, #14B8B0, #1E9E5A);}
+.ve-meta .s {font-size:.85rem; color: var(--ve-cinza);}
+/* atalhos grandes do Hoje */
+[class*="st-key-atalho_"] a {min-height: 64px; border-radius: 18px !important; font-weight: 800 !important;}
+[class*="st-key-atalho_"] a p {font-size: 1.02rem !important; font-weight: 800 !important;}
+[class*="st-key-atalho_"] a {justify-content: center !important; background: #fff !important;
+  border: 1px solid #E1F0EF !important; box-shadow: var(--sombra);}
+.st-key-atalhos [data-testid="stHorizontalBlock"] {flex-wrap: nowrap !important; gap: .5rem !important;}
+.st-key-atalhos [data-testid="stColumn"] {min-width: 0 !important; flex: 1 1 0 !important; width: auto !important;}
+@media (max-width: 640px) {
+  [class*="st-key-atalho_"] a {flex-direction: column !important; min-height: 70px; padding: 6px 4px !important; gap: 2px !important;}
+  [class*="st-key-atalho_"] a p {font-size: .9rem !important; white-space: nowrap;}
+}
+.st-key-atalho_rota a {background: #1E9E5A !important; border-color: #1E9E5A !important;}
+.st-key-atalho_rota a * {color: #fff !important;}
+.st-key-atalho_cobrar a {background: #FFC83D !important; border-color: #FFC83D !important;}
+.st-key-atalho_cobrar a * {color: #16324F !important;}
+/* mensalidade vencida em destaque */
+[class*="st-key-card_venc_"] {border-left: 5px solid #E5484D !important; background: #FFF5F5 !important;}
+[class*="st-key-lpv_"] {border-left: 4px solid #E5484D; background: #FFF5F5; border-radius: 12px; padding: 4px 8px;}
+/* documentos da van */
+.ve-doc-al {border-radius: 14px; padding: 8px 12px; margin: .25rem 0; font-size: .93rem;}
+.ve-doc-al.venc {background:#FFF5F5; border-left: 4px solid #E5484D;}
+.ve-doc-al.logo {background:#FFF8E6; border-left: 4px solid #F5A524;}
 @media (max-width: 640px) {
   .ve-hero h1 {font-size: 1.9rem !important;}
   .block-container {padding-left: .8rem; padding-right: .8rem; padding-top: 1rem;}
@@ -211,6 +263,11 @@ def esc(t) -> str:
 # Aba do navegador e atalho do celular: o Streamlit Cloud põe "· Streamlit" no título e o ícone dele na página de fora
 # (o app roda num iframe do MESMO endereço, então dá para corrigir a página de fora daqui de dentro).
 _MARCA_ABA = """<script>(function(){try{
+if(!window.__tbMais){window.__tbMais=1; document.addEventListener('click',function(e){
+  if(e.target.closest && e.target.closest('.ve-mais')){
+    const b=document.querySelector('[data-testid="stExpandSidebarButton"]'); if(b) b.click();}});}
+}catch(e){}})();
+(function(){try{
 const P=window.parent; if(!P||P===window) return; const d=P.document;
 const T="Turminha a Bordo", I="https://turminhaabordo.com.br/icone-180.png";
 function link(rel){let l=d.head.querySelector('link[rel="'+rel+'"]'); if(!l){l=d.createElement('link'); l.rel=rel; d.head.appendChild(l);} return l;}
@@ -835,4 +892,99 @@ def importar_planilha(c: dict, van, dia_padrao: int, chave: str = "imp"):
                 for k in (f"{chave}_arq", f"{chave}_txt"):
                     st.session_state.pop(k, None)
                 st.toast(f"{n} aluno(s) importado(s).", icon="✅")
+                st.rerun()
+
+
+# ---------------------------------------------------------------- barra de abas (só aparece no celular)
+def barra_abas(itens: list[tuple[str, str, str]]):
+    """itens: (página, rótulo, ícone). O último botão, "Mais", abre o menu lateral com o resto."""
+    with st.container(key="tabbar"):
+        cols = st.columns(len(itens) + 1)
+        for col, (pag, rot, ic) in zip(cols, itens):
+            col.page_link(pag, label=rot, icon=ic)
+        cols[-1].markdown("<div class='ve-mais'><span class='i'>☰</span>Mais</div>", unsafe_allow_html=True)
+
+
+# ---------------------------------------------------------------- meta do mês (recebido × previsto)
+def meta_mes(recebido: float, previsto: float, rotulo: str = "Meta do mês"):
+    from core.fmt import brl
+    if not previsto:
+        return
+    pct = max(0.0, min(100.0, recebido / previsto * 100))
+    falta = max(0.0, previsto - recebido)
+    s = "Meta batida! 🎉 Todo mundo pagou." if falta <= 0.005 else f"Faltam {brl(falta)} para fechar o mês."
+    st.markdown(f"<div class='ve-meta'><div class='t'>{esc(rotulo)} <span>{brl(recebido)} de {brl(previsto)} · "
+                f"{pct:.0f}%</span></div><div class='barra'><div style='width:{pct:.1f}%'></div></div>"
+                f"<div class='s'>{s}</div></div>", unsafe_allow_html=True)
+
+
+# ---------------------------------------------------------------- documentos da van
+def alertas_documentos(cid, dias: int = 30, link: bool = True):
+    """Documentos vencidos ou vencendo nos próximos `dias` dias (IPVA, seguro, vistoria…)."""
+    from datetime import timedelta
+    from core import repo
+    from core.fmt import brl, data_br, hoje
+    h = hoje()
+    df = repo.documentos_van(cid, ate=h + timedelta(days=dias))
+    if df.empty:
+        return
+    st.subheader("📄 Documentos da van")
+    for r in df.itertuples():
+        d = (r.vencimento - h).days
+        quando = (f"venceu há {-d} dia(s)" if d < 0 else "vence **hoje**" if d == 0 else
+                  f"vence em {d} dia(s) ({data_br(r.vencimento)})")
+        val = f" · {brl(r.valor)}" if r.valor is not None and str(r.valor) != "nan" and float(r.valor) > 0 else ""
+        st.markdown(f"<div class='ve-doc-al {'venc' if d < 0 else 'logo'}'>{'🔴' if d < 0 else '🟡'} "
+                    f"<b>{esc(r.tipo)}</b> · {esc(r.van)} — {quando}{val}</div>", unsafe_allow_html=True)
+    if link:
+        st.page_link("telas/vans.py", label="Ver documentos das vans", icon=":material/description:")
+
+
+def documentos_vans(cid, vans):
+    """Cadastro dos documentos com vencimento + 'Paguei' (vira despesa no Financeiro e renova a data)."""
+    from datetime import timedelta
+    from core import repo
+    from core.fmt import brl, data_br, hoje, somar_meses
+    h = hoje()
+    st.subheader("📄 Documentos e vencimentos")
+    st.caption("IPVA, licenciamento, seguro, vistoria escolar, curso do condutor… O app avisa no **Hoje** 30 dias "
+               "antes. Quando pagar, toque em **Paguei**: a despesa entra no Financeiro e a data vai para o próximo ano.")
+    opc_van = {None: "Empresa (todas)"} | {str(v.id): v.nome for v in vans.itertuples()}
+    df = repo.documentos_van(cid)
+    for r in df.itertuples():
+        d = (r.vencimento - h).days
+        cor = "🔴" if d < 0 else "🟡" if d <= 30 else "🟢"
+        with st.container(border=True, key=f"card_doc_{r.id}"):
+            a, b = st.columns([3, 2], vertical_alignment="center")
+            a.markdown(f"{cor} **{esc(r.tipo)}** · {esc(r.van)}  \n<span class='ve-sub'>vence {data_br(r.vencimento)}"
+                       + (f" · {brl(r.valor)}" if r.valor is not None and str(r.valor) != "nan" else "")
+                       + (f" · {esc(r.obs)}" if r.obs else "") + "</span>", unsafe_allow_html=True)
+            x1, x2 = b.columns(2)
+            with x1.popover("Paguei", icon=":material/check_circle:", width="stretch"):
+                with st.form(f"pgdoc_{r.id}"):
+                    v = st.number_input("Valor pago (R$)", min_value=0.0, step=10.0, format="%.2f",
+                                        value=float(r.valor) if r.valor is not None and str(r.valor) != "nan" else 0.0)
+                    dp = st.date_input("Pago em", value=h, format="DD/MM/YYYY")
+                    prox = st.date_input("Próximo vencimento", value=somar_meses(r.vencimento, 12), format="DD/MM/YYYY")
+                    if st.form_submit_button("Confirmar", type="primary"):
+                        repo.pagar_documento_van(cid, r.id, v, dp, prox)
+                        st.toast(f"{r.tipo}: pago" + (" e lançado no Financeiro." if v else "."))
+                        st.rerun()
+            if x2.button("Excluir", key=f"exdoc_{r.id}", icon=":material/delete:", type="tertiary"):
+                repo.excluir_documento_van(cid, r.id)
+                st.rerun()
+    with st.expander("➕ Adicionar documento", expanded=df.empty):
+        with st.form("novo_doc", clear_on_submit=True):
+            a, b = st.columns(2)
+            tipo = a.selectbox("Documento", list(repo.DOC_TIPOS))
+            van = b.selectbox("Van", list(opc_van), format_func=opc_van.get,
+                              index=1 if len(opc_van) > 1 else 0)
+            c1, c2 = st.columns(2)
+            venc = c1.date_input("Vencimento", value=h + timedelta(days=30), format="DD/MM/YYYY")
+            valor = c2.number_input("Valor (R$, opcional)", min_value=0.0, step=10.0, format="%.2f")
+            obs = st.text_input("Observação (opcional)", placeholder="Ex.: seguradora, nº da apólice…")
+            if st.form_submit_button("Salvar documento", type="primary"):
+                repo.salvar_documento_van(cid, dict(van_id=van, tipo=tipo, vencimento=venc,
+                                                    valor=valor or None, obs=obs or None))
+                st.toast("Documento salvo.")
                 st.rerun()

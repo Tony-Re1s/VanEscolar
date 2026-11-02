@@ -52,6 +52,9 @@ for v in df.itertuples():
                     st.link_button("Convidar monitor(a) no WhatsApp", lk_m, icon=":material/send:",
                                    key=f"conv_mon_{v.id}")
 
+st.divider()
+_ui.documentos_vans(cid, df[df["ativo"]] if not df.empty else df)
+
 NOVA = "➕ Nova van"
 opcoes = [NOVA] + [r.nome for r in df.itertuples()]
 st.divider()

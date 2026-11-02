@@ -109,6 +109,7 @@ def _tela_mes():
               ("Previsto no mês", brl(prev)), ("Em aberto", brl(aberto)),
               ("Vencido", brl(venc), f"{(df['situacao'] == 'vencido').sum()} aluno(s) · "
                                      f"{(venc / base * 100 if base else 0):.0f}% do mês")])
+    _ui.meta_mes(rec, prev, "Meta do mês" if comp == inicio_mes(h) else f"Meta de {mes_label(comp)}")
 
     filtro = st.segmented_control("Mostrar", ["Todos", "Em aberto", "Vencidos", "Pagos"], default="Em aberto",
                                   label_visibility="collapsed")
@@ -127,7 +128,7 @@ def _tela_mes():
 
 
     for r in df.itertuples():
-        with st.container(border=True, key=f"card_{r.id}"):
+        with st.container(border=True, key=f"card_{'venc_' if r.situacao == 'vencido' else ''}{r.id}"):
             a, b = st.container(key=f"lp_{r.id}").columns([3, 2])
             asaas_tag = (" " + _ui.tag("embarcou", "Asaas · " + ST_ASAAS.get(r.asaas_status or "", "gerada"))
                          if getattr(r, "asaas_id", None) else "")

@@ -1364,3 +1364,52 @@ def progresso_inicio(cid) -> dict:
 
 def fechar_guia(cid):
     db.gravar("update condutores set guia_fechado = true where id = cast(:cid as uuid)", cid=str(cid))
+
+
+# ------------------------------------------------------------------ documentos da van (vencimentos)
+DOC_TIPOS = {"IPVA": "IPVA / licenciamento", "Licenciamento (CRLV)": "IPVA / licenciamento",
+             "Seguro": "Seguro", "Vistoria escolar": "Vistoria / alvará", "Alvará / autorização": "Vistoria / alvará",
+             "Curso de condutor escolar": "Outros", "Tacógrafo": "Vistoria / alvará", "Extintor": "Manutenção",
+             "Outro": "Outros"}
+
+
+def documentos_van(cid, ate=None) -> pd.DataFrame:
+    """Documentos com vencimento (todas as vans). `ate`: só os que vencem até essa data (inclui vencidos)."""
+    return db.ao_vivo("""select d.id, d.van_id, coalesce(v.nome, 'Empresa') as van, d.tipo, d.vencimento, d.valor, d.obs
+                         from vans_documentos d left join vans v on v.id = d.van_id
+                         where d.condutor_id = :cid and (cast(:ate as date) is null or d.vencimento <= :ate)
+                         order by d.vencimento""", cid=cid, ate=ate)
+
+
+def salvar_documento_van(cid, d: dict, did=None):
+    if did:
+        db.gravar("""update vans_documentos set van_id=cast(:van_id as uuid), tipo=:tipo, vencimento=:vencimento,
+                     valor=:valor, obs=:obs where id = cast(:did as uuid) and condutor_id = :cid""",
+                  cid=cid, did=str(did), **d)
+    else:
+        db.gravar("""insert into vans_documentos (condutor_id, van_id, tipo, vencimento, valor, obs)
+                     select :cid, cast(:van_id as uuid), :tipo, :vencimento, :valor, :obs
+                     where cast(:van_id as uuid) is null
+                        or exists (select 1 from vans where id = cast(:van_id as uuid) and condutor_id = :cid)""",
+                  cid=cid, **d)
+
+
+def excluir_documento_van(cid, did):
+    db.gravar("delete from vans_documentos where id = cast(:did as uuid) and condutor_id = :cid", cid=cid, did=str(did))
+
+
+def pagar_documento_van(cid, did, valor: float, data, proximo):
+    """Lança a despesa no Financeiro e empurra o vencimento para o próximo (ex.: +1 ano)."""
+    r = db.ao_vivo("select van_id, tipo from vans_documentos where id = cast(:did as uuid) and condutor_id = :cid",
+                   cid=cid, did=str(did))
+    if r.empty:
+        return
+    x = r.iloc[0]
+    if valor and valor > 0:
+        vid = x["van_id"]
+        salvar_lancamento(cid, dict(van_id=None if vid is None or pd.isna(vid) else str(vid),
+                                    tipo="despesa", categoria=DOC_TIPOS.get(x["tipo"], "Outros"),
+                                    descricao=x["tipo"], valor=valor, data=data, km=None))
+    db.gravar("""update vans_documentos set vencimento = :p, valor = coalesce(:v, valor)
+                 where id = cast(:did as uuid) and condutor_id = :cid""",
+              cid=cid, did=str(did), p=proximo, v=valor or None)

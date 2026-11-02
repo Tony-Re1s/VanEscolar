@@ -569,3 +569,16 @@ alter table lancamentos add column if not exists frete_id uuid references fretes
 
 -- v26 — guia de primeiros passos (aparece até o gestor concluir ou esconder)
 alter table condutores add column if not exists guia_fechado boolean not null default false;
+
+-- v27 — documentos da van com vencimento (IPVA, licenciamento, seguro, vistoria, curso do condutor…)
+create table if not exists vans_documentos (
+  id           uuid primary key default gen_random_uuid(),
+  condutor_id  uuid not null references condutores(id) on delete cascade,
+  van_id       uuid references vans(id) on delete cascade,
+  tipo         text not null,
+  vencimento   date not null,
+  valor        numeric(10,2),
+  obs          text,
+  criado_em    timestamptz not null default now()
+);
+create index if not exists ix_vans_documentos on vans_documentos(condutor_id, vencimento);
