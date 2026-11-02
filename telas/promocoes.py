@@ -34,6 +34,7 @@ with abas[0]:
     df = pd.DataFrame([dict(plano=k, nome=cat[k]["nome"], preco=cat[k]["preco"], preco_vip=cat[k]["preco_vip"],
                             anual_desconto=cat[k]["anual_desconto"], vans=cat[k]["vans"], alunos=cat[k]["alunos"],
                             destaque=cat[k]["destaque"], cobranca_auto=bool(cat[k].get("cobranca_auto")),
+                            fretamento=bool(cat[k].get("fretamento")),
                             itens=" | ".join(cat[k]["itens"])) for k in PLANOS])
     ed = st.data_editor(
         df, hide_index=True, width="stretch", num_rows="fixed", disabled=["plano"],
@@ -49,6 +50,8 @@ with abas[0]:
             "destaque": st.column_config.TextColumn("Selo"),
             "cobranca_auto": st.column_config.CheckboxColumn("Cobra pais pelo Asaas",
                                                              help="Libera a cobrança automática dos pais (Pix/boleto)"),
+            "fretamento": st.column_config.CheckboxColumn("Fretamento",
+                                                          help="Libera a tela de Fretamento (viagens por fora)"),
             "itens": st.column_config.TextColumn("Itens do cartão", width="large"),
         }, key="ed_planos")
     if st.button("Salvar planos", type="primary", icon=":material/save:"):
@@ -62,6 +65,7 @@ with abas[0]:
                                preco_vip=n(r["preco_vip"]), anual_desconto=n(r["anual_desconto"]) or 0.0,
                                vans=n(r["vans"], True), alunos=n(r["alunos"], True), destaque=r["destaque"] or "",
                                cobranca_auto=bool(r.get("cobranca_auto")),
+                               fretamento=bool(r.get("fretamento")),
                                itens=[i.strip() for i in str(r["itens"] or "").split("|") if i.strip()]))
         repo.salvar_config_planos(linhas)
         st.toast("Planos salvos. Quem já assina continua no preço antigo até você atualizar.")
@@ -107,6 +111,7 @@ with abas[0]:
             alunos_n = d2.number_input("Alunos (0 = ilimitado)", min_value=0, step=1, value=0)
             itens_n = st.text_area("Itens do cartão (um por linha)", placeholder="2 vans\nAlunos ilimitados")
             auto_n = st.checkbox("Libera a cobrança automática dos pais pelo Asaas")
+            fret_n = st.checkbox("Libera o Fretamento (viagens por fora)")
             if st.form_submit_button("Criar plano", type="primary"):
                 import re
                 import unicodedata
@@ -120,7 +125,7 @@ with abas[0]:
                     repo.criar_plano(dict(plano=cod, nome=nome_n.strip(), preco=round(preco_n, 2),
                                           preco_vip=round(vip_n, 2) or None, anual_desconto=round(anual_n, 2),
                                           vans=int(vans_n) or None, alunos=int(alunos_n) or None,
-                                          destaque=selo_n.strip(), cobranca_auto=auto_n,
+                                          destaque=selo_n.strip(), cobranca_auto=auto_n, fretamento=fret_n,
                                           itens=[i.strip() for i in itens_n.splitlines() if i.strip()]))
                     st.toast(f"Plano {nome_n} criado.")
                     st.rerun()

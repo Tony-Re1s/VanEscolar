@@ -5,7 +5,7 @@ Empresa = tabela `condutores` (o gestor). Cada empresa tem várias `vans`; cada 
 """
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 
 import pandas as pd
 from sqlalchemy import text
@@ -18,6 +18,16 @@ _VAN = "(cast(:van as uuid) is null or {col} = cast(:van as uuid))"
 
 def _filtro_van(col: str) -> str:
     return _VAN.format(col=col)
+
+
+# Financeiro separado: o que é Fretamento (viagens por fora) × transporte escolar. Lançamentos antigos de passeio/
+# viagem extra (de antes da tela de Fretamento) também contam como fretamento.
+_CATS_FRETE = "('Fretamento', 'Passeio / excursão', 'Viagem extra')"
+
+
+def _filtro_origem(origem: str | None, pre: str = "") -> str:
+    e_frete = f"({pre}frete_id is not null or {pre}categoria in {_CATS_FRETE})"
+    return {"frete": e_frete, "escolar": f"not {e_frete}"}.get(origem or "", "true")
 
 
 # ------------------------------------------------------------------ empresa (gestor)
@@ -273,9 +283,10 @@ def alterar_mensalidade(cid, mid, valor, venc: date):
 
 
 # ------------------------------------------------------------------ financeiro
-def lancamentos(cid, ini: date, fim: date, van=None) -> pd.DataFrame:
+def lancamentos(cid, ini: date, fim: date, van=None, origem: str | None = None) -> pd.DataFrame:
     return db.consultar(f"""select l.*, v.nome as van from lancamentos l left join vans v on v.id = l.van_id
                             where l.condutor_id=:cid and l.data >= :i and l.data < :f and {_filtro_van('l.van_id')}
+                              and {_filtro_origem(origem, 'l.')}
                             order by l.data desc, l.criado_em desc""", cid=cid, i=ini, f=fim, van=van)
 
 
@@ -291,18 +302,21 @@ def excluir_lancamento(cid, lid):
     db.gravar("delete from lancamentos where id=:lid and condutor_id=:cid", cid=cid, lid=lid)
 
 
-def resumo_meses(cid, ini: date, fim: date, van=None) -> pd.DataFrame:
-    """Por mês (regime de caixa): mensalidades recebidas, outras receitas, despesas. Com van: só o que é dela."""
+def resumo_meses(cid, ini: date, fim: date, van=None, origem: str | None = None) -> pd.DataFrame:
+    """Por mês (regime de caixa): mensalidades recebidas, outras receitas, despesas. Com van: só o que é dela.
+    origem: None = tudo · "escolar" = sem os fretamentos · "frete" = só os fretamentos (sem mensalidades)."""
     return db.consultar(f"""
         with meses as (select generate_series(cast(:i as date), cast(:f as date) - interval '1 month',
                                               interval '1 month')::date as mes),
         m as (select date_trunc('month', m.pago_em)::date mes, sum(m.valor_pago) v
               from mensalidades m join passageiros p on p.id = m.passageiro_id
               where m.condutor_id=:cid and m.pago_em >= :i and m.pago_em < :f and {_filtro_van('p.van_id')}
+                and {'false' if origem == 'frete' else 'true'}
               group by 1),
         l as (select date_trunc('month', data)::date mes,
                      sum(valor) filter (where tipo='receita') rec, sum(valor) filter (where tipo='despesa') desp
               from lancamentos where condutor_id=:cid and data >= :i and data < :f and {_filtro_van('van_id')}
+                and {_filtro_origem(origem)}
               group by 1)
         select meses.mes, coalesce(m.v,0) as mensalidades, coalesce(l.rec,0) as outras_receitas,
                coalesce(l.desp,0) as despesas
@@ -325,10 +339,10 @@ def resultado_por_van(cid, ini: date, fim: date) -> pd.DataFrame:
         order by (k.van_id is null), k.nome""", cid=cid, i=ini, f=fim)
 
 
-def despesas_por_categoria(cid, ini: date, fim: date, van=None) -> pd.DataFrame:
+def despesas_por_categoria(cid, ini: date, fim: date, van=None, origem: str | None = None) -> pd.DataFrame:
     return db.consultar(f"""select categoria, sum(valor) as valor from lancamentos
                             where condutor_id=:cid and tipo='despesa' and data >= :i and data < :f
-                              and {_filtro_van('van_id')}
+                              and {_filtro_van('van_id')} and {_filtro_origem(origem)}
                             group by 1 order by 2 desc""", cid=cid, i=ini, f=fim, van=van)
 
 
@@ -686,9 +700,11 @@ def salvar_config_planos(linhas: list[dict]):
         for r in linhas:
             s.execute(text("""update config_planos set nome=:nome, preco=:preco, preco_vip=:preco_vip,
                                 anual_desconto=:anual_desconto, vans=:vans, alunos=:alunos, destaque=:destaque,
-                                itens=cast(:itens as jsonb), cobranca_auto=:cobranca_auto where plano=:plano"""),
+                                itens=cast(:itens as jsonb), cobranca_auto=:cobranca_auto, fretamento=:fretamento
+                                where plano=:plano"""),
                       dict(r, itens=_json.dumps(r["itens"], ensure_ascii=False),
-                           cobranca_auto=bool(r.get("cobranca_auto"))))
+                           cobranca_auto=bool(r.get("cobranca_auto")),
+                           fretamento=bool(r.get("fretamento"))))
 
 
 def salvar_config(chave: str, valor: dict):
@@ -873,10 +889,12 @@ def ranking_indicacoes() -> pd.DataFrame:
 # ------------------------------------------------------------------ planos: criar, excluir, preço antigo × novo
 def criar_plano(d: dict):
     db.gravar("""insert into config_planos (plano, nome, preco, preco_vip, anual_desconto, vans, alunos, destaque, itens,
-                                            cobranca_auto, ordem)
+                                            cobranca_auto, fretamento, ordem)
                  values (:plano, :nome, :preco, :preco_vip, :anual_desconto, :vans, :alunos, :destaque,
-                         cast(:itens as jsonb), :cobranca_auto, coalesce((select max(ordem) from config_planos), 0) + 1)""",
-              **dict(d, itens=_json.dumps(d["itens"], ensure_ascii=False), cobranca_auto=bool(d.get("cobranca_auto"))))
+                         cast(:itens as jsonb), :cobranca_auto, :fretamento,
+                         coalesce((select max(ordem) from config_planos), 0) + 1)""",
+              **dict(d, itens=_json.dumps(d["itens"], ensure_ascii=False), cobranca_auto=bool(d.get("cobranca_auto")),
+                     fretamento=bool(d.get("fretamento"))))
 
 
 def gestores_no_plano(plano: str, hoje: date) -> pd.DataFrame:
@@ -1214,3 +1232,115 @@ def avisos_dos_filhos(pids: list[str], hoje: date) -> pd.DataFrame:
         where p.id = any(cast(:ids as uuid[])) and a.publico = 'pais' and (a.ate is null or a.ate >= :h)
           and a.criado_em > now() - interval '30 days'
         order by a.criado_em desc""", ids=pids, h=hoje)
+
+
+# ------------------------------------------------------------------ Fretamento (viagens por fora)
+STATUS_FRETE = {"orcamento": "Orçamento", "enviado": "Aguardando resposta", "fechado": "Fechado",
+                "realizado": "Realizado", "recusado": "Não fechou", "cancelado": "Cancelado"}
+
+
+def clientes_frete(cid) -> pd.DataFrame:
+    return db.consultar("select * from fretes_clientes where condutor_id = :cid order by lower(nome)", cid=str(cid))
+
+
+def salvar_cliente_frete(cid, d: dict, clid=None) -> str:
+    if clid:
+        db.gravar("""update fretes_clientes set nome=:nome, telefone=:telefone, documento=:documento, email=:email
+                     where id = cast(:clid as uuid) and condutor_id = cast(:cid as uuid)""", cid=str(cid), clid=str(clid), **d)
+        return str(clid)
+    r = db.gravar("""insert into fretes_clientes (condutor_id, nome, telefone, documento, email)
+                     values (cast(:cid as uuid), :nome, :telefone, :documento, :email) returning id""", cid=str(cid), **d)
+    return str(r["id"])
+
+
+_SEL_FRETE = """
+    select f.*, cl.nome as cliente, cl.telefone as cliente_telefone, cl.documento as cliente_documento,
+           cl.email as cliente_email, v.nome as van,
+           coalesce((select sum(valor) from lancamentos l where l.frete_id = f.id and l.tipo = 'receita'), 0) as recebido,
+           coalesce((select sum(valor) from lancamentos l where l.frete_id = f.id and l.tipo = 'despesa'), 0) as gastos
+    from fretes f left join fretes_clientes cl on cl.id = f.cliente_id left join vans v on v.id = f.van_id"""
+
+
+def fretes(cid, status: list[str] | None = None, ini: date | None = None, fim: date | None = None) -> pd.DataFrame:
+    return db.ao_vivo(_SEL_FRETE + """
+        where f.condutor_id = cast(:cid as uuid)
+          and (cast(:st as text[]) is null or f.status = any(cast(:st as text[])))
+          and (cast(:i as date) is null or f.data_ida >= :i) and (cast(:f as date) is null or f.data_ida <= :f)
+        order by f.data_ida, f.hora_ida nulls first""", cid=str(cid), st=status, i=ini, f=fim)
+
+
+def frete(cid, fid) -> dict | None:
+    df = db.ao_vivo(_SEL_FRETE + " where f.id = cast(:fid as uuid) and f.condutor_id = cast(:cid as uuid)",
+                    cid=str(cid), fid=str(fid))
+    return df.iloc[0].to_dict() if len(df) else None
+
+
+_CAMPOS_FRETE = ["cliente_id", "data_ida", "hora_ida", "data_volta", "hora_volta", "origem", "destino", "passageiros",
+                 "van_id", "motorista", "valor", "sinal", "validade", "obs"]
+
+
+def salvar_frete(cid, d: dict, fid=None) -> str:
+    d = {k: d.get(k) for k in _CAMPOS_FRETE}
+    van_ok = "(cast(:van_id as uuid) is null or exists (select 1 from vans where id = cast(:van_id as uuid) and condutor_id = cast(:cid as uuid)))"
+    if fid:
+        db.gravar(f"""update fretes set {", ".join(f"{k} = :{k}" for k in _CAMPOS_FRETE)}
+                      where id = cast(:fid as uuid) and condutor_id = cast(:cid as uuid) and {van_ok}""",
+                  cid=str(cid), fid=str(fid), **d)
+        return str(fid)
+    r = db.gravar(f"""insert into fretes (condutor_id, {", ".join(_CAMPOS_FRETE)})
+                      select cast(:cid as uuid), {", ".join(":" + k for k in _CAMPOS_FRETE)} where {van_ok}
+                      returning id""", cid=str(cid), **d)
+    return str(r["id"]) if r else ""
+
+
+def status_frete(cid, fid, status: str):
+    db.gravar("""update fretes set status = :st,
+                   enviado_em = case when :st = 'enviado' then coalesce(enviado_em, now()) else enviado_em end,
+                   fechado_em = case when :st = 'fechado' then now() else fechado_em end
+                 where id = cast(:fid as uuid) and condutor_id = cast(:cid as uuid)""", cid=str(cid), fid=str(fid), st=status)
+
+
+def excluir_frete(cid, fid):
+    """Apaga o frete e os lançamentos dele (recebimentos e gastos)."""
+    with db.transacao() as s:
+        s.execute(text("delete from lancamentos where frete_id = cast(:fid as uuid) and condutor_id = cast(:cid as uuid)"),
+                  dict(cid=str(cid), fid=str(fid)))
+        s.execute(text("delete from fretes where id = cast(:fid as uuid) and condutor_id = cast(:cid as uuid)"),
+                  dict(cid=str(cid), fid=str(fid)))
+
+
+def lancar_frete(cid, fid, tipo: str, valor: float, data: date, categoria: str, descricao: str | None):
+    """Recebimento (sinal/saldo) ou gasto do frete — entra no Financeiro já marcado como Fretamento."""
+    db.gravar("""insert into lancamentos (condutor_id, van_id, tipo, categoria, descricao, valor, data, frete_id)
+                 select f.condutor_id, f.van_id, cast(:tipo as tipo_lanc), :cat, :desc, :valor, :data, f.id from fretes f
+                 where f.id = cast(:fid as uuid) and f.condutor_id = cast(:cid as uuid)""",
+              cid=str(cid), fid=str(fid), tipo=tipo, cat=categoria, desc=descricao, valor=valor, data=data)
+
+
+def lancamentos_frete(cid, fid) -> pd.DataFrame:
+    return db.ao_vivo("""select * from lancamentos where frete_id = cast(:fid as uuid) and condutor_id = cast(:cid as uuid)
+                         order by data, criado_em""", cid=str(cid), fid=str(fid))
+
+
+def conflitos_frete(cid, data_ida: date, data_volta: date | None, van_id, fid=None) -> list[str]:
+    """Avisos de agenda: a mesma van já tem frete fechado nesses dias, ou é dia de semana com rota escolar."""
+    avisos = []
+    fim = data_volta or data_ida
+    if van_id:
+        outros = db.ao_vivo("""select f.data_ida, f.destino, cl.nome as cliente from fretes f
+                               left join fretes_clientes cl on cl.id = f.cliente_id
+                               where f.condutor_id = cast(:cid as uuid) and f.van_id = cast(:van as uuid)
+                                 and f.status in ('fechado', 'enviado')
+                                 and (cast(:fid as uuid) is null or f.id <> cast(:fid as uuid))
+                                 and f.data_ida <= :fim and coalesce(f.data_volta, f.data_ida) >= :ini""",
+                            cid=str(cid), van=str(van_id), fid=str(fid) if fid else None, ini=data_ida, fim=fim)
+        for r in outros.itertuples():
+            avisos.append(f"Essa van já tem frete em {r.data_ida:%d/%m}" + (f" ({r.destino})" if r.destino else "")
+                          + (f" — {r.cliente}" if r.cliente else ""))
+        uteis = [data_ida + timedelta(days=i) for i in range((fim - data_ida).days + 1)]
+        if any(d.weekday() < 5 for d in uteis):
+            n = db.um("""select count(*) as n from passageiros where condutor_id = cast(:cid as uuid)
+                         and van_id = cast(:van as uuid) and ativo""", cid=str(cid), van=str(van_id))
+            if n and int(n["n"] or 0):
+                avisos.append("É dia de semana: confira se não bate com o horário da rota escolar dessa van")
+    return avisos

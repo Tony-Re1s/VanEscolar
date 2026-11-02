@@ -18,13 +18,13 @@ from datetime import date
 
 PADRAO = {
     "basico": dict(nome="Básico", preco=24.90, preco_vip=19.90, anual_desconto=17.0, vans=1, alunos=None,
-                   destaque="Motorista autônomo", cobranca_auto=False,
+                   destaque="Motorista autônomo", cobranca_auto=False, fretamento=False,
                    itens=["1 van", "Alunos ilimitados", "Contrato digital com assinatura", "Financeiro e painel"]),
     "pro": dict(nome="Pro", preco=54.90, preco_vip=29.90, anual_desconto=17.0, vans=3, alunos=None,
-                destaque="Mais escolhido", cobranca_auto=True,
+                destaque="Mais escolhido", cobranca_auto=True, fretamento=True,
                 itens=["Até 3 vans", "Motoristas contratados", "Financeiro por van", "Tudo do Básico"]),
     "frota": dict(nome="Frota", preco=99.90, preco_vip=79.90, anual_desconto=17.0, vans=None, alunos=None,
-                  destaque="Empresas maiores", cobranca_auto=True,
+                  destaque="Empresas maiores", cobranca_auto=True, fretamento=True,
                   itens=["Vans ilimitadas", "Motoristas ilimitados", "Suporte prioritário", "Tudo do Pro"]),
 }
 ORDEM = ["basico", "pro", "frota"]      # só o padrão; os planos de verdade vêm do banco (catalogo())
@@ -93,7 +93,8 @@ def catalogo() -> dict:
         out[r["plano"]] = dict(nome=r["nome"], preco=_num(r["preco"]) or 0.0, preco_vip=_num(r["preco_vip"]),
                                anual_desconto=_num(r["anual_desconto"]) or 0.0, vans=_int(r["vans"]),
                                alunos=_int(r["alunos"]), destaque=r["destaque"] or "",
-                               itens=list(r["itens"] or []), cobranca_auto=bool(r.get("cobranca_auto")))
+                               itens=list(r["itens"] or []), cobranca_auto=bool(r.get("cobranca_auto")),
+                               fretamento=bool(r.get("fretamento")))
     return out
 
 
@@ -290,6 +291,13 @@ def tem_cobranca_auto(empresa: dict, hoje: date, cat: dict | None = None) -> boo
     cat = cat or catalogo()
     p = plano_da_empresa(empresa, hoje, cat)
     return bool(p and cat[p].get("cobranca_auto"))
+
+
+def tem_fretamento(empresa: dict, hoje: date, cat: dict | None = None) -> bool:
+    """O plano em vigor libera o Fretamento (viagens por fora: orçamento, agenda e financeiro separado)?"""
+    cat = cat or catalogo()
+    p = plano_da_empresa(empresa, hoje, cat)
+    return bool(p and cat[p].get("fretamento"))
 
 
 # ---------------------------------------------------------------- laboratório (recursos só para Exclusivo)

@@ -3,7 +3,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from core import repo
+from core import planos as pl, repo
 from core.fmt import CAT_DESPESA, CAT_RECEITA, brl, data_br, hoje, inicio_mes, mes_label, somar_meses
 from telas import _ui
 from telas._ui import exigir_condutor
@@ -18,17 +18,30 @@ comp = st.select_slider("Mês", options=meses, value=inicio_mes(h), format_func=
 prox = somar_meses(comp, 1)
 van = _ui.filtro_van(cid, "van_fin", "Ver")
 vans = repo.vans(cid)
+ORIGENS = {"tudo": "Tudo", "escolar": "Transporte escolar", "frete": "Fretamento"}
+origem = None
+if pl.tem_fretamento(repo.empresa(cid), h):
+    origem = st.segmented_control("Mostrar", list(ORIGENS), format_func=ORIGENS.get, default="tudo", key="fin_origem")
+    origem = None if origem in (None, "tudo") else origem
 
-res = repo.resumo_meses(cid, somar_meses(comp, -11), prox, van=van)
+res = repo.resumo_meses(cid, somar_meses(comp, -11), prox, van=van, origem=origem)
 mes = res.iloc[-1]
 receita = float(mes["mensalidades"]) + float(mes["outras_receitas"])
 desp = float(mes["despesas"])
-mens = repo.mensalidades_mes(cid, comp, h, van=van)
-inad = mens.loc[mens["situacao"] == "vencido", "valor"].astype(float).sum() if not mens.empty else 0
-_ui.kpis([("Lucro do mês", brl(receita - desp), "recebido − despesas"),
-          ("Recebido", brl(receita), f"mensalidades {brl(mes['mensalidades'])}"),
-          ("Despesas", brl(desp)),
-          ("Inadimplência", brl(inad), "mensalidades vencidas do mês")])
+if origem == "frete":
+    fr = repo.fretes(cid, ["fechado", "realizado"])
+    a_rec = sum(max(float(r.valor or 0) - float(r.recebido or 0), 0) for r in fr.itertuples()) if not fr.empty else 0
+    _ui.kpis([("Lucro do mês", brl(receita - desp), "fretamentos: recebido − gastos"),
+              ("Recebido", brl(receita), "dos fretamentos"),
+              ("Gastos", brl(desp), "das viagens"),
+              ("A receber", brl(a_rec), "de viagens fechadas")])
+else:
+    mens = repo.mensalidades_mes(cid, comp, h, van=van)
+    inad = mens.loc[mens["situacao"] == "vencido", "valor"].astype(float).sum() if not mens.empty else 0
+    _ui.kpis([("Lucro do mês", brl(receita - desp), "recebido − despesas"),
+              ("Recebido", brl(receita), f"mensalidades {brl(mes['mensalidades'])}"),
+              ("Despesas", brl(desp)),
+              ("Inadimplência", brl(inad), "mensalidades vencidas do mês")])
 
 abas = ["Lançar", "Lançamentos do mês", "12 meses"] + (["Por van"] if len(vans) > 1 else [])
 aba_lancar, aba_mes, aba_ano, *aba_van = st.tabs(abas)
@@ -64,11 +77,11 @@ with aba_lancar:
                 st.rerun()
 
 with aba_mes:
-    lan = repo.lancamentos(cid, comp, prox, van=van)
+    lan = repo.lancamentos(cid, comp, prox, van=van, origem=origem)
     if lan.empty:
         st.info(f"Nenhum lançamento em {mes_label(comp)}.")
     else:
-        cats = repo.despesas_por_categoria(cid, comp, prox, van=van)
+        cats = repo.despesas_por_categoria(cid, comp, prox, van=van, origem=origem)
         if not cats.empty:
             cats["valor"] = cats["valor"].astype(float)
             st.altair_chart(alt.Chart(cats).mark_bar(cornerRadiusEnd=6, color="#0ABAB5").encode(
@@ -82,7 +95,8 @@ with aba_mes:
             sinal = "−" if r.tipo == "despesa" else "+"
             a.markdown(f"**{_ui.esc(r.categoria)}** <span class='ve-sub'>{data_br(r.data)}"
                        f"{' · ' + _ui.esc(r.descricao) if r.descricao else ''}{f' · {r.km} km' if r.km else ''}"
-                       f"{' · 🚐 ' + _ui.esc(r.van) if r.van and len(vans) > 1 else ''}</span>",
+                       f"{' · 🚐 ' + _ui.esc(r.van) if r.van and len(vans) > 1 else ''}"
+                       f"{' · 🧭 fretamento' if getattr(r, 'frete_id', None) and str(r.frete_id) not in ('None', 'nan') else ''}</span>",
                        unsafe_allow_html=True)
             b.markdown(f"{sinal} {brl(r.valor)}")
             if x.button("", icon=":material/delete:", key=f"del_{r.id}", type="tertiary", help="Excluir"):

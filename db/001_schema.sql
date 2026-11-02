@@ -521,3 +521,48 @@ alter table condutores add column if not exists gateway text;            -- onde
 alter table condutores add column if not exists mp_assinatura text;      -- id da assinatura no cartão (preapproval)
 alter table condutores add column if not exists mp_valor numeric(10,2);
 alter table asaas_pagamentos add column if not exists gateway text not null default 'asaas';
+
+-- v25 — Fretamento: viagens por fora (excursão, festa, aeroporto, empresa…) com orçamento, agenda e financeiro
+--       separado do transporte escolar. Liberado por plano (Pro e Frota).
+alter table config_planos add column if not exists fretamento boolean not null default false;
+do $$
+begin
+  if not exists (select 1 from config where chave = 'mig_v25_fretamento') then
+    update config_planos set fretamento = true where plano in ('pro', 'frota');
+    insert into config (chave, valor) values ('mig_v25_fretamento', 'true');
+  end if;
+end $$;
+create table if not exists fretes_clientes (
+  id           uuid primary key default gen_random_uuid(),
+  condutor_id  uuid not null references condutores(id) on delete cascade,
+  nome         text not null,
+  telefone     text,
+  documento    text,                          -- CPF ou CNPJ (opcional)
+  email        text,
+  criado_em    timestamptz not null default now()
+);
+create index if not exists ix_fretes_clientes on fretes_clientes(condutor_id, nome);
+create table if not exists fretes (
+  id           uuid primary key default gen_random_uuid(),
+  condutor_id  uuid not null references condutores(id) on delete cascade,
+  cliente_id   uuid references fretes_clientes(id) on delete set null,
+  status       text not null default 'orcamento',   -- orcamento | enviado | fechado | realizado | recusado | cancelado
+  data_ida     date not null,
+  hora_ida     time,
+  data_volta   date,
+  hora_volta   time,
+  origem       text,
+  destino      text,
+  passageiros  int,
+  van_id       uuid references vans(id) on delete set null,
+  motorista    text,
+  valor        numeric(10,2) not null default 0,
+  sinal        numeric(10,2),                 -- quanto pede para reservar a data
+  validade     date,                          -- orçamento válido até
+  obs          text,
+  enviado_em   timestamptz,
+  fechado_em   timestamptz,
+  criado_em    timestamptz not null default now()
+);
+create index if not exists ix_fretes on fretes(condutor_id, data_ida);
+alter table lancamentos add column if not exists frete_id uuid references fretes(id) on delete set null;

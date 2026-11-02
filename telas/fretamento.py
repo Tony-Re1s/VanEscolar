@@ -1,0 +1,316 @@
+"""Fretamento: viagens por fora do transporte escolar (excursão, festa, aeroporto, empresa…).
+Orçamento em 1 clique pelo WhatsApp → fechou → agenda → recebimentos e gastos (vão para o Financeiro, separados)."""
+from datetime import timedelta
+
+import streamlit as st
+
+from core import planos as pl, repo
+from core.fmt import CAT_DESPESA, DIAS_SEMANA, FORMAS, brl, data_br, hoje, link_whats
+from telas import _ui
+from telas._ui import exigir_condutor
+
+c = exigir_condutor()
+cid = c["id"]
+h = hoje()
+st.title("Fretamento")
+st.caption("Excursões, festas, aeroporto, empresas… Orçamento pelo WhatsApp, agenda das viagens e quanto sobrou de "
+           "cada uma. Tudo separado do transporte escolar no Financeiro.")
+
+emp = repo.empresa(cid)
+if not pl.tem_fretamento(emp, h) and not st.session_state["usuario"].get("admin"):
+    st.info("O **Fretamento** está disponível a partir do plano **Pro**: orçamento em 1 clique, agenda das viagens "
+            "por fora e o lucro de cada frete separado do escolar.", icon=":material/workspace_premium:")
+    st.page_link("telas/meu_plano.py", label="Ver planos", icon=":material/upgrade:")
+    st.stop()
+
+vans = repo.vans(cid)
+V_IDS = [None] + [str(x) for x in vans["id"]] if not vans.empty else [None]
+V_NOME = {None: "—"} | ({str(r.id): r.nome for r in vans.itertuples()} if not vans.empty else {})
+V_MOT = {str(r.id): (r.motorista_nome or "") for r in vans.itertuples()} if not vans.empty else {}
+TAG = {"orcamento": "aberto", "enviado": "aberto", "fechado": "pago", "realizado": "desembarcou",
+       "recusado": "faltou", "cancelado": "faltou"}
+CHAVE_PIX = c.get("chave_pix")
+
+
+def _f(v):
+    try:
+        x = float(v)
+        return 0.0 if x != x else x
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _txt(v):
+    return "" if v is None or (isinstance(v, float) and v != v) else str(v)
+
+
+def _quando(f) -> str:
+    d = f["data_ida"]
+    t = f"{DIAS_SEMANA[d.weekday()]}, {data_br(d)}"
+    if f.get("hora_ida") and _txt(f["hora_ida"]):
+        t += f" às {f['hora_ida']:%H:%M}"
+    dv = f.get("data_volta")
+    if dv and _txt(dv) and dv != d:
+        t += f" → volta {data_br(dv)}"
+        if f.get("hora_volta") and _txt(f["hora_volta"]):
+            t += f" às {f['hora_volta']:%H:%M}"
+    elif f.get("hora_volta") and _txt(f["hora_volta"]):
+        t += f" (volta às {f['hora_volta']:%H:%M})"
+    return t
+
+
+def msg_orcamento(f) -> str:
+    nome = _txt(f.get("cliente")).split(" ")[0]
+    linhas = [f"Olá{', ' + nome if nome else ''}! Segue o orçamento da viagem 🚐", "", f"📅 {_quando(f)}"]
+    if _txt(f.get("origem")):
+        linhas.append(f"📍 Saída: {f['origem']}")
+    if _txt(f.get("destino")):
+        linhas.append(f"🏁 Destino: {f['destino']}")
+    if _f(f.get("passageiros")):
+        linhas.append(f"👥 {int(_f(f['passageiros']))} passageiros")
+    linhas += ["", f"💰 Valor: {brl(_f(f['valor']))}"]
+    if _f(f.get("sinal")):
+        linhas.append(f"✅ Para reservar a data: sinal de {brl(_f(f['sinal']))}")
+    if f.get("validade") and _txt(f["validade"]):
+        linhas.append(f"⏳ Orçamento válido até {data_br(f['validade'])}")
+    if _txt(f.get("obs")):
+        linhas += ["", _txt(f["obs"])]
+    linhas += ["", "Para confirmar, é só responder aqui. Obrigado!", c["nome"]]
+    return "\n".join(linhas)
+
+
+def msg_confirmacao(f) -> str:
+    nome = _txt(f.get("cliente")).split(" ")[0]
+    falta = max(_f(f["valor"]) - _f(f["recebido"]), 0)
+    linhas = [f"Olá{', ' + nome if nome else ''}! Viagem confirmada ✅", "", f"📅 {_quando(f)}"]
+    if _txt(f.get("origem")):
+        linhas.append(f"📍 Saída: {f['origem']}")
+    if _txt(f.get("destino")):
+        linhas.append(f"🏁 Destino: {f['destino']}")
+    linhas += ["", f"💰 Total: {brl(_f(f['valor']))}" + (f" · já recebido {brl(_f(f['recebido']))}" if _f(f["recebido"]) else "")]
+    if falta:
+        linhas.append(f"Falta: {brl(falta)}" + (f" — Pix: {CHAVE_PIX}" if CHAVE_PIX else ""))
+    linhas += ["", "Qualquer mudança, me avise. Até lá! 🚐", c["nome"]]
+    return "\n".join(linhas)
+
+
+def _link(f, msg) -> str:
+    import urllib.parse
+    return link_whats(_txt(f.get("cliente_telefone")), msg) or f"https://wa.me/?text={urllib.parse.quote(msg)}"
+
+
+# ---------------------------------------------------------------- formulário (novo / editar)
+def formulario(f: dict | None, chave: str):
+    clientes = repo.clientes_frete(cid)
+    ids = ["novo"] + [str(x) for x in clientes["id"]] if not clientes.empty else ["novo"]
+    nomes = {"novo": "➕ Cliente novo"} | ({str(r.id): r.nome + (f" · {r.telefone}" if r.telefone else "")
+                                          for r in clientes.itertuples()} if not clientes.empty else {})
+    atual = str(f["cliente_id"]) if f and _txt(f.get("cliente_id")) else ("novo" if len(ids) == 1 else ids[1])
+    cli = st.selectbox("Cliente", ids, index=ids.index(atual) if atual in ids else 0, format_func=nomes.get,
+                       key=f"cli_{chave}")
+    with st.form(f"frete_{chave}", clear_on_submit=f is None, border=False):
+        if cli == "novo":
+            a, b = st.columns(2)
+            cn = a.text_input("Nome do cliente *", placeholder="Pessoa ou empresa")
+            ct = b.text_input("WhatsApp do cliente", placeholder="(11) 98888-7777")
+            cd = st.text_input("CPF ou CNPJ (opcional)")
+        a, b, x, y = st.columns(4)
+        di = a.date_input("Data da ida *", value=f["data_ida"] if f else h + timedelta(days=7), format="DD/MM/YYYY")
+        hi = b.time_input("Saída", value=f["hora_ida"] if f and _txt(f.get("hora_ida")) else None, step=900)
+        dv = x.date_input("Data da volta", value=f["data_volta"] if f and _txt(f.get("data_volta")) else None,
+                          format="DD/MM/YYYY", help="Vazio = volta no mesmo dia")
+        hv = y.time_input("Volta", value=f["hora_volta"] if f and _txt(f.get("hora_volta")) else None, step=900)
+        a, b = st.columns(2)
+        ori = a.text_input("Saída de", value=_txt(f.get("origem")) if f else "", placeholder="Endereço ou bairro")
+        des = b.text_input("Destino", value=_txt(f.get("destino")) if f else "", placeholder="Ex.: Aparecida, aeroporto")
+        a, b, x = st.columns(3)
+        pas = a.number_input("Passageiros", min_value=0, step=1, value=int(_f(f.get("passageiros"))) if f else 0)
+        vatual = str(f["van_id"]) if f and _txt(f.get("van_id")) else (V_IDS[1] if len(V_IDS) == 2 else None)
+        van = b.selectbox("Van", V_IDS, index=V_IDS.index(vatual) if vatual in V_IDS else 0, format_func=V_NOME.get)
+        mot = x.text_input("Motorista", value=_txt(f.get("motorista")) if f else "",
+                           placeholder=V_MOT.get(vatual or "", "") or "Quem vai dirigir")
+        a, b, x = st.columns(3)
+        val = a.number_input("Valor total (R$) *", min_value=0.0, step=50.0, value=_f(f.get("valor")) if f else 0.0)
+        sin = b.number_input("Sinal para reservar (R$)", min_value=0.0, step=50.0,
+                             value=_f(f.get("sinal")) if f else 0.0)
+        vld = x.date_input("Orçamento válido até", value=f["validade"] if f and _txt(f.get("validade")) else h + timedelta(days=7),
+                           format="DD/MM/YYYY")
+        obs = st.text_area("Observações (vão no orçamento)", value=_txt(f.get("obs")) if f else "", height=80,
+                           placeholder="Ex.: inclui pedágio e estacionamento; parada para almoço por conta do grupo")
+        ok = st.form_submit_button("Salvar orçamento" if f is None else "Salvar alterações", type="primary",
+                                   icon=":material/save:")
+    if not ok:
+        return None
+    if cli == "novo" and not cn.strip():
+        st.error("Coloque o nome do cliente.")
+        return None
+    if val <= 0:
+        st.error("Coloque o valor da viagem.")
+        return None
+    if dv and dv < di:
+        st.error("A volta não pode ser antes da ida.")
+        return None
+    cli_id = repo.salvar_cliente_frete(cid, dict(nome=cn.strip(), telefone=ct.strip() or None,
+                                                 documento=cd.strip() or None, email=None)) if cli == "novo" else cli
+    return repo.salvar_frete(cid, dict(cliente_id=cli_id, data_ida=di, hora_ida=hi, data_volta=dv, hora_volta=hv,
+                                       origem=ori.strip() or None, destino=des.strip() or None,
+                                       passageiros=int(pas) or None, van_id=van,
+                                       motorista=mot.strip() or V_MOT.get(van or "", "") or None,
+                                       valor=round(val, 2), sinal=round(sin, 2) or None, validade=vld,
+                                       obs=obs.strip() or None), fid=f["id"] if f else None)
+
+
+# ---------------------------------------------------------------- cartão de cada frete
+def cartao(f: dict):
+    fid = str(f["id"])
+    st_ = f["status"]
+    recebido, gastos, valor = _f(f["recebido"]), _f(f["gastos"]), _f(f["valor"])
+    falta = max(valor - recebido, 0)
+    with st.container(border=True, key=f"fr_{fid}"):
+        rota = " → ".join(x for x in (_txt(f.get("origem")), _txt(f.get("destino"))) if x) or "Viagem"
+        st.markdown(_ui.sem_formula(
+            f"**{_ui.esc(rota)}** {_ui.tag(TAG[st_], repo.STATUS_FRETE[st_])}  \n"
+            f"📅 {_ui.esc(_quando(f))}  \n<span class='ve-sub'>"
+            + " · ".join(x for x in (
+                f"👤 {_ui.esc(_txt(f.get('cliente')))}" if _txt(f.get("cliente")) else "",
+                f"👥 {int(_f(f['passageiros']))} passageiros" if _f(f.get("passageiros")) else "",
+                f"🚐 {_ui.esc(_txt(f.get('van')))}" if _txt(f.get("van")) else "",
+                f"🧑‍✈️ {_ui.esc(_txt(f.get('motorista')))}" if _txt(f.get("motorista")) else "") if x)
+            + "</span>"), unsafe_allow_html=True)
+        fin = f"💰 **{brl(valor)}**"
+        if st_ in ("fechado", "realizado"):
+            fin += f" · recebido {brl(recebido)}" + (f" · **falta {brl(falta)}**" if falta else " ✅")
+            if gastos:
+                fin += f" · gastos {brl(gastos)} · **sobrou {brl(recebido - gastos)}**"
+        elif _f(f.get("sinal")):
+            fin += f" · sinal {brl(_f(f['sinal']))}"
+        if st_ in ("orcamento", "enviado") and f.get("validade") and _txt(f["validade"]):
+            venc = f["validade"]
+            fin += f" · válido até {data_br(venc)}" + (" ⚠️ venceu" if venc < h else "")
+        st.markdown(_ui.sem_formula(fin))
+        if st_ in ("orcamento", "enviado", "fechado"):
+            for aviso in repo.conflitos_frete(cid, f["data_ida"], f["data_volta"] if _txt(f.get("data_volta")) else None,
+                                              f["van_id"] if _txt(f.get("van_id")) else None, fid):
+                st.caption("⚠️ " + aviso)
+
+        if st_ in ("orcamento", "enviado"):
+            a, b, x = st.container(key=f"lb_{fid}").columns(3)
+            a.link_button("Enviar orçamento", _link(f, msg_orcamento(f)), icon=":material/send:", type="primary",
+                          width="stretch")
+            if b.button("Fechou ✅", key=f"fe_{fid}", width="stretch"):
+                repo.status_frete(cid, fid, "fechado")
+                st.toast("Fechado! A viagem foi para a agenda.")
+                st.rerun()
+            if x.button("Não fechou", key=f"nf_{fid}", width="stretch"):
+                repo.status_frete(cid, fid, "recusado")
+                st.rerun()
+            with st.expander("Ver o texto do orçamento"):
+                st.code(msg_orcamento(f), language=None, wrap_lines=True)
+        elif st_ in ("fechado", "realizado"):
+            a, b = st.container(key=f"lb_{fid}").columns(2)
+            a.link_button("Confirmação no WhatsApp", _link(f, msg_confirmacao(f)), icon=":material/chat:",
+                          width="stretch")
+            if st_ == "fechado" and b.button("Viagem realizada", key=f"re_{fid}", icon=":material/flag:",
+                                            width="stretch"):
+                repo.status_frete(cid, fid, "realizado")
+                st.rerun()
+            a, b = st.container(key=f"lc_{fid}").columns(2)
+            with a.popover("Receber pagamento", icon=":material/payments:", width="stretch"):
+                with st.form(f"rec_{fid}", border=False):
+                    v = st.number_input("Valor (R$)", min_value=0.0, step=50.0,
+                                        value=round(falta if recebido or not _f(f.get("sinal")) else min(_f(f["sinal"]), falta), 2))
+                    dt = st.date_input("Data", value=h, format="DD/MM/YYYY")
+                    fm = st.selectbox("Forma", FORMAS)
+                    if st.form_submit_button("Registrar", type="primary"):
+                        if v > 0:
+                            rot = "Sinal" if not recebido and v < valor else ("Pagamento" if v >= falta else "Parcela")
+                            repo.lancar_frete(cid, fid, "receita", round(v, 2), dt, "Fretamento",
+                                              f"{rot} · {rota}" + (f" · {_txt(f.get('cliente'))}" if _txt(f.get('cliente')) else "")
+                                              + f" ({fm})")
+                            st.toast("Recebimento registrado — já está no Financeiro.")
+                            st.rerun()
+            with b.popover("Lançar gasto", icon=":material/receipt_long:", width="stretch"):
+                with st.form(f"gas_{fid}", border=False):
+                    cat = st.selectbox("Categoria", ["Combustível", "Pedágio / estacionamento", "Motorista extra",
+                                                     "Alimentação", "Manutenção", "Outros"])
+                    v = st.number_input("Valor (R$)", min_value=0.0, step=10.0, key=f"gv_{fid}")
+                    dt = st.date_input("Data", value=f["data_ida"] if f["data_ida"] <= h else h, format="DD/MM/YYYY",
+                                       key=f"gd_{fid}")
+                    ds = st.text_input("Descrição (opcional)", key=f"gs_{fid}")
+                    if st.form_submit_button("Lançar", type="primary"):
+                        if v > 0:
+                            repo.lancar_frete(cid, fid, "despesa", round(v, 2), dt, cat,
+                                              (ds.strip() + " · " if ds.strip() else "") + f"Frete: {rota}")
+                            st.toast("Gasto lançado no Financeiro.")
+                            st.rerun()
+            lan = repo.lancamentos_frete(cid, fid)
+            if not lan.empty:
+                with st.expander(f"Recebimentos e gastos ({len(lan)})"):
+                    for r in lan.itertuples():
+                        a, b = st.columns([5, 1])
+                        a.caption(f"{'＋' if r.tipo == 'receita' else '−'} {brl(r.valor)} · {data_br(r.data)} · "
+                                  f"{r.categoria}{' · ' + r.descricao if r.descricao else ''}")
+                        if b.button("", icon=":material/delete:", key=f"dl_{r.id}", type="tertiary", help="Excluir"):
+                            repo.excluir_lancamento(cid, r.id)
+                            st.rerun()
+        else:
+            a, b = st.container(key=f"lb_{fid}").columns(2)
+            if a.button("Reabrir orçamento", key=f"ra_{fid}", icon=":material/undo:", width="stretch"):
+                repo.status_frete(cid, fid, "orcamento")
+                st.rerun()
+            if b.button("Excluir", key=f"ex_{fid}", icon=":material/delete:", width="stretch"):
+                repo.excluir_frete(cid, fid)
+                st.rerun()
+
+        if st_ in ("orcamento", "enviado", "fechado"):
+            with st.expander("Editar", icon=":material/edit:"):
+                if formulario(f, fid):
+                    st.toast("Alterações salvas.")
+                    st.rerun()
+                if st_ == "fechado" and st.button("Cancelar viagem", key=f"cv_{fid}", icon=":material/cancel:",
+                                                  type="tertiary"):
+                    repo.status_frete(cid, fid, "cancelado")
+                    st.rerun()
+
+
+# ---------------------------------------------------------------- tela
+abertos = repo.fretes(cid, ["orcamento", "enviado"])
+agenda = repo.fretes(cid, ["fechado"])
+feitos = repo.fretes(cid, ["realizado", "recusado", "cancelado"])
+mes = repo.resumo_meses(cid, h.replace(day=1), (h.replace(day=28) + timedelta(days=4)).replace(day=1), origem="frete").iloc[-1]
+a_receber = sum(max(_f(r["valor"]) - _f(r["recebido"]), 0) for _, r in
+                list(agenda.iterrows()) + list(feitos[feitos["status"] == "realizado"].iterrows()))
+_ui.kpis([("Próximas viagens", len(agenda), "fechadas"),
+          ("Orçamentos abertos", len(abertos), "aguardando resposta"),
+          ("A receber", brl(a_receber), "de viagens fechadas"),
+          ("Lucro no mês", brl(_f(mes["outras_receitas"]) - _f(mes["despesas"])), "fretamentos")])
+
+aba_novo, aba_orc, aba_ag, aba_hist = st.tabs(["Novo orçamento", f"Orçamentos ({len(abertos)})",
+                                               f"Agenda ({len(agenda)})", "Histórico"])
+with aba_novo:
+    novo = formulario(None, "novo")
+    if novo:
+        st.session_state["_frete_novo"] = novo
+        st.rerun()
+    if st.session_state.get("_frete_novo"):
+        f = repo.frete(cid, st.session_state["_frete_novo"])
+        if f and f["status"] in ("orcamento", "enviado"):
+            st.success(f"Orçamento salvo ({brl(_f(f['valor']))} · {_quando(f)}). Ele fica na aba **Orçamentos** "
+                       "até o cliente responder.", icon=":material/check_circle:")
+            st.link_button("Enviar agora pelo WhatsApp", _link(f, msg_orcamento(f)), icon=":material/send:",
+                           type="primary")
+with aba_orc:
+    if abertos.empty:
+        st.info("Nenhum orçamento aguardando resposta. Crie um em **Novo orçamento**.")
+    for f in abertos.to_dict("records"):
+        cartao(f)
+with aba_ag:
+    if agenda.empty:
+        st.info("Nenhuma viagem fechada na agenda.")
+    for f in agenda.to_dict("records"):
+        cartao(f)
+with aba_hist:
+    if feitos.empty:
+        st.info("As viagens realizadas, recusadas e canceladas aparecem aqui.")
+    for f in sorted(feitos.to_dict("records"), key=lambda r: r["data_ida"], reverse=True)[:50]:
+        cartao(f)

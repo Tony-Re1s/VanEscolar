@@ -1,4 +1,6 @@
 """Tela inicial do condutor: o dia de hoje e o que precisa de atenção."""
+from datetime import timedelta
+
 import streamlit as st
 
 from core import repo
@@ -61,6 +63,21 @@ if _pl.em_pausa(repo.empresa(c["id"]), h):
     st.caption("⏸️ Pausa de férias: rota e chamada estão pausadas (veja em Meu plano).")
 else:
     st.page_link("telas/chamada.py", label="Abrir rota e chamada", icon=":material/fact_check:")
+
+# fretamentos fechados (hoje e próximos 7 dias)
+if _pl.tem_fretamento(repo.empresa(cid), h):
+    _fr = repo.fretes(cid, ["fechado"], h, h + timedelta(days=7))
+    if not _fr.empty:
+        st.subheader("🧭 Fretamentos")
+        for r in _fr.itertuples():
+            quando = "**Hoje**" if r.data_ida == h else f"{DIAS_SEMANA[r.data_ida.weekday()].capitalize()} {data_br(r.data_ida)}"
+            hora = f" às {r.hora_ida:%H:%M}" if r.hora_ida is not None and str(r.hora_ida) not in ("NaT", "nan", "None") else ""
+            rota = " → ".join(x for x in (r.origem, r.destino) if x and str(x) != "nan") or "Viagem"
+            st.markdown(_ui.sem_formula(f"{quando}{hora} · {_ui.esc(rota)}"
+                        + (f" <span class='ve-sub'>· {_ui.esc(r.cliente)}</span>" if r.cliente and str(r.cliente) != "nan" else "")
+                        + (f" <span class='ve-sub'>· 🚐 {_ui.esc(r.van)}</span>" if r.van and str(r.van) != "nan" else "")),
+                        unsafe_allow_html=True)
+        st.page_link("telas/fretamento.py", label="Abrir Fretamento", icon=":material/tour:")
 
 # a receber
 st.subheader("Mensalidades para cobrar")
