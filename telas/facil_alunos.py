@@ -77,6 +77,8 @@ with st.expander("Colar uma lista (vários de uma vez)", icon=":material/content
                 st.toast(f"{len(linhas)} aluno(s) cadastrado(s).")
                 st.rerun()
 
+_ui.importar_planilha(c, van_padrao, dia_padrao, chave="imp_f")
+
 st.subheader("Seus alunos")
 df = repo.alunos_facil(cid)
 if df.empty:

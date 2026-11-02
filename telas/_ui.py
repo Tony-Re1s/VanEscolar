@@ -719,10 +719,11 @@ def instagram(texto: str = "Siga no Instagram", chave: str = "insta"):
 def _passos_guia(facil: bool) -> list[dict]:
     return [
         dict(chave="aluno", titulo="Cadastre o primeiro aluno",
-             sub="Só o nome e o WhatsApp de quem é responsável. Leva 10 segundos.",
+             sub="Só o nome e o WhatsApp de quem é responsável — ou importe sua planilha.",
              pagina="telas/facil_alunos.py" if facil else "telas/alunos.py", botao="Cadastrar aluno",
              dica="Digite o **nome do aluno** e o **WhatsApp do responsável** e toque em **Adicionar aluno**. "
-                  "Valor e vencimento você pode pôr agora ou depois."),
+                  "Valor e vencimento você pode pôr agora ou depois. Já tem a lista numa planilha? Use "
+                  "**Importar planilha** logo abaixo e cadastre todos de uma vez."),
         dict(chave="rota", titulo="Faça a primeira rota",
              sub="Pode ser de teste: toque em Iniciar rota e veja como o pai é avisado.",
              pagina="telas/facil_rota.py" if facil else "telas/chamada.py", botao="Abrir a rota",
@@ -782,3 +783,56 @@ def faixa_gratis():
     a.markdown(f"🆓 **Plano Grátis** <span class='ve-sub'>· mensalidades e financeiro para até {lim} alunos. "
                "Assine para liberar rota, avisos aos pais, mapa, contrato e fretamento.</span>", unsafe_allow_html=True)
     b.page_link("telas/meu_plano.py", label="Ver planos", icon=":material/workspace_premium:")
+
+
+# ---------------------------------------------------------------- importar planilha de alunos
+def importar_planilha(c: dict, van, dia_padrao: int, chave: str = "imp"):
+    """Expander "Importar planilha": baixar modelo → subir xlsx/csv ou colar → conferir → importar."""
+    from core import importar as imp
+    with st.expander("Importar planilha (Excel ou Google Planilhas)", icon=":material/upload_file:"):
+        st.caption("Baixe o modelo → preencha um aluno por linha → envie o arquivo aqui. "
+                   "Já tem sua planilha? Pode mandar ela mesma — a gente acha as colunas pelo nome.")
+        st.download_button("Baixar modelo (.xlsx)", imp.modelo_xlsx(), file_name="modelo-alunos.xlsx",
+                           mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                           icon=":material/download:", key=f"{chave}_modelo")
+        arq = st.file_uploader("Enviar planilha", type=["xlsx", "csv"], key=f"{chave}_arq")
+        txt = st.text_area("…ou cole aqui (copie as linhas no Excel / Google Planilhas e cole)", height=90,
+                           key=f"{chave}_txt")
+        if not arq and not (txt or "").strip():
+            return
+        try:
+            df = imp.ler(arquivo=arq) if arq else imp.ler(texto=txt)
+        except Exception as e:  # noqa: BLE001
+            st.error(f"Não consegui ler essa planilha ({e}). Tente salvar como .xlsx ou use o modelo.")
+            return
+        if df.empty:
+            st.warning("Não achei nenhum aluno na planilha. Confira se a coluna **Aluno** está preenchida.")
+            return
+        v = imp.validar(c["id"], df, dia_padrao)
+        ok = int((v["situacao"] == "ok").sum())
+        dup = int((v["situacao"] == "duplicado").sum())
+        err = int((v["situacao"] == "erro").sum())
+        a, b, d = st.columns(3)
+        a.metric("Prontos para importar", ok)
+        b.metric("Vão ser pulados", dup, help="Já existe aluno com esse nome, ou o nome se repete na planilha.")
+        d.metric("Com erro", err)
+        rot = {"ok": "✅ OK", "duplicado": "⏭️ Pular", "erro": "❌ Erro"}
+        mostra = v.assign(situacao=v["situacao"].map(rot),
+                          turno=v["turno"].map({"manha": "Manhã", "tarde": "Tarde", "integral": "Integral",
+                                                "noite": "Noite"}))
+        st.dataframe(mostra[["situacao", "aviso", "nome", "responsavel", "whatsapp", "valor", "dia", "escola", "turno"]],
+                     hide_index=True, width="stretch",
+                     column_config={"situacao": "", "nome": "Aluno", "responsavel": "Responsável",
+                                    "whatsapp": "WhatsApp",
+                                    "valor": st.column_config.NumberColumn("Mensalidade", format="R$ %.2f"),
+                                    "dia": "Vence dia", "escola": "Escola", "turno": "Turno", "aviso": "Observação"})
+        if err:
+            st.caption("Linhas com erro não entram — corrija na planilha e envie de novo, ou cadastre depois.")
+        if ok and st.button(f"Importar {ok} aluno(s)", type="primary", icon=":material/group_add:",
+                            key=f"{chave}_ir"):
+            if checar_limite(c, "alunos", novos=ok):
+                n = imp.importar(c["id"], v, van)
+                for k in (f"{chave}_arq", f"{chave}_txt"):
+                    st.session_state.pop(k, None)
+                st.toast(f"{n} aluno(s) importado(s).", icon="✅")
+                st.rerun()

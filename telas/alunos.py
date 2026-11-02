@@ -90,6 +90,8 @@ with aba_lista:
 
 # ------------------------------------------------------------------ cadastro
 with aba_edit:
+    _ui.importar_planilha(c, str(vans.iloc[0]["id"]) if not vans.empty else None,
+                          int(c.get("dia_vencimento") or 10), chave="imp_c")
     NOVO = "➕ Novo aluno"
     nomes = [NOVO] + [f"{r.nome}{'' if r.ativo else ' (inativo)'}" for r in todos.itertuples()]
     pend = st.session_state.pop("aluno_sel", None)
