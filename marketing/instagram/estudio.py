@@ -46,6 +46,8 @@ body{width:var(--w);height:var(--h);font-family:Nunito,sans-serif;color:var(--na
 .navy{background:var(--navy);color:#fff}
 .amarelo{background:var(--am);color:var(--navy)}
 .pad{position:absolute;inset:0;padding:120px 96px 150px}
+.centro{display:flex;flex-direction:column;justify-content:center;padding-bottom:210px}
+.centro>*{flex-shrink:0}
 .h1{font-weight:900;font-size:98px;line-height:1.02;letter-spacing:-1.5px}
 .h2{font-weight:900;font-size:74px;line-height:1.05;letter-spacing:-1px}
 .h3{font-weight:800;font-size:46px;line-height:1.18}
@@ -133,11 +135,11 @@ def slide(s: dict, i: int, n: int) -> str:
         itens = "".join(
             f"<div class='item'><div class='b{' nao' if marca == '✕' else ''}'>{(k + 1) if marca == '1' else marca}</div>"
             f"<div class='h3'>{fmt(t)}</div></div>" for k, t in enumerate(s.get("itens") or []))
-        corpo = f"""<div class='pad'>{selo}<div class='h2' style='margin-top:{30 if selo else 0}px'>{fmt(s.get('titulo'))}</div>
+        corpo = f"""<div class='pad centro'>{selo}<div class='h2' style='margin-top:{30 if selo else 0}px'>{fmt(s.get('titulo'))}</div>
           <div style='margin-top:40px'>{itens}</div>
           <div class='txt' style='margin-top:20px;font-size:34px;opacity:.85'>{fmt(s.get('texto'))}</div></div>"""
     elif m == "numero":
-        corpo = f"""<div class='pad'>{selo}<div class='numero' style='margin-top:60px'>{fmt(s.get('numero'))}</div>
+        corpo = f"""<div class='pad centro'>{selo}<div class='numero' style='margin-top:30px'>{fmt(s.get('numero'))}</div>
           <div class='h2' style='margin-top:20px'>{fmt(s.get('titulo'))}</div>
           <div class='txt' style='margin-top:40px;max-width:860px'>{fmt(s.get('texto'))}</div></div>"""
     elif m == "tela":
@@ -157,9 +159,9 @@ def slide(s: dict, i: int, n: int) -> str:
           <div style='margin-top:56px'><span class='cta'>{fmt(s.get('botao') or 'Salve e mande para outro pai 💛')}</span></div></div>"""
     else:  # texto
         emoji = f"<div class='emoji'>{s['emoji']}</div>" if s.get("emoji") else ""
-        caixa = (f"<div class='cartao' style='margin-top:50px'><div class='txt'>{fmt(s.get('caixa'))}</div></div>"
+        caixa = (f"<div class='cartao' style='margin-top:50px'><div class='txt' style='font-size:42px'>{fmt(s.get('caixa'))}</div></div>"
                  if s.get("caixa") else "")
-        corpo = f"""<div class='pad'>{selo}{emoji}<div class='h2' style='margin-top:{36 if (selo or emoji) else 0}px'>{fmt(s.get('titulo'))}</div>
+        corpo = f"""<div class='pad centro'>{selo}{emoji}<div class='h2' style='margin-top:{36 if (selo or emoji) else 0}px'>{fmt(s.get('titulo'))}</div>
           <div class='txt' style='margin-top:44px;max-width:880px'>{fmt(s.get('texto'))}</div>{caixa}</div>"""
     return pagina(bolhas() + pag + corpo + rodape(), fundo)
 

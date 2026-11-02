@@ -1,836 +1,208 @@
 [
  {
-  "id": "001",
-  "data_sugerida": "2026-11-02",
-  "dia": "seg",
-  "formato": "carrossel",
-  "pilar": "seguranca-pais",
-  "tema": "5 coisas para conferir antes de contratar a van",
+  "id": "001", "data_sugerida": "2026-11-02", "dia": "seg", "formato": "carrossel", "pilar": "gestao",
+  "tema": "Quanto cobrar: como calcular a mensalidade da van",
   "slides": [
-   {
-    "modelo": "capa",
-    "selo": "Para os pais",
-    "emoji": "🚐",
-    "titulo": "Antes de colocar seu filho na van, *confira isso*",
-    "texto": "5 itens que todo pai e mãe deveria olhar (e quase ninguém olha)."
-   },
-   {
-    "modelo": "numero",
-    "fundo": "claro",
-    "numero": "1",
-    "titulo": "Faixa amarela com *ESCOLAR*",
-    "texto": "O Código de Trânsito exige a faixa horizontal amarela, com a palavra ESCOLAR, nas laterais e na traseira."
-   },
-   {
-    "modelo": "numero",
-    "fundo": "claro",
-    "numero": "2",
-    "titulo": "Selo da *vistoria* no vidro",
-    "texto": "A van passa por vistoria a cada 6 meses. Peça para ver o selo e a Autorização de Tráfego — os números batem."
-   },
-   {
-    "modelo": "numero",
-    "fundo": "claro",
-    "numero": "3",
-    "titulo": "Um *cinto* para cada criança",
-    "texto": "Cada criança sentada e com o próprio cinto. Nada de duas no mesmo cinto, nada de criança em pé."
-   },
-   {
-    "modelo": "numero",
-    "fundo": "claro",
-    "numero": "4",
-    "titulo": "Motorista *habilitado* para escolares",
-    "texto": "Mais de 21 anos, CNH categoria D e curso especializado para transporte de escolares."
-   },
-   {
-    "modelo": "numero",
-    "fundo": "claro",
-    "numero": "5",
-    "titulo": "Contrato *por escrito*",
-    "texto": "Valor, reajuste, férias, faltas e horários combinados no papel (ou no celular). Evita mal-entendido depois."
-   },
-   {
-    "modelo": "cta",
-    "titulo": "Salve para *não esquecer*",
-    "texto": "E mande para aquele pai ou mãe que está procurando van para o ano que vem.",
-    "botao": "Salvar e compartilhar 💛"
-   }
+   {"modelo": "capa", "selo": "💰 Gestão da van", "emoji": "🧮", "titulo": "Sua mensalidade está *pagando* a sua van?", "texto": "O passo a passo para calcular o preço sem chutar."},
+   {"modelo": "lista", "fundo": "claro", "icone": "1", "titulo": "Some os custos *do ano*", "itens": ["Combustível e manutenção", "Seguro, IPVA e licenciamento", "Vistorias, alvará e cursos", "Salário de monitor(a), se tiver", "Reserva para trocar a van"]},
+   {"modelo": "texto", "fundo": "claro", "emoji": "👤", "titulo": "Agora *o seu salário*", "texto": "O seu trabalho também é custo. Defina quanto você precisa tirar por mês e some ao total do ano."},
+   {"modelo": "texto", "fundo": "claro", "emoji": "➗", "titulo": "Divida pelos *alunos*", "texto": "Total do ano ÷ número de alunos ÷ número de parcelas = mensalidade mínima.", "caixa": "Use o número de alunos que você costuma ter de verdade, não o da van lotada."},
+   {"modelo": "texto", "fundo": "grad", "emoji": "📈", "titulo": "E deixe uma *margem*", "texto": "Vaga que fica vazia, pai que atrasa, peça que quebra fora de hora. A margem é o que segura essas surpresas."},
+   {"modelo": "cta", "titulo": "Salve para a *renovação*", "texto": "E mande para aquele colega de ponto que está cobrando barato demais.", "botao": "Salvar e compartilhar 💛"}
   ],
-  "legenda": "Antes de fechar com a van escolar, vale conferir 5 coisas. 🚐✅\n\n1. Faixa amarela com a palavra ESCOLAR\n2. Selo da vistoria semestral no para-brisa\n3. Um cinto para cada criança\n4. Motorista com mais de 21 anos, CNH D e curso de escolares\n5. Contrato por escrito\n\nSalve este post e mande para quem está procurando transporte escolar. 💛\n\nAs regras locais podem variar: na dúvida, consulte o Detran ou a prefeitura da sua cidade.",
-  "hashtags": [
-   "transporteescolar",
-   "vanescolar",
-   "segurancainfantil",
-   "dicasparapais",
-   "maternidade"
-  ],
-  "story": {
-   "selo": "Pergunta do dia",
-   "emoji": "🤔",
-   "titulo": "Você já pediu para ver o selo da *vistoria* da van?",
-   "pergunta": "Já conferiu o selo?"
-  },
-  "status": "pendente",
-  "publicado_em": null
+  "legenda": "Tio e tia da van: a sua mensalidade está pagando a van ou só o combustível? 💰🚐\n\n1. Some os custos do ano (combustível, manutenção, seguro, IPVA, vistorias, monitor, reserva para trocar a van)\n2. Some o seu salário — seu trabalho também é custo\n3. Divida pelo número de alunos e de parcelas\n4. Deixe uma margem para vaga vazia e imprevisto\n\nSalve para a renovação e conta aqui: você já fez essa conta alguma vez? 👇",
+  "hashtags": ["vanescolar", "transporteescolar", "tioescolar", "motoristadevan", "tiadavan"],
+  "story": {"selo": "Pergunta do dia", "emoji": "🧮", "titulo": "Você já calculou a mensalidade *na ponta do lápis*?", "pergunta": "Me conta como você calcula hoje"},
+  "status": "pendente", "publicado_em": null
  },
  {
-  "id": "002",
-  "data_sugerida": "2026-11-03",
-  "dia": "ter",
-  "formato": "reels",
-  "pilar": "seguranca-criancas",
-  "tema": "Regras de ouro para a criança na van (reels rápido)",
+  "id": "002", "data_sugerida": "2026-11-03", "dia": "ter", "formato": "reels", "pilar": "humor",
+  "tema": "Coisas que só tio e tia da van entendem",
   "cenas": [
-   {
-    "emoji": "🚐",
-    "titulo": "3 regras\nque toda criança\nda van precisa *saber*",
-    "dur": 2.8,
-    "fundo": "grad"
-   },
-   {
-    "emoji": "🪑",
-    "titulo": "1. Sentou?\n*Cinto* na hora.",
-    "sub": "Antes da van andar.",
-    "dur": 2.6,
-    "fundo": "navy"
-   },
-   {
-    "emoji": "✋",
-    "titulo": "2. Só desce\nquando o tio\n*mandar*.",
-    "sub": "E nunca pela porta do trânsito.",
-    "dur": 2.8,
-    "fundo": "grad"
-   },
-   {
-    "emoji": "👀",
-    "titulo": "3. Atravessar?\nSempre pela\n*frente* da van.",
-    "sub": "Onde o motorista consegue ver.",
-    "dur": 2.8,
-    "fundo": "navy"
-   },
-   {
-    "emoji": "💛",
-    "titulo": "Combina isso\n*em casa* hoje.",
-    "sub": "Repetir é o que cria o hábito.",
-    "dur": 2.4,
-    "fundo": "amarelo"
-   }
+   {"emoji": "😅", "titulo": "Coisas que só\n*tio e tia da van*\nentendem", "dur": 2.6, "fundo": "grad"},
+   {"emoji": "⏰", "titulo": "“Tio, só mais\num minutinho!”\n*(foram 10)*", "dur": 2.6, "fundo": "navy"},
+   {"emoji": "🎒", "titulo": "A mochila\nesquecida\n*de novo* na van", "dur": 2.4, "fundo": "grad"},
+   {"emoji": "📱", "titulo": "47 mensagens de\n“a van já saiu?”\nàs *6h40*", "dur": 2.8, "fundo": "navy"},
+   {"emoji": "🎤", "titulo": "E o *show* de\nmúsica da turma\nna volta", "dur": 2.4, "fundo": "amarelo"},
+   {"emoji": "💛", "titulo": "Cansa?\nCansa.\nMas é *amor*.", "dur": 2.6, "fundo": "grad"}
   ],
-  "fim": {
-   "titulo": "Turminha a Bordo",
-   "sub": "Segurança no caminho da escola",
-   "botao": "Siga @turminha_abordo"
-  },
-  "legenda": "3 regras de ouro para a criança que vai de van escolar. 🚐\n\n✅ Sentou, colocou o cinto\n✅ Só desce quando o motorista ou monitor mandar\n✅ Atravessa sempre pela frente da van, onde o motorista vê\n\nConversa rápida que vale ter em casa hoje. Mande para outro pai ou mãe! 💛",
-  "hashtags": [
-   "transporteescolar",
-   "vanescolar",
-   "segurancainfantil",
-   "dicasparapais",
-   "educacaoinfantil"
-  ],
-  "story": {
-   "selo": "Pergunta do dia",
-   "emoji": "🚸",
-   "titulo": "Por onde a criança deve atravessar depois de descer da van?",
-   "pergunta": "Já combinou isso com seu filho?"
-  },
-  "status": "pendente",
-  "publicado_em": null
+  "fim": {"titulo": "Marca um tio ou tia da van 👇", "sub": "Turminha a Bordo", "botao": "Siga @turminha_abordo"},
+  "legenda": "Qual dessas acontece com você TODO dia? 😂🚐\n\n⏰ O “só mais um minutinho”\n🎒 A mochila esquecida de novo\n📱 As mensagens de “a van já saiu?”\n🎤 O show na volta da escola\n\nMarca aqui um colega tio ou tia da van! 💛",
+  "hashtags": ["tioescolar", "vanescolar", "transporteescolar", "tiadavan", "motoristadevan"],
+  "story": {"selo": "Pergunta do dia", "emoji": "😂", "titulo": "Qual é o *maior perrengue* da sua rota?", "pergunta": "Conta o seu perrengue 👇"},
+  "status": "pendente", "publicado_em": null
  },
  {
-  "id": "003",
-  "data_sugerida": "2026-11-04",
-  "dia": "qua",
-  "formato": "carrossel",
-  "pilar": "documentacao",
-  "tema": "Você sabia? O que a lei exige do motorista escolar",
+  "id": "003", "data_sugerida": "2026-11-04", "dia": "qua", "formato": "carrossel", "pilar": "documentacao",
+  "tema": "Documentos que todo motorista escolar precisa manter em dia",
   "slides": [
-   {
-    "modelo": "capa",
-    "fundo": "navy",
-    "selo": "📋 Você sabia?",
-    "titulo": "Nem todo motorista pode levar *escolares*",
-    "texto": "O Código de Trânsito tem regras próprias para quem leva crianças. Arrasta para ver."
-   },
-   {
-    "modelo": "lista",
-    "fundo": "claro",
-    "titulo": "O que a lei pede do *motorista*",
-    "itens": [
-     "Mais de 21 anos",
-     "CNH categoria D",
-     "Sem infração grave ou gravíssima nos últimos 12 meses",
-     "Curso especializado para escolares"
-    ],
-    "texto": "Código de Trânsito Brasileiro, art. 138."
-   },
-   {
-    "modelo": "lista",
-    "fundo": "claro",
-    "titulo": "E da *van*",
-    "itens": [
-     "Vistoria a cada 6 meses",
-     "Faixa amarela escrita ESCOLAR",
-     "Tacógrafo (registra velocidade e tempo)",
-     "Cinto para todos os lugares"
-    ],
-    "texto": "Código de Trânsito Brasileiro, art. 136."
-   },
-   {
-    "modelo": "texto",
-    "fundo": "grad",
-    "emoji": "💡",
-    "titulo": "Pode (e deve) *perguntar*",
-    "texto": "Motorista sério tem orgulho de mostrar a documentação. Pedir não é desconfiança — é cuidado."
-   },
-   {
-    "modelo": "cta",
-    "titulo": "Compartilhe com *quem precisa*",
-    "texto": "Informação boa protege criança.",
-    "botao": "Mandar para um amigo 💛"
-   }
+   {"modelo": "capa", "fundo": "navy", "selo": "📋 Documentação", "titulo": "A papelada da van *sempre em dia*", "texto": "O checklist para não ser pego de surpresa numa fiscalização."},
+   {"modelo": "lista", "fundo": "claro", "titulo": "Do *motorista*", "itens": ["CNH categoria D com EAR (atividade remunerada)", "Curso de transporte escolar válido", "Atualização do curso a cada 5 anos", "Certidões pedidas pela sua cidade"]},
+   {"modelo": "lista", "fundo": "claro", "titulo": "Da *van*", "itens": ["Licenciamento em dia", "Vistoria a cada 6 meses (selo no vidro)", "Autorização ou alvará da prefeitura", "Seguro (APP) para os passageiros"]},
+   {"modelo": "texto", "fundo": "grad", "emoji": "📅", "titulo": "Anote os *vencimentos*", "texto": "Vistoria, curso, alvará, seguro: cada um vence numa data. Deixe tudo anotado com 30 dias de antecedência.", "caixa": "As exigências mudam de cidade para cidade: confirme na prefeitura e no Detran do seu estado."},
+   {"modelo": "cta", "titulo": "Salve o *checklist*", "texto": "E mande para o grupo dos tios do seu ponto.", "botao": "Salvar 💾"}
   ],
-  "legenda": "Você sabia que o Código de Trânsito tem um capítulo só para o transporte de escolares? 📋\n\nDo motorista: mais de 21 anos, CNH D, sem infrações graves recentes e curso especializado.\nDa van: vistoria semestral, faixa amarela ESCOLAR, tacógrafo e cinto para todos.\n\nPedir para ver a documentação não é desconfiança — é cuidado. E motorista caprichoso adora mostrar. 😉\n\nRegras locais podem acrescentar exigências: consulte o Detran ou a prefeitura da sua cidade.",
-  "hashtags": [
-   "transporteescolar",
-   "vanescolar",
-   "motoristadevan",
-   "segurancainfantil",
-   "dicasparapais"
-  ],
-  "story": {
-   "selo": "Pergunta do dia",
-   "emoji": "📋",
-   "titulo": "Você sabia que o motorista escolar precisa de *curso especializado*?",
-   "pergunta": "Sabia disso?"
-  },
-  "status": "pendente",
-  "publicado_em": null
+  "legenda": "Tio e tia: a papelada da van está em dia? 📋🚐\n\nMotorista: CNH D com EAR, curso de transporte escolar e a atualização a cada 5 anos.\nVan: licenciamento, vistoria semestral com selo, autorização/alvará da prefeitura e seguro para os passageiros.\n\nDica de ouro: anote o vencimento de tudo com 30 dias de antecedência. As exigências mudam de cidade para cidade — confirme na prefeitura e no Detran.\n\nSalve e mande para o grupo dos tios! 💾",
+  "hashtags": ["vanescolar", "transporteescolar", "motoristadevan", "tioescolar", "transporteescolarsp"],
+  "story": {"selo": "Pergunta do dia", "emoji": "📅", "titulo": "Qual documento *sempre* te pega de surpresa?", "pergunta": "Me conta qual é 👇"},
+  "status": "pendente", "publicado_em": null
  },
  {
-  "id": "004",
-  "data_sugerida": "2026-11-05",
-  "dia": "qui",
-  "formato": "carrossel",
-  "pilar": "app-seguranca",
-  "tema": "Nenhuma criança esquecida na van — como o app ajuda",
+  "id": "004", "data_sugerida": "2026-11-05", "dia": "qui", "formato": "carrossel", "pilar": "app",
+  "tema": "Chega de caderninho: a rotina da van no celular",
   "slides": [
-   {
-    "modelo": "capa",
-    "fundo": "navy",
-    "selo": "⚠️ Segurança",
-    "titulo": "O medo de todo pai: *criança esquecida* na van",
-    "texto": "Uma conferência simples no fim da rota evita isso."
-   },
-   {
-    "modelo": "lista",
-    "fundo": "claro",
-    "titulo": "A *conferência* que salva",
-    "icone": "1",
-    "itens": [
-     "Contou quem entrou",
-     "Contou quem desceu",
-     "Andou até o fundo da van",
-     "Olhou embaixo dos bancos"
-    ],
-    "texto": "Todo dia. Em toda rota. Mesmo com pressa."
-   },
-   {
-    "modelo": "tela",
-    "fundo": "claro",
-    "titulo": "No *Turminha*, o app confere junto",
-    "texto": "Ao finalizar a rota, ele mostra quem ainda não foi entregue e só fecha depois de “Conferi a van”.",
-    "tela": "dialog_pendentes"
-   },
-   {
-    "modelo": "cta",
-    "titulo": "Segurança que os pais *percebem*",
-    "texto": "Teste o Turminha a Bordo 30 dias grátis.",
-    "botao": "Link na bio 👆"
-   }
+   {"modelo": "capa", "selo": "Para tios e tias", "emoji": "📒", "titulo": "Ainda faz a chamada no *caderninho*?", "texto": "Veja como fica a rotina com tudo no celular."},
+   {"modelo": "lista", "fundo": "claro", "icone": "✕", "titulo": "Antes", "itens": ["Chamada no papel", "Mensagem um por um", "Mensalidade no caderno", "Contrato na gaveta"]},
+   {"modelo": "lista", "fundo": "grad", "titulo": "Com o *Turminha*", "itens": ["Chamada em 1 toque", "Pais avisados no WhatsApp", "Mensalidades organizadas", "Contrato assinado no celular"]},
+   {"modelo": "tela", "fundo": "claro", "titulo": "Botões *grandes*, feitos para a rota", "texto": "Uma cor para cada coisa: avisar, embarcou, faltou, como chegar.", "tela": "chamada_full", "altura": 800, "topo": 120},
+   {"modelo": "cta", "titulo": "Teste *30 dias* grátis", "texto": "Sem cartão. Direto no navegador do celular.", "botao": "Link na bio 👆"}
   ],
-  "legenda": "Criança esquecida na van é o pesadelo de todo pai — e de todo motorista. ⚠️\n\nA prevenção é uma conferência simples no fim de cada rota: contar quem entrou, contar quem desceu, andar até o fundo e olhar embaixo dos bancos.\n\nNo Turminha a Bordo, o app confere junto: na hora de finalizar, ele mostra quem ainda não foi entregue e só fecha a rota depois do “Conferi a van”. ✅\n\nTeste 30 dias grátis — link na bio.",
-  "hashtags": [
-   "vanescolar",
-   "transporteescolar",
-   "segurancainfantil",
-   "motoristadevan",
-   "tioescolar"
-  ],
-  "story": {
-   "selo": "Para motoristas",
-   "emoji": "🚐",
-   "titulo": "Você confere o *fundo da van* no fim de toda rota?",
-   "pergunta": "Confere sempre?"
-  },
-  "status": "pendente",
-  "publicado_em": null
+  "legenda": "Tio e tia da van: quanto tempo você perde por dia com caderninho? 📒\n\nCom o Turminha a Bordo:\n✅ Chamada em 1 toque\n✅ Pais avisados no WhatsApp\n✅ Mensalidades organizadas\n✅ Contrato assinado no celular\n\nTeste 30 dias grátis, sem cartão — link na bio. 🚐",
+  "hashtags": ["vanescolar", "transporteescolar", "motoristadevan", "tioescolar", "transporteescolarsp"],
+  "story": {"selo": "Pergunta do dia", "emoji": "📒", "titulo": "Como você faz a *chamada* hoje?", "pergunta": "Caderno, WhatsApp ou de cabeça? 👇"},
+  "status": "pendente", "publicado_em": null
  },
  {
-  "id": "005",
-  "data_sugerida": "2026-11-06",
-  "dia": "sex",
-  "formato": "reels",
-  "pilar": "humor",
-  "tema": "Coisas que só quem é tio/tia da van entende",
-  "cenas": [
-   {
-    "emoji": "😅",
-    "titulo": "Coisas que só\n*tio e tia da van*\nentendem",
-    "dur": 2.6,
-    "fundo": "grad"
-   },
-   {
-    "emoji": "⏰",
-    "titulo": "“Tio, só mais\num minutinho!”\n*(foram 10)*",
-    "dur": 2.6,
-    "fundo": "navy"
-   },
-   {
-    "emoji": "🎒",
-    "titulo": "A mochila\nesquecida\n*de novo* na van",
-    "dur": 2.4,
-    "fundo": "grad"
-   },
-   {
-    "emoji": "📱",
-    "titulo": "47 mensagens de\n“a van já saiu?”\nàs *6h40*",
-    "dur": 2.8,
-    "fundo": "navy"
-   },
-   {
-    "emoji": "🎤",
-    "titulo": "E o *show* de\nmúsica da turma\nna volta",
-    "dur": 2.4,
-    "fundo": "amarelo"
-   },
-   {
-    "emoji": "💛",
-    "titulo": "Cansa?\nCansa.\nMas é *amor*.",
-    "dur": 2.6,
-    "fundo": "grad"
-   }
-  ],
-  "fim": {
-   "titulo": "Marca o tio ou a tia da van 👇",
-   "sub": "Turminha a Bordo",
-   "botao": "Siga @turminha_abordo"
-  },
-  "legenda": "Quem é tio ou tia da van se identificou com qual? 😂🚐\n\n⏰ O “só mais um minutinho”\n🎒 A mochila esquecida de novo\n📱 As mensagens de “a van já saiu?”\n🎤 O show na volta da escola\n\nMarca aqui o tio ou a tia da van do seu filho! 💛",
-  "hashtags": [
-   "tioescolar",
-   "vanescolar",
-   "transporteescolar",
-   "tiadavan",
-   "humor"
-  ],
-  "story": {
-   "selo": "Pergunta do dia",
-   "emoji": "😂",
-   "titulo": "Tio e tia da van: qual é o *pior*?",
-   "pergunta": "Qual é o pior pra você?"
-  },
-  "status": "pendente",
-  "publicado_em": null
- },
- {
-  "id": "006",
-  "data_sugerida": "2026-11-07",
-  "dia": "sab",
-  "formato": "carrossel",
-  "pilar": "contrato",
-  "tema": "Contrato de transporte escolar: o que precisa ter",
+  "id": "005", "data_sugerida": "2026-11-06", "dia": "sex", "formato": "carrossel", "pilar": "relacao-pais",
+  "tema": "Mensagens prontas para os pais (copie e cole)",
   "slides": [
-   {
-    "modelo": "capa",
-    "selo": "📝 Contrato",
-    "titulo": "O que todo contrato de van *precisa ter*",
-    "texto": "Combinado claro hoje = zero dor de cabeça em dezembro."
-   },
-   {
-    "modelo": "lista",
-    "fundo": "claro",
-    "titulo": "Não pode faltar",
-    "itens": [
-     "Valor total do ano e as parcelas",
-     "Dia do vencimento e multa",
-     "Regra para faltas e férias",
-     "Horários e endereços",
-     "Quem pode buscar a criança"
-    ]
-   },
-   {
-    "modelo": "texto",
-    "fundo": "claro",
-    "emoji": "💡",
-    "titulo": "Por que dividir em *parcelas*?",
-    "texto": "O serviço é contratado para o ano letivo. O valor total é dividido em parcelas para facilitar — por isso dezembro e janeiro podem ter cobrança."
-   },
-   {
-    "modelo": "tela",
-    "fundo": "claro",
-    "titulo": "Assinado *no celular*",
-    "texto": "No Turminha a Bordo, o contrato vai para a família e é assinado na hora, sem impressora.",
-    "tela": "mensalidades",
-    "altura": 780,
-    "topo": 0
-   },
-   {
-    "modelo": "cta",
-    "titulo": "Salve para a *renovação*",
-    "texto": "Fim de ano é época de contrato novo.",
-    "botao": "Salvar 💾"
-   }
+   {"modelo": "capa", "selo": "💬 Copie e cole", "emoji": "📲", "titulo": "Mensagens prontas para mandar *aos pais*", "texto": "Educadas, curtas e sem climão. Arrasta e salva."},
+   {"modelo": "texto", "fundo": "claro", "emoji": "⏰", "titulo": "Atraso na rota", "caixa": "Bom dia! Peguei trânsito na rota e vou atrasar uns 10 minutinhos. Já estou a caminho. Obrigado pela compreensão! 🚐"},
+   {"modelo": "texto", "fundo": "claro", "emoji": "💰", "titulo": "Lembrete de mensalidade", "caixa": "Oi! Passando para lembrar que a mensalidade vence dia 10. Se já pagou, desconsidere. Qualquer coisa, estou à disposição! 😊"},
+   {"modelo": "texto", "fundo": "claro", "emoji": "🙋", "titulo": "Criança não estava no portão", "caixa": "Bom dia! Passei às 6h50 e a Ana não estava no portão. Segui a rota para não atrasar os outros. Me avise se ela vai hoje!"},
+   {"modelo": "texto", "fundo": "claro", "emoji": "📅", "titulo": "Recesso e feriado", "caixa": "Lembrando que dia 20 é feriado e não teremos rota. Voltamos normalmente no dia 21. Bom descanso para a família!"},
+   {"modelo": "cta", "titulo": "Salve para *usar amanhã*", "texto": "No Turminha a Bordo esses avisos saem com 1 toque, já com o nome da criança.", "botao": "Salvar 💾"}
   ],
-  "legenda": "Fim de ano é época de renovar contrato da van. 📝\n\nO que não pode faltar:\n✅ Valor total do ano e as parcelas\n✅ Vencimento e multa\n✅ Regra para faltas e férias\n✅ Horários e endereços\n✅ Quem pode buscar a criança\n\nO serviço é contratado para o ano letivo; as parcelas só dividem o valor. Deixar isso claro evita mal-entendido.\n\nNo Turminha a Bordo, o contrato é assinado pelo celular. Salve este post para a renovação! 💾",
-  "hashtags": [
-   "transporteescolar",
-   "vanescolar",
-   "motoristadevan",
-   "dicasparapais",
-   "tioescolar"
-  ],
-  "story": {
-   "selo": "Pergunta do dia",
-   "emoji": "📝",
-   "titulo": "Qual sua maior *dúvida* sobre contrato de van?",
-   "texto": "Responde aqui por DM 💬"
-  },
-  "status": "pendente",
-  "publicado_em": null
+  "legenda": "Mensagens prontas para mandar aos pais — educadas, curtas e sem climão. 💬🚐\n\n⏰ Atraso na rota\n💰 Lembrete de mensalidade\n🙋 Criança não estava no portão\n📅 Feriado e recesso\n\nSalve para usar amanhã! E conta: qual mensagem você mais precisa mandar? 👇",
+  "hashtags": ["vanescolar", "tioescolar", "transporteescolar", "motoristadevan", "tiadavan"],
+  "story": {"selo": "Pergunta do dia", "emoji": "💬", "titulo": "Qual mensagem é a *mais difícil* de mandar aos pais?", "pergunta": "Me conta qual é 👇"},
+  "status": "pendente", "publicado_em": null
  },
  {
-  "id": "007",
-  "data_sugerida": "2026-11-08",
-  "dia": "dom",
-  "formato": "post",
-  "pilar": "afeto",
-  "tema": "Homenagem ao tio/tia da van",
+  "id": "006", "data_sugerida": "2026-11-07", "dia": "sab", "formato": "carrossel", "pilar": "pratico",
+  "tema": "Contrato de transporte escolar: o que o seu precisa ter",
   "slides": [
-   {
-    "modelo": "citacao",
-    "fundo": "grad",
-    "selo": "💛 Domingo",
-    "texto": "Todo dia, alguém confia a você o que tem de *mais precioso*.",
-    "autor": "A todos os tios e tias da van"
-   }
+   {"modelo": "capa", "selo": "📝 Contrato", "titulo": "O que o seu contrato *precisa ter*", "texto": "Combinado claro hoje = zero dor de cabeça em dezembro."},
+   {"modelo": "lista", "fundo": "claro", "titulo": "Não pode faltar", "itens": ["Valor total do ano e as parcelas", "Dia do vencimento e multa", "Regra para faltas e férias", "Horários e endereços", "Quem pode receber a criança"]},
+   {"modelo": "texto", "fundo": "claro", "emoji": "💡", "titulo": "Explique as *parcelas*", "texto": "O serviço é contratado para o ano letivo; as parcelas só dividem o valor. Deixar isso escrito acaba com a discussão do “mês de férias”."},
+   {"modelo": "tela", "fundo": "claro", "titulo": "Assinado *no celular*", "texto": "No Turminha a Bordo, o contrato vai para a família e é assinado na hora, sem impressora.", "tela": "mensalidades", "altura": 780, "topo": 0},
+   {"modelo": "cta", "titulo": "Salve para a *renovação*", "texto": "Fim de ano é época de contrato novo.", "botao": "Salvar 💾"}
   ],
-  "legenda": "Não é só dirigir. É acordar antes do sol, conhecer cada criança pelo nome, saber quem enjoa, quem esquece a mochila e quem precisa de um bom-dia caprichado. 🚐💛\n\nObrigado, tios e tias da van, por cuidarem de tanta gente todos os dias.\n\nMarca aqui o tio ou a tia que você admira! 👇",
-  "hashtags": [
-   "tioescolar",
-   "vanescolar",
-   "transporteescolar",
-   "tiadavan",
-   "gratidao"
-  ],
-  "story": {
-   "selo": "Pergunta do dia",
-   "emoji": "💛",
-   "titulo": "Deixe um recado para o *tio ou a tia* da van do seu filho",
-   "texto": "Responde aqui por DM 💬"
-  },
-  "status": "pendente",
-  "publicado_em": null
+  "legenda": "Fim de ano é época de renovar contrato. Tio e tia: o seu tem tudo isso? 📝\n\n✅ Valor total do ano e as parcelas\n✅ Vencimento e multa\n✅ Regra para faltas e férias\n✅ Horários e endereços\n✅ Quem pode receber a criança\n\nDeixar escrito que o valor é do ano letivo acaba com a discussão do “mês de férias”. No Turminha a Bordo, o contrato é assinado pelo celular.\n\nSalve para a renovação! 💾",
+  "hashtags": ["transporteescolar", "vanescolar", "motoristadevan", "tioescolar", "tiadavan"],
+  "story": {"selo": "Pergunta do dia", "emoji": "📝", "titulo": "Seu contrato é *no papel* ou só *de boca*?", "pergunta": "Me conta 👇"},
+  "status": "pendente", "publicado_em": null
  },
  {
-  "id": "008",
-  "data_sugerida": "2026-11-09",
-  "dia": "seg",
-  "formato": "carrossel",
-  "pilar": "seguranca-pais",
-  "tema": "Embarque e desembarque seguros",
+  "id": "007", "data_sugerida": "2026-11-08", "dia": "dom", "formato": "post", "pilar": "afeto",
+  "tema": "Homenagem ao tio e à tia da van",
   "slides": [
-   {
-    "modelo": "capa",
-    "selo": "🚸 Segurança",
-    "titulo": "O momento mais arriscado é *descer* da van",
-    "texto": "Embarque e desembarque: o que pais e motoristas podem fazer."
-   },
-   {
-    "modelo": "lista",
-    "fundo": "claro",
-    "titulo": "Na hora de *embarcar*",
-    "itens": [
-     "Criança pronta no portão no horário",
-     "Um adulto entrega na porta da van",
-     "Nada de correr atrás da van"
-    ]
-   },
-   {
-    "modelo": "lista",
-    "fundo": "claro",
-    "titulo": "Na hora de *descer*",
-    "itens": [
-     "Van parada e porta do lado da calçada",
-     "Esperar o sinal do motorista",
-     "Atravessar pela frente, nunca por trás"
-    ]
-   },
-   {
-    "modelo": "tela",
-    "fundo": "claro",
-    "titulo": "E o pai *fica sabendo*",
-    "texto": "No Turminha a Bordo, cada embarque e entrega é marcado com um toque — e a família acompanha.",
-    "tela": "card_ana_navan"
-   },
-   {
-    "modelo": "cta",
-    "titulo": "Mande para o *grupo da escola*",
-    "texto": "Quanto mais gente souber, mais seguro fica.",
-    "botao": "Compartilhar 💛"
-   }
+   {"modelo": "citacao", "fundo": "grad", "selo": "💛 Domingo", "texto": "Todo dia, alguém confia a você o que tem de *mais precioso*.", "autor": "A todos os tios e tias da van"}
   ],
-  "legenda": "O momento mais arriscado do transporte escolar não é o trânsito — é o embarque e o desembarque. 🚸\n\nEmbarcar: criança pronta no horário e entregue por um adulto na porta da van.\nDescer: van parada, porta do lado da calçada, esperar o sinal e atravessar pela frente.\n\nMande para o grupo dos pais da escola! 💛",
-  "hashtags": [
-   "transporteescolar",
-   "vanescolar",
-   "segurancainfantil",
-   "dicasparapais",
-   "maternidade"
-  ],
-  "story": {
-   "selo": "Pergunta do dia",
-   "emoji": "🚸",
-   "titulo": "Seu filho espera o *sinal do motorista* para descer?",
-   "pergunta": "Espera o sinal?"
-  },
-  "status": "pendente",
-  "publicado_em": null
+  "legenda": "Não é só dirigir. É acordar antes do sol, conhecer cada criança pelo nome, saber quem enjoa, quem esquece a mochila e quem precisa de um bom-dia caprichado. 🚐💛\n\nObrigado, tios e tias da van, por cuidarem de tanta gente todos os dias.\n\nMarca aqui um tio ou tia que você admira! 👇",
+  "hashtags": ["tioescolar", "vanescolar", "transporteescolar", "tiadavan", "motoristadevan"],
+  "story": {"selo": "Pergunta do dia", "emoji": "💛", "titulo": "Há quanto tempo você é *tio ou tia* da van?", "pergunta": "Conta pra gente 👇"},
+  "status": "pendente", "publicado_em": null
  },
  {
-  "id": "009",
-  "data_sugerida": "2026-11-10",
-  "dia": "ter",
-  "formato": "reels",
-  "pilar": "pais",
+  "id": "008", "data_sugerida": "2026-11-09", "dia": "seg", "formato": "carrossel", "pilar": "gestao",
+  "tema": "Inadimplência: como cobrar sem perder o cliente",
+  "slides": [
+   {"modelo": "capa", "selo": "💰 Gestão da van", "emoji": "😬", "titulo": "Pai atrasou de novo? *Cobre sem climão*", "texto": "Um jeito de receber sem perder o cliente (nem a paciência)."},
+   {"modelo": "lista", "fundo": "claro", "icone": "1", "titulo": "A *escada* da cobrança", "itens": ["Lembrete gentil 2 dias antes", "Aviso no dia do vencimento", "Conversa direta após 5 dias", "Combinar data ou parcelar o atraso"]},
+   {"modelo": "texto", "fundo": "claro", "emoji": "⚖️", "titulo": "O que *não* fazer", "texto": "Cobrar na frente da criança, no grupo de pais ou com ameaça. O Código de Defesa do Consumidor proíbe expor quem está devendo ao ridículo.", "caixa": "Cobrança é sempre particular: só com o responsável."},
+   {"modelo": "texto", "fundo": "grad", "emoji": "📝", "titulo": "O que *protege* você", "texto": "Contrato com vencimento e multa por atraso, Pix com recibo e um registro de quem pagou e quando."},
+   {"modelo": "cta", "titulo": "Cobrança no *automático*", "texto": "No Turminha a Bordo você vê quem está em aberto e manda o lembrete em 1 toque.", "botao": "Teste 30 dias grátis 👆"}
+  ],
+  "legenda": "Pai atrasou de novo? Dá para cobrar sem climão. 💰\n\n1. Lembrete gentil 2 dias antes\n2. Aviso no dia do vencimento\n3. Conversa direta depois de 5 dias\n4. Combinar data ou parcelar o atraso\n\nO que não fazer: cobrar na frente da criança ou no grupo de pais — o Código de Defesa do Consumidor proíbe expor quem está devendo.\n\nE você, tio ou tia, como faz a cobrança hoje? 👇",
+  "hashtags": ["vanescolar", "transporteescolar", "tioescolar", "motoristadevan", "tiadavan"],
+  "story": {"selo": "Pergunta do dia", "emoji": "😬", "titulo": "Quantos pais estão *atrasados* com você este mês?", "pergunta": "Responde aqui 👇"},
+  "status": "pendente", "publicado_em": null
+ },
+ {
+  "id": "009", "data_sugerida": "2026-11-10", "dia": "ter", "formato": "reels", "pilar": "app",
   "tema": "A pergunta que acabou: a van já saiu?",
   "cenas": [
-   {
-    "emoji": "📱",
-    "titulo": "6h40.\n“A van\n*já saiu*?”",
-    "dur": 2.6,
-    "fundo": "navy"
-   },
-   {
-    "emoji": "😰",
-    "titulo": "Mãe olhando\no relógio.\nTio *no trânsito*.",
-    "dur": 2.6,
-    "fundo": "grad"
-   },
-   {
-    "emoji": "📍",
-    "titulo": "E se o pai\npudesse *ver*\na van no mapa?",
-    "dur": 2.6,
-    "fundo": "navy"
-   },
-   {
-    "emoji": "✅",
-    "titulo": "Embarcou.\nNa escola.\n*Rota finalizada.*",
-    "sub": "Tudo no celular da família.",
-    "dur": 3.0,
-    "fundo": "grad"
-   }
+   {"emoji": "📱", "titulo": "6h40.\n“Tio, a van\n*já saiu*?”", "dur": 2.6, "fundo": "navy"},
+   {"emoji": "🚐", "titulo": "Você dirigindo.\nO celular\n*não para*.", "dur": 2.6, "fundo": "grad"},
+   {"emoji": "📍", "titulo": "E se o pai\npudesse *ver*\na van no mapa?", "dur": 2.6, "fundo": "navy"},
+   {"emoji": "✅", "titulo": "Embarcou.\nNa escola.\n*Pronto.*", "sub": "Você dirige, o app avisa.", "dur": 3.0, "fundo": "grad"}
   ],
-  "fim": {
-   "titulo": "Turminha a Bordo",
-   "sub": "Teste 30 dias grátis",
-   "botao": "Link na bio 👆"
-  },
-  "legenda": "“A van já saiu?” — a pergunta que todo tio da van recebe todo santo dia. 😅📱\n\nCom o Turminha a Bordo, o pai acompanha a van no mapa enquanto o filho está a bordo e recebe “Rota finalizada” quando a criança chega. Menos mensagem para o motorista, mais tranquilidade para a família. 💛\n\nTeste 30 dias grátis — link na bio.",
-  "hashtags": [
-   "vanescolar",
-   "transporteescolar",
-   "motoristadevan",
-   "tioescolar",
-   "transporteescolarsp"
-  ],
-  "story": {
-   "selo": "Pergunta do dia",
-   "emoji": "📍",
-   "titulo": "Pais: vocês gostariam de *ver a van no mapa*?",
-   "pergunta": "Ver a van no mapa?"
-  },
-  "status": "pendente",
-  "publicado_em": null
+  "fim": {"titulo": "Turminha a Bordo", "sub": "Teste 30 dias grátis", "botao": "Link na bio 👆"},
+  "legenda": "“Tio, a van já saiu?” — quantas vezes você recebe essa por dia? 😅📱\n\nCom o Turminha a Bordo, o pai acompanha a van no mapa enquanto o filho está a bordo e vê quando a criança chegou na escola. Você dirige, o app avisa. 💛\n\nTeste 30 dias grátis — link na bio.",
+  "hashtags": ["vanescolar", "transporteescolar", "motoristadevan", "tioescolar", "transporteescolarsp"],
+  "story": {"selo": "Pergunta do dia", "emoji": "📱", "titulo": "Quantas vezes por dia te perguntam se *a van já saiu*?", "pergunta": "Chuta um número 👇"},
+  "status": "pendente", "publicado_em": null
  },
  {
-  "id": "010",
-  "data_sugerida": "2026-11-11",
-  "dia": "qua",
-  "formato": "carrossel",
-  "pilar": "documentacao",
-  "tema": "Cadeirinha na van escolar: o que diz a regra",
+  "id": "010", "data_sugerida": "2026-11-11", "dia": "qua", "formato": "carrossel", "pilar": "documentacao",
+  "tema": "Vistoria semestral sem susto: o que conferir antes",
   "slides": [
-   {
-    "modelo": "capa",
-    "fundo": "navy",
-    "selo": "📋 Você sabia?",
-    "titulo": "E a *cadeirinha* na van escolar?",
-    "texto": "Uma das dúvidas mais comuns dos pais. Arrasta."
-   },
-   {
-    "modelo": "texto",
-    "fundo": "claro",
-    "titulo": "O que diz a *regra*",
-    "texto": "A exigência de cadeirinha nas vans escolares está suspensa até que os veículos tenham cintos de três pontos e encaixe próprio para isso."
-   },
-   {
-    "modelo": "texto",
-    "fundo": "claro",
-    "emoji": "💡",
-    "titulo": "Mas *segurança* não espera a lei",
-    "texto": "Especialistas recomendam sistema de retenção para crianças menores de 7 anos e meio sempre que possível. E cinto individual para todas."
-   },
-   {
-    "modelo": "texto",
-    "fundo": "grad",
-    "titulo": "Na *dúvida*, pergunte",
-    "texto": "Converse com o motorista e consulte o Detran ou a prefeitura: algumas cidades têm regras próprias."
-   },
-   {
-    "modelo": "cta",
-    "titulo": "Salve e *compartilhe*",
-    "texto": "Tem muito pai com essa dúvida.",
-    "botao": "Mandar no grupo 💛"
-   }
+   {"modelo": "capa", "fundo": "navy", "selo": "🔧 Vistoria", "titulo": "Vistoria chegando? *Confira antes*", "texto": "O que mais reprova e dá para resolver em casa."},
+   {"modelo": "lista", "fundo": "claro", "titulo": "Por *fora*", "itens": ["Faixa amarela com ESCOLAR inteira", "Lanternas e setas funcionando", "Pneus e estepe em bom estado", "Para-brisa sem trinca"]},
+   {"modelo": "lista", "fundo": "claro", "titulo": "Por *dentro*", "itens": ["Um cinto funcionando para cada lugar", "Extintor dentro da validade", "Tacógrafo funcionando e aferido", "Bancos firmes e sem rasgos"]},
+   {"modelo": "texto", "fundo": "grad", "emoji": "💡", "titulo": "Leve a *papelada* junto", "texto": "Documento da van, CNH, certificado do curso e a vistoria anterior. Cada cidade tem a sua lista: confira antes no órgão que faz a vistoria."},
+   {"modelo": "cta", "titulo": "Salve para a *próxima*", "texto": "E mande para quem vai vistoriar este mês.", "botao": "Salvar 💾"}
   ],
-  "legenda": "Cadeirinha na van escolar é obrigatória? 🤔\n\nHoje, a exigência para os veículos escolares está suspensa até que tenham cintos de três pontos e encaixe próprio. Mas segurança não precisa esperar a lei: para crianças pequenas, o sistema de retenção continua sendo o mais seguro, e cada criança deve usar o próprio cinto.\n\nAs regras podem mudar e variar por cidade: consulte o Detran ou a prefeitura. Salve e mande para quem tem essa dúvida! 💛",
-  "hashtags": [
-   "transporteescolar",
-   "vanescolar",
-   "segurancainfantil",
-   "dicasparapais",
-   "maternidade"
-  ],
-  "story": {
-   "selo": "Pergunta do dia",
-   "emoji": "🪑",
-   "titulo": "Você achava que a cadeirinha era *obrigatória* na van?",
-   "pergunta": "Achava que era?"
-  },
-  "status": "pendente",
-  "publicado_em": null
+  "legenda": "Vistoria da van chegando? Confira antes para não voltar para casa reprovado. 🔧🚐\n\nPor fora: faixa ESCOLAR, lanternas, pneus e para-brisa.\nPor dentro: cinto para cada lugar, extintor na validade, tacógrafo funcionando e bancos firmes.\n\nLeve a papelada junto — e confira a lista da sua cidade, porque muda de lugar para lugar.\n\nQual item já te reprovou alguma vez? 👇",
+  "hashtags": ["vanescolar", "transporteescolar", "motoristadevan", "tioescolar", "transporteescolarsp"],
+  "story": {"selo": "Pergunta do dia", "emoji": "🔧", "titulo": "Você já foi *reprovado* na vistoria? Por quê?", "pergunta": "Conta o motivo 👇"},
+  "status": "pendente", "publicado_em": null
  },
  {
-  "id": "011",
-  "data_sugerida": "2026-11-12",
-  "dia": "qui",
-  "formato": "carrossel",
-  "pilar": "app-motorista",
-  "tema": "Chega de caderninho: a rotina do motorista no celular",
+  "id": "011", "data_sugerida": "2026-11-12", "dia": "qui", "formato": "carrossel", "pilar": "app-seguranca",
+  "tema": "Conferência de fim de rota: o hábito que protege o motorista",
   "slides": [
-   {
-    "modelo": "capa",
-    "selo": "Para motoristas",
-    "emoji": "📒",
-    "titulo": "Ainda faz a chamada no *caderninho*?",
-    "texto": "Veja como fica a rotina com tudo no celular."
-   },
-   {
-    "modelo": "lista",
-    "fundo": "claro",
-    "icone": "✕",
-    "titulo": "Antes",
-    "itens": [
-     "Chamada no papel",
-     "Mensagem um por um",
-     "Mensalidade no caderno",
-     "Contrato na gaveta"
-    ]
-   },
-   {
-    "modelo": "lista",
-    "fundo": "grad",
-    "titulo": "Com o *Turminha*",
-    "itens": [
-     "Chamada em 1 toque",
-     "Pais avisados no WhatsApp",
-     "Mensalidades organizadas",
-     "Contrato assinado no celular"
-    ]
-   },
-   {
-    "modelo": "tela",
-    "fundo": "claro",
-    "titulo": "Botões *grandes*, feitos para a rota",
-    "texto": "Uma cor para cada coisa: avisar, embarcou, faltou, como chegar.",
-    "tela": "chamada_full",
-    "altura": 800,
-    "topo": 120
-   },
-   {
-    "modelo": "cta",
-    "titulo": "Teste *30 dias* grátis",
-    "texto": "Sem cartão. Direto no navegador do celular.",
-    "botao": "Link na bio 👆"
-   }
+   {"modelo": "capa", "fundo": "navy", "selo": "✅ Boa prática", "titulo": "Os 30 segundos que *protegem* sua van", "texto": "A conferência de fim de rota que todo tio caprichoso faz."},
+   {"modelo": "lista", "fundo": "claro", "icone": "1", "titulo": "Antes de *desligar*", "itens": ["Contou quem entrou", "Contou quem desceu", "Andou até o fundo da van", "Olhou embaixo dos bancos"], "texto": "Todo dia, em toda rota, mesmo com pressa."},
+   {"modelo": "tela", "fundo": "claro", "titulo": "O *Turminha* confere junto", "texto": "Ao finalizar a rota, o app mostra quem ainda não foi marcado e só fecha depois de “Conferi a van”.", "tela": "dialog_pendentes"},
+   {"modelo": "cta", "titulo": "Capricho que os pais *percebem*", "texto": "E que vira motivo para escolherem a SUA van.", "botao": "Teste 30 dias grátis 👆"}
   ],
-  "legenda": "Motorista de van escolar: quanto tempo você perde por dia com caderninho? 📒\n\nCom o Turminha a Bordo:\n✅ Chamada em 1 toque\n✅ Pais avisados no WhatsApp\n✅ Mensalidades organizadas\n✅ Contrato assinado no celular\n\nTeste 30 dias grátis, sem cartão — link na bio. 🚐",
-  "hashtags": [
-   "vanescolar",
-   "transporteescolar",
-   "motoristadevan",
-   "tioescolar",
-   "transporteescolarsp"
-  ],
-  "story": {
-   "selo": "Para motoristas",
-   "emoji": "📒",
-   "titulo": "Como você faz a *chamada* hoje?",
-   "pergunta": "Como é a sua chamada hoje?"
-  },
-  "status": "pendente",
-  "publicado_em": null
+  "legenda": "30 segundos no fim de cada rota que protegem a sua van — e a sua tranquilidade. ✅\n\nAntes de desligar: contar quem entrou, contar quem desceu, andar até o fundo e olhar embaixo dos bancos.\n\nNo Turminha a Bordo, o app confere junto: na hora de finalizar, mostra quem ainda não foi marcado e só fecha a rota depois do “Conferi a van”.\n\nCapricho que os pais percebem — e que faz a sua van ser indicada. 💛",
+  "hashtags": ["vanescolar", "transporteescolar", "motoristadevan", "tioescolar", "tiadavan"],
+  "story": {"selo": "Pergunta do dia", "emoji": "✅", "titulo": "Qual é o seu *ritual* no fim da rota?", "pergunta": "Me conta 👇"},
+  "status": "pendente", "publicado_em": null
  },
  {
-  "id": "012",
-  "data_sugerida": "2026-11-13",
-  "dia": "sex",
-  "formato": "reels",
-  "pilar": "humor",
+  "id": "012", "data_sugerida": "2026-11-13", "dia": "sex", "formato": "reels", "pilar": "humor",
   "tema": "Tipos de passageiro da van",
   "cenas": [
-   {
-    "emoji": "🚐",
-    "titulo": "Os *tipos* de\npassageiro\nda van",
-    "dur": 2.4,
-    "fundo": "grad"
-   },
-   {
-    "emoji": "😴",
-    "titulo": "O que *dorme*\nantes da van\nsair da rua",
-    "dur": 2.4,
-    "fundo": "navy"
-   },
-   {
-    "emoji": "🗣️",
-    "titulo": "O *repórter*:\nconta a vida\nda família toda",
-    "dur": 2.6,
-    "fundo": "grad"
-   },
-   {
-    "emoji": "🍪",
-    "titulo": "O que *divide*\no lanche com\na van inteira",
-    "dur": 2.4,
-    "fundo": "navy"
-   },
-   {
-    "emoji": "🏃",
-    "titulo": "E o que sai\n*correndo* sem\nfalar tchau",
-    "dur": 2.4,
-    "fundo": "amarelo"
-   }
+   {"emoji": "🚐", "titulo": "Os *tipos* de\npassageiro\nda van", "dur": 2.4, "fundo": "grad"},
+   {"emoji": "😴", "titulo": "O que *dorme*\nantes da van\nsair da rua", "dur": 2.4, "fundo": "navy"},
+   {"emoji": "🗣️", "titulo": "O *repórter*:\nconta a vida\nda família toda", "dur": 2.6, "fundo": "grad"},
+   {"emoji": "🍪", "titulo": "O que *divide*\no lanche com\na van inteira", "dur": 2.4, "fundo": "navy"},
+   {"emoji": "🏃", "titulo": "E o que sai\n*correndo* sem\nfalar tchau", "dur": 2.4, "fundo": "amarelo"}
   ],
-  "fim": {
-   "titulo": "Qual é o seu filho? 👇",
-   "sub": "Conta nos comentários",
-   "botao": "Siga @turminha_abordo"
-  },
-  "legenda": "Qual desses é o seu filho na van? 😂🚐\n\n😴 O que dorme antes da van sair da rua\n🗣️ O repórter que conta a vida da família toda\n🍪 O que divide o lanche com todo mundo\n🏃 O que sai correndo sem dar tchau\n\nConta aqui nos comentários! E tio/tia da van: qual você mais tem? 👇",
-  "hashtags": [
-   "tioescolar",
-   "vanescolar",
-   "transporteescolar",
-   "maternidade",
-   "humor"
-  ],
-  "story": {
-   "selo": "Pergunta do dia",
-   "emoji": "😂",
-   "titulo": "Seu filho na van é o que *dorme* ou o *repórter*?",
-   "pergunta": "Qual é o seu filho?"
-  },
-  "status": "pendente",
-  "publicado_em": null
+  "fim": {"titulo": "Qual você mais tem? 👇", "sub": "Conta nos comentários", "botao": "Siga @turminha_abordo"},
+  "legenda": "Tio e tia da van: qual desses você mais tem na sua rota? 😂🚐\n\n😴 O que dorme antes da van sair da rua\n🗣️ O repórter que conta a vida da família toda\n🍪 O que divide o lanche com todo mundo\n🏃 O que sai correndo sem dar tchau\n\nConta aqui nos comentários! 👇",
+  "hashtags": ["tioescolar", "vanescolar", "transporteescolar", "tiadavan", "motoristadevan"],
+  "story": {"selo": "Pergunta do dia", "emoji": "😂", "titulo": "Qual é o passageiro *mais engraçado* da sua van?", "pergunta": "Conta (sem nomes!) 👇"},
+  "status": "pendente", "publicado_em": null
  },
  {
-  "id": "013",
-  "data_sugerida": "2026-11-14",
-  "dia": "sab",
-  "formato": "carrossel",
-  "pilar": "seguranca-pais",
-  "tema": "Quem pode buscar meu filho? Autorizações",
+  "id": "013", "data_sugerida": "2026-11-14", "dia": "sab", "formato": "carrossel", "pilar": "pratico",
+  "tema": "Manutenção preventiva da van: o calendário",
   "slides": [
-   {
-    "modelo": "capa",
-    "selo": "🔐 Segurança",
-    "titulo": "Quem pode *buscar* seu filho na van?",
-    "texto": "Uma combinação que muita família esquece de fazer."
-   },
-   {
-    "modelo": "lista",
-    "fundo": "claro",
-    "icone": "1",
-    "titulo": "Combine com o *motorista*",
-    "itens": [
-     "Lista de quem pode receber a criança",
-     "Telefone de cada um",
-     "O que fazer se ninguém estiver em casa"
-    ]
-   },
-   {
-    "modelo": "texto",
-    "fundo": "claro",
-    "emoji": "📲",
-    "titulo": "Mudou o combinado? *Avise antes*",
-    "texto": "Mensagem com antecedência — nunca na porta da van. E o motorista só entrega para quem está na lista."
-   },
-   {
-    "modelo": "cta",
-    "titulo": "Combinado claro, *criança segura*",
-    "texto": "Salve e combine hoje com o tio da van.",
-    "botao": "Salvar 💾"
-   }
+   {"modelo": "capa", "selo": "🔧 Van em dia", "titulo": "Van parada é *rota perdida*", "texto": "O calendário de manutenção que evita a quebra no meio da semana."},
+   {"modelo": "lista", "fundo": "claro", "titulo": "Toda *semana*", "itens": ["Calibrar os pneus", "Olhar óleo e água", "Testar luzes e setas", "Conferir os cintos"]},
+   {"modelo": "lista", "fundo": "claro", "titulo": "Nas *férias*", "itens": ["Revisão completa", "Freios e suspensão", "Ar-condicionado", "Bancos, portas e trilho"]},
+   {"modelo": "texto", "fundo": "grad", "emoji": "💡", "titulo": "Use as *férias* a seu favor", "texto": "Dezembro e julho são a melhor época para revisão: a van fica parada sem perder um dia de rota."},
+   {"modelo": "cta", "titulo": "Salve o *calendário*", "texto": "E mande para o colega que vive na oficina.", "botao": "Salvar 💾"}
   ],
-  "legenda": "Quem pode buscar seu filho na van? 🔐\n\nCombine com o motorista: a lista de quem pode receber a criança, o telefone de cada um e o que fazer se ninguém estiver em casa. Mudou alguma coisa? Avise antes, nunca na porta da van.\n\nCombinado claro = criança segura. Salve e converse hoje com o tio ou a tia da van! 💛",
-  "hashtags": [
-   "transporteescolar",
-   "vanescolar",
-   "segurancainfantil",
-   "dicasparapais",
-   "maternidade"
-  ],
-  "story": {
-   "selo": "Pergunta do dia",
-   "emoji": "🔐",
-   "titulo": "Você já passou para a van a *lista* de quem pode buscar seu filho?",
-   "pergunta": "Já passou?"
-  },
-  "status": "pendente",
-  "publicado_em": null
+  "legenda": "Van parada é rota perdida — e pai preocupado. 🔧🚐\n\nToda semana: pneus, óleo e água, luzes e cintos.\nNas férias: revisão completa, freios, suspensão, ar-condicionado e portas.\n\nDezembro é a melhor época para a revisão: a van fica parada sem perder um dia de rota.\n\nJá agendou a revisão das férias? 👇",
+  "hashtags": ["vanescolar", "transporteescolar", "motoristadevan", "tioescolar", "tiadavan"],
+  "story": {"selo": "Pergunta do dia", "emoji": "🔧", "titulo": "Qual peça da sua van *mais dá trabalho*?", "pergunta": "Me conta 👇"},
+  "status": "pendente", "publicado_em": null
  },
  {
-  "id": "014",
-  "data_sugerida": "2026-11-15",
-  "dia": "dom",
-  "formato": "post",
-  "pilar": "afeto",
-  "tema": "Frase de domingo: confiança",
+  "id": "014", "data_sugerida": "2026-11-15", "dia": "dom", "formato": "post", "pilar": "afeto",
+  "tema": "Frase de domingo: quem cuida do caminho",
   "slides": [
-   {
-    "modelo": "citacao",
-    "fundo": "navy",
-    "selo": "💛 Domingo",
-    "texto": "Van escolar é feita de *rota*, de *horário*… e de muita *confiança*.",
-    "autor": "Turminha a Bordo"
-   }
+   {"modelo": "citacao", "fundo": "navy", "selo": "💛 Domingo", "texto": "Antes do sinal da escola tocar, *um tio já cuidou* do caminho.", "autor": "Turminha a Bordo"}
   ],
-  "legenda": "Por trás de cada rota tem uma família que confia e um tio ou tia que cuida. 🚐💛\n\nBom domingo para todos que fazem o caminho da escola ser mais seguro!\n\nMarca alguém que faz parte dessa turminha 👇",
-  "hashtags": [
-   "vanescolar",
-   "transporteescolar",
-   "tioescolar",
-   "tiadavan",
-   "gratidao"
-  ],
-  "story": {
-   "selo": "Pergunta do dia",
-   "emoji": "💬",
-   "titulo": "Conta pra gente: há quanto tempo seu filho vai de *van*?",
-   "texto": "Responde aqui por DM 💬"
-  },
-  "status": "pendente",
-  "publicado_em": null
+  "legenda": "Por trás de cada rota tem um tio ou uma tia que acorda cedo, conhece cada criança pelo nome e cuida do caminho como se fosse da própria família. 🚐💛\n\nBom domingo e bom descanso, turminha!\n\nMarca um colega da van 👇",
+  "hashtags": ["vanescolar", "transporteescolar", "tioescolar", "tiadavan", "motoristadevan"],
+  "story": {"selo": "Pergunta do dia", "emoji": "💬", "titulo": "O que te fez virar *tio ou tia* da van?", "pergunta": "Conta sua história 👇"},
+  "status": "pendente", "publicado_em": null
  }
 ]
