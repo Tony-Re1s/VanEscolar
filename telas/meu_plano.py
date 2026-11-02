@@ -86,19 +86,33 @@ elif tipo == "cortesia":
     sub = "exclusivo" + (" até " + data_br(venc) if venc else "")
 else:
     sub = f"{pl.brl(vigente)}/mês" + (f" · até {data_br(venc)}" if venc else "")
-if p is None:
+GRATIS = pl.no_gratis(emp, HOJE, cat)        # sem plano em vigor, mas no Grátis (só financeiro)
+LIM_G = pl.limite_gratis("alunos")
+if p is None and GRATIS:
+    sub, situacao = f"só financeiro · até {LIM_G} alunos", "Grátis"
+elif p is None:
     situacao = "Bloqueado"
 else:
     situacao = {"teste": "Degustação", "cortesia": "Exclusivo"}.get(tipo, "Ativo")
-_ui.kpis([("Plano atual", p["nome"] if p else "Nenhum", sub),
-          ("Vans", _uso(uso['vans'], p['vans'] if p else None)),
-          ("Alunos ativos", _uso(uso['alunos'], p['alunos'] if p else None)),
+_ui.kpis([("Plano atual", p["nome"] if p else ("Grátis" if GRATIS else "Nenhum"), sub),
+          ("Vans", _uso(uso['vans'], p['vans'] if p else (pl.limite_gratis("vans") if GRATIS else None))),
+          ("Alunos ativos", _uso(uso['alunos'], p['alunos'] if p else (LIM_G if GRATIS else None))),
           ("Situação", situacao)])
 
 if p is None:
     if st.session_state["usuario"].get("admin"):
         st.warning("Sua empresa está sem plano em vigor (como administrador, você continua com acesso).",
                    icon=":material/admin_panel_settings:")
+    elif GRATIS:
+        motivo = ("Sua degustação terminou" if tipo == "teste" else "Sua assinatura venceu") if venc else \
+            "Você está sem assinatura"
+        st.info(f"**{motivo}** e sua conta está no **plano Grátis**: mensalidades, cobrança pelo WhatsApp e "
+                f"financeiro para até **{LIM_G} alunos**. Rota, avisos aos pais, mapa, contrato e fretamento voltam "
+                "quando você assinar — **nada foi apagado**.", icon=":material/redeem:")
+        if uso["alunos"] > (LIM_G or 0):
+            st.warning(f"Você tem **{uso['alunos']} alunos ativos** — o Grátis vale para até {LIM_G}. Os alunos "
+                       "continuam aí, mas para cadastrar mais é preciso assinar (ou desativar alguns).",
+                       icon=":material/group:")
     else:
         motivo = ("Sua degustação terminou" if tipo == "teste" else "Sua assinatura venceu") if venc else \
             "Sua conta está sem plano"
@@ -109,7 +123,9 @@ elif tipo == "teste" and venc:
     faltam = (venc - HOJE).days
     st.info(f"Você está experimentando o plano **{p['nome']}** de graça até **{data_br(venc)}** "
             f"({'hoje é o último dia' if faltam <= 0 else 'falta 1 dia' if faltam == 1 else f'faltam {faltam} dias'})."
-            " Depois disso o acesso é bloqueado até assinar — nada do que você cadastrou se perde.",
+            + (f" Depois disso, se não assinar, sua conta passa para o **plano Grátis** (só financeiro, até "
+               f"{LIM_G} alunos) — nada do que você cadastrou se perde." if pl.config("gratis").get("ativo") else
+               " Depois disso o acesso é bloqueado até assinar — nada do que você cadastrou se perde."),
             icon=":material/celebration:")
 FID = pl.config("fidelidade")
 PAUSA_TXT = pl.brl(float(FID.get("pausa_preco") or 0))
@@ -126,8 +142,10 @@ if p and pl.em_pausa(emp, HOJE):
             st.rerun()
 if p and emp.get("cancelado_em") and venc:
     st.warning(f"Você cancelou a assinatura em {data_br(emp['cancelado_em'])}. O plano vale até **{data_br(venc)}**; "
-               f"depois o acesso é bloqueado e os dados ficam guardados por {int(FID.get('dados_dias') or 60)} dias. "
-               "Para continuar, é só assinar de novo abaixo.", icon=":material/event_busy:")
+               + (f"depois sua conta passa para o plano Grátis (só financeiro, até {LIM_G} alunos) e os dados ficam "
+                  "guardados. " if pl.config("gratis").get("ativo") else
+                  f"depois o acesso é bloqueado e os dados ficam guardados por {int(FID.get('dados_dias') or 60)} dias. ")
+               + "Para continuar, é só assinar de novo abaixo.", icon=":material/event_busy:")
 _prazo = pl.prazo_dados(emp, HOJE) if p is None and not st.session_state["usuario"].get("admin") else None
 if _prazo:
     st.warning(f"🗂️ Seus dados ficam guardados até **{data_br(_prazo)}**. Depois dessa data, alunos, mensalidades, "
@@ -310,12 +328,15 @@ if p and tipo == "pago" and not emp.get("cancelado_em") and not pedido:
             st.divider()
         perde = bool(FID.get("perde_vip", True))
         st.markdown("**Se cancelar:**  \n"
-                    f"- o plano continua até **{data_br(venc) if venc else 'o fim do período pago'}** e depois o "
-                    "acesso é bloqueado (para você, motoristas e pais);  \n"
+                    f"- o plano continua até **{data_br(venc) if venc else 'o fim do período pago'}** e depois "
+                    + (f"sua conta passa para o **plano Grátis**: só mensalidades e financeiro, até {LIM_G} alunos — "
+                       "rota, avisos aos pais, mapa, contrato e fretamento saem;  \n" if pl.config("gratis").get("ativo")
+                       else "o acesso é bloqueado (para você, motoristas e pais);  \n")
                     + (f"- você **perde o preço de Passageiro VIP** ({pl.brl(vigente)}/mês) — se voltar, paga o preço "
-                       "normal;  \n" if perde and emp.get("vip") else "") +
-                    f"- seus dados ficam guardados por **{int(FID.get('dados_dias') or 60)} dias** depois do "
-                    "vencimento e então são **apagados**.")
+                       "normal;  \n" if perde and emp.get("vip") else "")
+                    + ("- seus dados continuam guardados." if pl.config("gratis").get("ativo") else
+                       f"- seus dados ficam guardados por **{int(FID.get('dados_dias') or 60)} dias** depois do "
+                       "vencimento e então são **apagados**."))
         if st.checkbox("Entendi e quero cancelar", key="conf_cancel") and \
                 st.button("Cancelar assinatura", icon=":material/cancel:", key="btn_cancelar"):
             repo.cancelar_plano(c["id"], HOJE, API, MP)

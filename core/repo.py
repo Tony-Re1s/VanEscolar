@@ -1171,6 +1171,8 @@ def cancelar_plano(cid, hoje: date, api=None, mp=None):
 def dados_vencidos(hoje: date) -> pd.DataFrame:
     """Empresas sem plano há mais que o prazo de guarda (e com dados ainda não apagados)."""
     from core import planos as pl
+    if pl.config("gratis").get("ativo"):      # plano Grátis ligado: ninguém fica "sem plano", nada é apagado
+        return pd.DataFrame(columns=["id", "nome", "plano", "plano_tipo", "plano_ate", "cancelado_em", "alunos"])
     dias = int(pl.config("fidelidade").get("dados_dias") or 60)
     return db.ao_vivo("""
         select c.id, c.nome, c.plano, c.plano_tipo, c.plano_ate, c.cancelado_em,

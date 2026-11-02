@@ -379,8 +379,17 @@ def checar_limite(c: dict, recurso: str, novos: int = 1) -> bool:
     """True se cabe no plano; senão mostra o aviso com link para Meu plano e devolve False."""
     from core import planos as pl, repo
     from core.fmt import hoje
-    plano = pl.plano_da_empresa(repo.empresa(c["id"]), hoje())
+    emp = repo.empresa(c["id"])
+    plano = pl.plano_da_empresa(emp, hoje())
     atual = repo.uso_empresa(c["id"])[recurso]
+    if plano is None and pl.no_gratis(emp, hoje()):
+        lim = pl.limite_gratis(recurso)
+        if lim is None or atual + novos <= lim:
+            return True
+        st.error(f"O plano **Grátis** vale para até **{lim} {recurso}** ativos e você já tem {atual}. "
+                 "Assine para cadastrar mais — e liberar rota, avisos aos pais e contrato.", icon=":material/upgrade:")
+        st.page_link("telas/meu_plano.py", label="Ver planos", icon=":material/workspace_premium:")
+        return False
     if pl.cabe(plano, recurso, atual, novos):
         return True
     lim = pl.limite(plano, recurso)
@@ -730,7 +739,8 @@ def guia(c: dict, pagina_atual: str | None = None):
     """Cartão 'Comece por aqui' com os próximos passos e um botão que leva direto para onde fazer.
     Some sozinho quando tudo estiver feito, ou quando o gestor esconder."""
     from core import repo
-    if not c or st.session_state.get("usuario", {}).get("bloqueado"):
+    u = st.session_state.get("usuario", {})
+    if not c or u.get("bloqueado") or u.get("gratis"):
         return
     prog = repo.progresso_inicio(c["id"])
     if not prog or prog.get("fechado"):
@@ -762,3 +772,13 @@ def guia(c: dict, pagina_atual: str | None = None):
             repo.fechar_guia(c["id"])
             st.rerun()
 
+
+
+def faixa_gratis():
+    """Aviso discreto no topo de quem está no plano Grátis."""
+    from core import planos as pl
+    lim = pl.limite_gratis("alunos")
+    a, b = st.container(key="faixa_gratis").columns([3, 1], vertical_alignment="center")
+    a.markdown(f"🆓 **Plano Grátis** <span class='ve-sub'>· mensalidades e financeiro para até {lim} alunos. "
+               "Assine para liberar rota, avisos aos pais, mapa, contrato e fretamento.</span>", unsafe_allow_html=True)
+    b.page_link("telas/meu_plano.py", label="Ver planos", icon=":material/workspace_premium:")

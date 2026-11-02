@@ -36,6 +36,8 @@ CONFIG_PADRAO = {
     "comissao": {"ativo": True, "ate": "2027-12-31",
                  "faixas": [{"min": 50, "pct": 10}, {"min": 100, "pct": 20}]},
     "laboratorio": {},
+    # quem não assina (ou a degustação acabou) cai no Grátis: só a parte financeira, até N alunos ativos
+    "gratis": {"ativo": True, "alunos": 10, "vans": 1},
     "fidelidade": {"pausa_preco": 9.9, "pausa_dias": 60, "dados_dias": 60, "perde_vip": True},
     "divulgacao": {"textos": [
         {"titulo": "Convite curto (WhatsApp)",
@@ -346,11 +348,24 @@ def pode_pausar(empresa: dict, hoje: date) -> bool:
     return not ult or ult <= hoje - timedelta(days=365)
 
 
+def no_gratis(empresa: dict, hoje: date, cat: dict | None = None) -> bool:
+    """Sem plano em vigor, mas no plano Grátis (só financeiro, até N alunos) — em vez de bloquear o acesso."""
+    e = empresa or {}
+    return (bool(e) and bool(e.get("ativo", True)) and not e.get("dados_apagados_em")
+            and bool(config("gratis").get("ativo")) and not liberada(e, hoje, cat))
+
+
+def limite_gratis(recurso: str) -> int | None:
+    v = config("gratis").get(recurso)
+    return int(v) if v else None
+
+
 def prazo_dados(empresa: dict, hoje: date) -> date | None:
-    """Sem plano em vigor: até quando os dados ficam guardados (vencimento + N dias). None = está em dia."""
+    """Sem plano em vigor: até quando os dados ficam guardados (vencimento + N dias). None = está em dia
+    (ou no plano Grátis, que guarda os dados)."""
     from datetime import timedelta
     e = empresa or {}
-    if liberada(e, hoje) or e.get("dados_apagados_em"):
+    if liberada(e, hoje) or e.get("dados_apagados_em") or no_gratis(e, hoje):
         return None
     base = e.get("plano_ate") or (e.get("criado_em").date() if hasattr(e.get("criado_em"), "date") else hoje)
     return base + timedelta(days=int(config("fidelidade").get("dados_dias") or 60))

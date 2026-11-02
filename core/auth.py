@@ -91,7 +91,10 @@ def perfil(usuario: dict) -> dict:
                                   {emps[i]["nome"] for i in pausa if any(str(v["condutor_id"]) == i for v in vans)})
     usuario["admin"] = usuario["email"] in admins()
     cond = usuario["condutor"]
-    usuario["bloqueado"] = bool(cond) and not usuario["admin"] and not pl.liberada(cond, hoje(), cat)
+    # sem plano em vigor: cai no plano Grátis (só financeiro) — se ele estiver ligado; senão, bloqueia
+    usuario["gratis"] = bool(cond) and not usuario["admin"] and pl.no_gratis(cond, hoje(), cat)
+    usuario["bloqueado"] = (bool(cond) and not usuario["admin"] and not pl.liberada(cond, hoje(), cat)
+                            and not usuario["gratis"])
     return usuario
 
 

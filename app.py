@@ -91,6 +91,18 @@ if cond and usuario.get("bloqueado"):
     # assinatura/degustação venceu: o gestor só vê a tela do plano para pagar (nada foi apagado)
     paginas["Assinatura"] = [st.Page("telas/meu_plano.py", title="Meu plano", icon=":material/workspace_premium:",
                                      default=True)]
+elif cond and usuario.get("gratis"):
+    # plano Grátis (sem assinatura): só a parte financeira
+    paginas["Plano Grátis"] = [
+        st.Page("telas/mensalidades.py", title="Mensalidades", icon=":material/payments:", default=True),
+        st.Page("telas/facil_alunos.py", title="Alunos", icon=":material/groups:"),
+        st.Page("telas/financeiro.py", title="Financeiro", icon=":material/monitoring:"),
+    ]
+    paginas["Conta"] = [
+        st.Page("telas/meu_cadastro.py", title="Minha empresa", icon=":material/storefront:"),
+        st.Page("telas/meu_plano.py", title="Meu plano", icon=":material/workspace_premium:"),
+        st.Page("telas/indicacao.py", title="Indique e ganhe", icon=":material/redeem:"),
+    ]
 elif cond and (cond.get("modo") or "completo") == "facil":
     # modo fácil: só o essencial — os dados são os mesmos do modo completo
     paginas["Modo fácil"] = ([] if EM_PAUSA else [
@@ -190,7 +202,9 @@ if VER_MOT:
         st.session_state["ver_como_motorista"] = False
         st.rerun()
 
-if cond and not usuario.get("bloqueado") and not VER_MOT:
+if cond and usuario.get("gratis") and not VER_MOT:
+    _ui.faixa_gratis()
+if cond and not usuario.get("bloqueado") and not usuario.get("gratis") and not VER_MOT:
     # botão no topo: modo fácil × completo (só muda o que aparece; os dados são os mesmos)
     _, topo = st.columns([3, 2])
     modo_atual = cond.get("modo") or "completo"
