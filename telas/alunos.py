@@ -434,8 +434,8 @@ def _lista():
                         k1.link_button("WhatsApp", lk, icon=":material/send:", width="stretch")
                     k2.link_button("E-mail", link_email(r.email, "Convite — Turminha a Bordo", msg),
                                    icon=":material/mail:", width="stretch")
-    f1, f2 = st.container(key="linha_al_busca").columns([3, 2], vertical_alignment="center")
-    busca = f1.text_input("Buscar", placeholder="🔍 Buscar aluno, bairro, responsável…", label_visibility="collapsed")
+    f1, f2 = st.container(key="linha_al_busca").columns([5, 2], vertical_alignment="center")
+    busca = f1.text_input("Buscar", placeholder="🔍 Buscar aluno ou bairro", label_visibility="collapsed")
     with f2.popover("Filtros", icon=":material/tune:", width="stretch"):
         turno_f = st.selectbox("Turno", ["Todos"] + list(TURNOS.values()))
         van_nomes = ["Todas as vans"] + list(vans["nome"]) + ["Sem van"] if not vans.empty else ["Todas as vans"]

@@ -943,12 +943,12 @@ def guia(c: dict, pagina_atual: str | None = None):
     # uma linha só: progresso + próximo passo (um toque leva até lá) + ✕ para quem não quer ver
     aqui = pagina_atual == prox["pagina"]
     with st.container(key="guia_linha"):
-        a, b, x = st.columns([6, 3, 1], vertical_alignment="center")
+        a, b, x = st.columns([7, 2, 1], vertical_alignment="center")
         a.markdown(f"<div class='ve-guia'><span class='n'>🚐 {feitos}/{total}</span> "
                    f"{'Agora' if aqui else 'Próximo'}: <b>{esc(prox['titulo'])}</b>"
                    f"<div class='bar'><div style='width:{feitos / total * 100:.0f}%'></div></div></div>",
                    unsafe_allow_html=True)
-        if not aqui and b.button("Ir agora", type="primary", key="guia_ir", width="stretch",
+        if not aqui and b.button("Ir", type="primary", key="guia_ir", width="stretch",
                                  icon=":material/arrow_forward:"):
             try:
                 st.switch_page(prox["pagina"])
