@@ -1,4 +1,4 @@
-"""Publica o post do dia no Instagram @turminha_abordo pela API oficial (Instagram API com login do Instagram).
+"""Publica o post do dia no Instagram @turminha_abordo pela API oficial do Instagram (Graph API da Meta).
 
 Roda no GitHub Actions todo dia (.github/workflows/instagram.yml) — não depende do computador de ninguém ligado.
 
@@ -34,7 +34,11 @@ RAIZ = D.parent.parent
 sys.path.insert(0, str(D))
 import estudio  # noqa: E402
 
+# Token de "usuário do sistema" do portfólio Turminha a Bordo (começa com EAA, não expira) → graph.facebook.com.
+# Token de login do Instagram (começa com IG, 60 dias, renovável) → graph.instagram.com.
 API = "https://graph.instagram.com/v23.0"
+API_FB = "https://graph.facebook.com/v23.0"
+IG_USER_ID = os.environ.get("IG_USER_ID") or "17841480781860954"     # @turminha_abordo
 REPO = os.environ.get("GITHUB_REPOSITORY", "Tony-Re1s/VanEscolar")
 BRANCH = "instagram-midia"
 MIDIA = RAIZ / "_midia"          # worktree do branch de mídias (criado pelo workflow)
@@ -78,6 +82,10 @@ def token() -> str:
         with eng.begin() as s:
             r = s.execute(text("select valor from config where chave = 'instagram'")).first()
             salvo = r[0] if r and isinstance(r[0], dict) else None
+    if (os.environ.get("IG_TOKEN") or "").startswith("EAA"):    # usuário do sistema: não expira, não renova
+        global API
+        API = API_FB
+        return os.environ["IG_TOKEN"]
     tok = (salvo or {}).get("token") or os.environ.get("IG_TOKEN")
     if not tok:
         raise IGErro("Sem token do Instagram (Secret IG_TOKEN).")
@@ -120,8 +128,12 @@ def _publicar(uid: str, tok: str, cid: str) -> str:
 
 
 def publicar(post: dict, urls: dict, legenda: str, tok: str) -> dict:
-    eu = _req("GET", f"{API}/me?fields=user_id,username&access_token={tok}")
-    uid = eu.get("user_id") or eu["id"]
+    if tok.startswith("EAA"):
+        uid = IG_USER_ID
+        eu = _req("GET", f"{API}/{uid}?fields=username&access_token={tok}")
+    else:
+        eu = _req("GET", f"{API}/me?fields=user_id,username&access_token={tok}")
+        uid = eu.get("user_id") or eu["id"]
     if post["formato"] == "reels":
         cid = _criar(uid, tok, media_type="REELS", video_url=urls["reels"], caption=legenda, share_to_feed="true",
                      cover_url=urls.get("capa", ""))
