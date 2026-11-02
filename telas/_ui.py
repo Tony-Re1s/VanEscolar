@@ -329,6 +329,7 @@ button[data-testid="stBaseButton-secondary"]:hover, .stLinkButton > a:hover {bor
     padding: 6px 4px !important; gap: 2px !important;}
   [class*="st-key-atalho_"] a p, [class*="st-key-atalho_"] button p {font-size: .9rem !important; white-space: nowrap;}
 }
+.st-key-atalho_aluno button {margin-top: -4px;}   /* botão fica 4px abaixo dos links — alinha com os outros dois */
 .st-key-atalho_rota a {background: #1E9E5A !important; border-color: #1E9E5A !important;}
 .st-key-atalho_rota a * {color: #fff !important;}
 .st-key-atalho_cobrar a {background: #FFC83D !important; border-color: #FFC83D !important;}
@@ -363,6 +364,22 @@ def esc(t) -> str:
 # Aba do navegador e atalho do celular: o Streamlit Cloud põe "· Streamlit" no título e o ícone dele na página de fora
 # (o app roda num iframe do MESMO endereço, então dá para corrigir a página de fora daqui de dentro).
 _MARCA_ABA = """<script>(function(){try{
+if(!window.__tbTeclado){window.__tbTeclado=1;
+  /* teclado certo no celular: WhatsApp/telefone → numérico de telefone; valores → numérico; e-mail → teclado de e-mail */
+  const ajusta=()=>{
+    document.querySelectorAll('input[aria-label]').forEach(i=>{
+      const l=i.getAttribute('aria-label')||'';
+      const set=(k,v)=>{if(i.getAttribute(k)!==v) i.setAttribute(k,v);};
+      if(/whats|telefone|celular|fone/i.test(l)){set('inputmode','tel'); set('autocomplete','tel');}
+      else if(/e-?mail/i.test(l)){set('inputmode','email'); set('autocapitalize','off'); set('autocorrect','off');}
+      else if(/cpf|cnpj|cep/i.test(l)){set('inputmode','numeric');}
+      else if(/placa/i.test(l)){set('autocapitalize','characters');}
+    });
+    document.querySelectorAll('[data-testid="stNumberInput"] input').forEach(i=>{
+      if(i.getAttribute('inputmode')!=='decimal') i.setAttribute('inputmode','decimal');});
+  };
+  let pend=false; const agenda=()=>{if(pend) return; pend=true; requestAnimationFrame(()=>{pend=false; ajusta();});};
+  new MutationObserver(agenda).observe(document.body,{childList:true,subtree:true}); ajusta();}
 if(!window.__tbMais){window.__tbMais=1;
   /* o Streamlit fecha o menu sozinho num toque fora dele (antes do nosso clique) — então o estado é lido no
      começo do toque, e o clique decide: aberto → fecha; fechado → abre */

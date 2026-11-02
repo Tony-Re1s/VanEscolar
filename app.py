@@ -206,18 +206,7 @@ if VER_MOT:
 
 if cond and usuario.get("gratis") and not VER_MOT:
     _ui.faixa_gratis()
-if cond and not usuario.get("bloqueado") and not usuario.get("gratis") and not VER_MOT:
-    # botão no topo: modo fácil × completo (só muda o que aparece; os dados são os mesmos)
-    _, topo = st.columns([3, 2])
-    modo_atual = cond.get("modo") or "completo"
-    escolhido = topo.segmented_control("Modo", ["facil", "completo"], default=modo_atual, key="modo_app",
-                                       format_func={"facil": "Modo fácil", "completo": "Modo completo"}.get,
-                                       label_visibility="collapsed", width="stretch")
-    if escolhido and escolhido != modo_atual:
-        from core import repo as _repo
-        _repo.definir_modo(cond["id"], escolhido)
-        cond["modo"] = escolhido
-        st.rerun()
+
 if st.session_state.get("_boas_vindas_msg"):
     st.toast(st.session_state.pop("_boas_vindas_msg"), icon="🎉")
 
@@ -238,6 +227,19 @@ if cond and not usuario.get("bloqueado") and not VER_MOT:
     _ui.barra_abas(_abas, atual=nav.url_path)
 
 with st.sidebar:
+    if cond and not usuario.get("bloqueado") and not usuario.get("gratis") and not VER_MOT:
+        # modo fácil × completo: escolha de uma vez só — fica no menu (no celular, em "Mais"), não no topo das telas
+        modo_atual = cond.get("modo") or "completo"
+        escolhido = st.segmented_control("Jeito de usar", ["facil", "completo"], default=modo_atual, key="modo_app",
+                                         format_func={"facil": "Modo fácil", "completo": "Modo completo"}.get,
+                                         width="stretch",
+                                         help="Só muda o que aparece. Os dados são os mesmos nos dois.")
+        if escolhido and escolhido != modo_atual:
+            from core import repo as _repo
+            _repo.definir_modo(cond["id"], escolhido)
+            cond["modo"] = escolhido
+            st.rerun()
+        st.divider()
     st.markdown(f"**{_ui.esc(usuario.get('nome') or usuario['email'])}**  \n"
                 f"<span class='ve-sub'>{_ui.esc(usuario['email'])}</span>", unsafe_allow_html=True)
     if cond:

@@ -151,7 +151,7 @@ def _tela_mes():
                     st.rerun()
                 continue
             b.markdown(f"**{brl(r.valor)}**")
-            x1, x2, x3 = st.container(key=f"linha_{r.id}").columns(3)
+            x1, x2, x3 = st.container(key=f"lp_btn{r.id}").columns([5, 5, 2])
             with x1.popover("Receber", icon=":material/check_circle:", width="stretch"):
                 with st.form(f"pg_{r.id}"):
                     d = st.date_input("Data", value=h, format="DD/MM/YYYY")
@@ -167,7 +167,7 @@ def _tela_mes():
                 x2.link_button("Cobrar", link, icon=":material/chat:", width="stretch")
             else:
                 x2.button("Sem WhatsApp", disabled=True, key=f"sw_{r.id}", width="stretch")
-            with x3.popover("Ajustar", icon=":material/edit:", width="stretch"):
+            with x3.popover("", icon=":material/more_horiz:", width="stretch", help="Ajustar valor, vencimento ou isentar"):
                 with st.form(f"aj_{r.id}"):
                     nv = st.number_input("Valor", min_value=0.0, value=float(r.valor), step=5.0)
                     nd = st.date_input("Vencimento", value=r.vencimento, format="DD/MM/YYYY")
