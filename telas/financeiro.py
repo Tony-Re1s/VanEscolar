@@ -12,6 +12,8 @@ c = exigir_condutor()
 cid = c["id"]
 h = hoje()
 st.title("Financeiro")
+_quer_lancar = st.button("Lançar despesa ou receita", icon=":material/add:", type="primary", width="stretch",
+                         key="fin_lancar")
 
 meses = [somar_meses(inicio_mes(h), i) for i in range(-24, 1)]
 comp = st.select_slider("Mês", options=meses, value=inicio_mes(h), format_func=lambda d: mes_label(d, curto=True))
@@ -44,38 +46,42 @@ else:
               ("Despesas", brl(desp)),
               ("Inadimplência", brl(inad), "mensalidades vencidas do mês")])
 
-abas = ["Lançar", "Lançamentos do mês", "12 meses"] + (["Por van"] if len(vans) > 1 else [])
-aba_lancar, aba_mes, aba_ano, *aba_van = st.tabs(abas)
-
-with aba_lancar:
+@st.dialog("Lançar no Financeiro")
+def _lancar():
     tipo = st.segmented_control("Tipo", ["despesa", "receita"], default="despesa",
                                 format_func=lambda t: "Despesa" if t == "despesa" else "Outra receita",
-                                label_visibility="collapsed") or "despesa"
+                                label_visibility="collapsed", width="stretch") or "despesa"
     with st.form("lanc", clear_on_submit=True):
         a, b = st.columns(2)
         cat = a.selectbox("Categoria", CAT_DESPESA if tipo == "despesa" else CAT_RECEITA)
         valor = b.number_input("Valor (R$)", min_value=0.0, step=10.0)
         a2, b2 = st.columns(2)
         data = a2.date_input("Data", value=h if comp == inicio_mes(h) else comp, format="DD/MM/YYYY")
-        km = b2.number_input("Hodômetro (km, opcional)", min_value=0, step=100, value=0)
+        km = b2.number_input("Km (opcional)", min_value=0, step=100, value=0, help="Hodômetro da van.")
         if not vans.empty:
             v_ids = [None] + [str(x) for x in vans["id"]]
             v_nomes = {None: "Geral (sem van)"} | {str(r.id): r.nome for r in vans.itertuples()}
             van_l = st.selectbox("Van", v_ids, index=v_ids.index(van) if van in v_ids else 0,
-                                 format_func=v_nomes.get, help="Combustível, manutenção etc. de uma van específica. "
-                                 "Contador, celular e MEI podem ficar como Geral.")
+                                 format_func=v_nomes.get)
         else:
             van_l = None
-        desc = st.text_input("Descrição", placeholder="Ex.: troca de óleo, posto X, passeio ao zoológico")
-        st.caption("Mensalidades entram sozinhas quando você marca como recebidas — não precisa lançar aqui.")
-        if st.form_submit_button("Lançar", type="primary"):
+        desc = st.text_input("Descrição (opcional)", placeholder="Ex.: troca de óleo, posto X")
+        if st.form_submit_button("Lançar", type="primary", width="stretch"):
             if valor <= 0:
                 st.error("Informe o valor.")
             else:
-                repo.salvar_lancamento(cid, dict(van_id=van_l, tipo=tipo, categoria=cat, descricao=desc or None, valor=valor,
-                                                 data=data, km=km or None))
-                st.toast("Lançado.")
+                repo.salvar_lancamento(cid, dict(van_id=van_l, tipo=tipo, categoria=cat, descricao=desc or None,
+                                                 valor=valor, data=data, km=km or None))
+                st.toast("Lançado. ✅")
                 st.rerun()
+    st.caption("Mensalidades entram sozinhas quando você marca como recebidas.")
+
+
+if _quer_lancar:
+    _lancar()
+
+abas = ["Lançamentos do mês", "12 meses"] + (["Por van"] if len(vans) > 1 else [])
+aba_mes, aba_ano, *aba_van = st.tabs(abas)
 
 with aba_mes:
     lan = repo.lancamentos(cid, comp, prox, van=van, origem=origem)

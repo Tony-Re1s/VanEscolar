@@ -13,8 +13,6 @@ c = exigir_condutor()
 cid = c["id"]
 h = hoje()
 st.title("Fretamento")
-st.caption("Excursões, festas, aeroporto, empresas… Orçamento pelo WhatsApp, agenda das viagens e quanto sobrou de "
-           "cada uma. Tudo separado do transporte escolar no Financeiro.")
 
 emp = repo.empresa(cid)
 if not pl.tem_fretamento(emp, h) and not st.session_state["usuario"].get("admin"):
@@ -160,6 +158,104 @@ def formulario(f: dict | None, chave: str):
                                        obs=obs.strip() or None), fid=f["id"] if f else None)
 
 
+
+# ---------------------------------------------------------------- orçamento novo, em 3 etapas
+def _rodape(chave, voltar=True, seguir="Continuar"):
+    with st.container(key=f"wzpe_{chave}"):
+        a, b = st.columns(2) if voltar else (None, st.container())
+        v = a.form_submit_button("Voltar", icon=":material/arrow_back:", width="stretch") if voltar else False
+        s_ = b.form_submit_button(seguir, type="primary", width="stretch",
+                                  icon=":material/arrow_forward:" if seguir == "Continuar" else ":material/check:")
+    return "voltar" if v else "seguir" if s_ else None
+
+
+def novo_por_etapas():
+    ss = st.session_state
+    r = ss.setdefault("fr_rasc", {})
+    et = ss.setdefault("fr_et", 0)
+    g = r.get
+    _ui.etapas(["Viagem", "Cliente e van", "Valores"], et)
+    if et == 0:
+        with st.form("fr0"):
+            a, b = st.columns(2)
+            di = a.date_input("Ida *", value=g("data_ida") or h + timedelta(days=7), format="DD/MM/YYYY")
+            hi = b.time_input("Saída", value=g("hora_ida"), step=900)
+            a, b = st.columns(2)
+            dv = a.date_input("Volta", value=g("data_volta"), format="DD/MM/YYYY", help="Vazio = volta no mesmo dia")
+            hv = b.time_input("Hora da volta", value=g("hora_volta"), step=900)
+            ori = st.text_input("Saída de", value=g("origem") or "", placeholder="Endereço ou bairro")
+            des = st.text_input("Destino", value=g("destino") or "", placeholder="Ex.: Aparecida, aeroporto")
+            acao = _rodape("f0", voltar=False)
+        if acao:
+            if dv and dv < di:
+                st.error("A volta não pode ser antes da ida.")
+                st.stop()
+            r.update(data_ida=di, hora_ida=hi, data_volta=dv, hora_volta=hv, origem=ori.strip() or None,
+                     destino=des.strip() or None)
+            ss["fr_et"] = 1
+            st.rerun()
+    elif et == 1:
+        clientes = repo.clientes_frete(cid)
+        ids = ["novo"] + ([str(x) for x in clientes["id"]] if not clientes.empty else [])
+        nomes = {"novo": "➕ Cliente novo"} | ({str(x.id): x.nome + (f" · {x.telefone}" if x.telefone else "")
+                                              for x in clientes.itertuples()} if not clientes.empty else {})
+        cli = st.selectbox("Cliente", ids, index=ids.index(g("cliente")) if g("cliente") in ids else 0,
+                           format_func=nomes.get, key="fr_cli")
+        with st.form("fr1"):
+            cn = ct = ""
+            if cli == "novo":
+                a, b = st.columns(2)
+                cn = a.text_input("Nome do cliente *", value=g("cn") or "", placeholder="Pessoa ou empresa")
+                ct = b.text_input("WhatsApp", value=g("ct") or "", placeholder="(11) 98888-7777")
+            pas = st.number_input("Passageiros", min_value=0, step=1, value=int(g("passageiros") or 0))
+            vat = g("van_id") or (V_IDS[1] if len(V_IDS) == 2 else None)
+            a, b = st.columns(2)
+            van = a.selectbox("Van", V_IDS, index=V_IDS.index(vat) if vat in V_IDS else 0, format_func=V_NOME.get)
+            mot = b.text_input("Motorista", value=g("motorista") or "", placeholder=V_MOT.get(vat or "", "") or "Quem dirige")
+            acao = _rodape("f1")
+        if acao:
+            r.update(cliente=cli, cn=cn.strip(), ct=ct.strip(), passageiros=int(pas) or None, van_id=van,
+                     motorista=mot.strip() or None)
+            if acao == "seguir" and cli == "novo" and not cn.strip():
+                st.error("Coloque o nome do cliente.")
+                st.stop()
+            if acao == "seguir":
+                for aviso in repo.conflitos_frete(cid, g("data_ida"), g("data_volta"), van, None):
+                    st.toast("⚠️ " + aviso)
+            ss["fr_et"] = 0 if acao == "voltar" else 2
+            st.rerun()
+    else:
+        with st.form("fr2"):
+            a, b = st.columns(2)
+            val = a.number_input("Valor total (R$) *", min_value=0.0, step=50.0, value=float(g("valor") or 0))
+            sin = b.number_input("Sinal (R$)", min_value=0.0, step=50.0, value=float(g("sinal") or 0),
+                                 help="Quanto pedir para reservar a data.")
+            vld = st.date_input("Orçamento válido até", value=g("validade") or h + timedelta(days=7), format="DD/MM/YYYY")
+            obs = st.text_area("Observações (vão no orçamento)", value=g("obs") or "", height=80,
+                               placeholder="Ex.: inclui pedágio; almoço por conta do grupo")
+            acao = _rodape("f2", seguir="Salvar orçamento")
+        if acao:
+            r.update(valor=val, sinal=sin, validade=vld, obs=obs.strip() or None)
+            if acao == "voltar":
+                ss["fr_et"] = 1
+                st.rerun()
+            if val <= 0:
+                st.error("Coloque o valor da viagem.")
+                st.stop()
+            cli_id = repo.salvar_cliente_frete(cid, dict(nome=r["cn"], telefone=r["ct"] or None, documento=None,
+                                                         email=None)) if r["cliente"] == "novo" else r["cliente"]
+            fid = repo.salvar_frete(cid, dict(cliente_id=cli_id, data_ida=r["data_ida"], hora_ida=r["hora_ida"],
+                                              data_volta=r["data_volta"], hora_volta=r["hora_volta"],
+                                              origem=r["origem"], destino=r["destino"], passageiros=r["passageiros"],
+                                              van_id=r["van_id"], motorista=r["motorista"] or V_MOT.get(r["van_id"] or "", "") or None,
+                                              valor=round(val, 2), sinal=round(sin, 2) or None, validade=vld,
+                                              obs=r["obs"]))
+            ss.pop("fr_rasc", None)
+            ss["fr_et"] = 0
+            ss["_frete_novo"] = fid
+            st.rerun()
+
+
 # ---------------------------------------------------------------- cartão de cada frete
 def cartao(f: dict):
     fid = str(f["id"])
@@ -280,31 +376,33 @@ feitos = repo.fretes(cid, ["realizado", "recusado", "cancelado"])
 mes = repo.resumo_meses(cid, h.replace(day=1), (h.replace(day=28) + timedelta(days=4)).replace(day=1), origem="frete").iloc[-1]
 a_receber = sum(max(_f(r["valor"]) - _f(r["recebido"]), 0) for _, r in
                 list(agenda.iterrows()) + list(feitos[feitos["status"] == "realizado"].iterrows()))
-_ui.kpis([("Próximas viagens", len(agenda), "fechadas"),
-          ("Orçamentos abertos", len(abertos), "aguardando resposta"),
-          ("A receber", brl(a_receber), "de viagens fechadas"),
-          ("Lucro no mês", brl(_f(mes["outras_receitas"]) - _f(mes["despesas"])), "fretamentos")])
 
 aba_novo, aba_orc, aba_ag, aba_hist = st.tabs(["Novo orçamento", f"Orçamentos ({len(abertos)})",
                                                f"Agenda ({len(agenda)})", "Histórico"])
 with aba_novo:
-    novo = formulario(None, "novo")
-    if novo:
-        st.session_state["_frete_novo"] = novo
-        st.rerun()
-    if st.session_state.get("_frete_novo"):
-        f = repo.frete(cid, st.session_state["_frete_novo"])
-        if f and f["status"] in ("orcamento", "enviado"):
-            st.success(f"Orçamento salvo ({brl(_f(f['valor']))} · {_quando(f)}). Ele fica na aba **Orçamentos** "
-                       "até o cliente responder.", icon=":material/check_circle:")
-            st.link_button("Enviar agora pelo WhatsApp", _link(f, msg_orcamento(f)), icon=":material/send:",
-                           type="primary")
+    _fn = repo.frete(cid, st.session_state["_frete_novo"]) if st.session_state.get("_frete_novo") else None
+    if _fn and _fn["status"] in ("orcamento", "enviado"):
+        st.success(f"Orçamento salvo ({brl(_f(_fn['valor']))} · {_quando(_fn)}). Ele fica em **Orçamentos** "
+                   "até o cliente responder.", icon=":material/check_circle:")
+        a, b = st.container(key="linha_fr_ok").columns(2)
+        a.link_button("Enviar pelo WhatsApp", _link(_fn, msg_orcamento(_fn)), icon=":material/send:",
+                      type="primary", width="stretch")
+        if b.button("Novo orçamento", icon=":material/add:", width="stretch", key="fr_outro"):
+            st.session_state.pop("_frete_novo", None)
+            st.rerun()
+    else:
+        novo_por_etapas()
 with aba_orc:
     if abertos.empty:
         st.info("Nenhum orçamento aguardando resposta. Crie um em **Novo orçamento**.")
     for f in abertos.to_dict("records"):
         cartao(f)
 with aba_ag:
+    _ui.olho("fr")
+    _ui.kpis([("Próximas viagens", len(agenda), "fechadas"),
+              ("Orçamentos abertos", len(abertos), "aguardando resposta"),
+              ("A receber", brl(a_receber), "de viagens fechadas"),
+              ("Lucro no mês", brl(_f(mes["outras_receitas"]) - _f(mes["despesas"])), "fretamentos")])
     if agenda.empty:
         st.info("Nenhuma viagem fechada na agenda.")
     for f in agenda.to_dict("records"):

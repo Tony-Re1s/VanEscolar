@@ -950,6 +950,11 @@ def guia(c: dict, pagina_atual: str | None = None):
                    unsafe_allow_html=True)
         if not aqui and b.button("Ir", type="primary", key="guia_ir", width="stretch",
                                  icon=":material/arrow_forward:"):
+            # já abre direto onde se faz o passo (cadastro novo do aluno / seção do Pix)
+            if prox["chave"] == "aluno" and prox["pagina"] == "telas/alunos.py":
+                st.session_state.update(al_modo="novo", al_rasc={}, al_etapa=0)
+            elif prox["chave"] == "pix":
+                st.session_state["me_sec"] = "pix"
             try:
                 st.switch_page(prox["pagina"])
             except Exception:  # noqa: BLE001 — página fora do menu (ex.: pausa de férias)
@@ -1074,17 +1079,21 @@ def alertas_documentos(cid, dias: int = 30, link: bool = True):
         st.page_link("telas/vans.py", label="Ver documentos das vans", icon=":material/description:")
 
 
-def documentos_vans(cid, vans):
-    """Cadastro dos documentos com vencimento + 'Paguei' (vira despesa no Financeiro e renova a data)."""
+def documentos_vans(cid, vans, so_van: str | None = None, titulo: bool = True):
+    """Cadastro dos documentos com vencimento + 'Paguei' (vira despesa no Financeiro e renova a data).
+    so_van: mostra só os documentos dessa van (ficha da van)."""
     from datetime import timedelta
     from core import repo
     from core.fmt import brl, data_br, hoje, somar_meses
     h = hoje()
-    st.subheader("📄 Documentos e vencimentos")
-    st.caption("IPVA, licenciamento, seguro, vistoria escolar, curso do condutor… O app avisa no **Hoje** 30 dias "
-               "antes. Quando pagar, toque em **Paguei**: a despesa entra no Financeiro e a data vai para o próximo ano.")
+    if titulo:
+        st.subheader("📄 Documentos e vencimentos")
+    st.caption("O app avisa no **Hoje** 30 dias antes. Pagou? Toque em **Paguei**: vira despesa no Financeiro e a "
+               "data vai para o ano seguinte.")
     opc_van = {None: "Empresa (todas)"} | {str(v.id): v.nome for v in vans.itertuples()}
     df = repo.documentos_van(cid)
+    if so_van and not df.empty:
+        df = df[df["van_id"].astype(str) == str(so_van)]
     for r in df.itertuples():
         d = (r.vencimento - h).days
         cor = "🔴" if d < 0 else "🟡" if d <= 30 else "🟢"
@@ -1111,8 +1120,9 @@ def documentos_vans(cid, vans):
         with st.form("novo_doc", clear_on_submit=True):
             a, b = st.columns(2)
             tipo = a.selectbox("Documento", list(repo.DOC_TIPOS))
-            van = b.selectbox("Van", list(opc_van), format_func=opc_van.get,
-                              index=1 if len(opc_van) > 1 else 0)
+            _ops = list(opc_van)
+            van = b.selectbox("Van", _ops, format_func=opc_van.get,
+                              index=_ops.index(str(so_van)) if so_van and str(so_van) in _ops else (1 if len(_ops) > 1 else 0))
             c1, c2 = st.columns(2)
             venc = c1.date_input("Vencimento", value=h + timedelta(days=30), format="DD/MM/YYYY")
             valor = c2.number_input("Valor (R$, opcional)", min_value=0.0, step=10.0, format="%.2f")

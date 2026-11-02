@@ -22,15 +22,16 @@ with st.form("escola", clear_on_submit=e is None):
     nome = st.text_input("Nome *", value=(e or {}).get("nome", ""))
     endereco = st.text_input("Endereço", value=(e or {}).get("endereco") or "",
                              help="Usado no link da rota do Google Maps.")
-    telefone = st.text_input("Telefone", value=(e or {}).get("telefone") or "")
-    st.caption("Horários (deixe em branco o que não usa)")
-    a, b, cc, d = st.columns(4)
+    a, b = st.columns(2)
+    telefone = a.text_input("Telefone", value=(e or {}).get("telefone") or "")
+    ativo = b.toggle("Ativa", value=bool((e or {}).get("ativo", True)))
+    a, b = st.columns(2)
     em = a.time_input("Entrada manhã", value=_h((e or {}).get("entrada_manha")), step=300)
     sm = b.time_input("Saída manhã", value=_h((e or {}).get("saida_manha")), step=300)
-    et = cc.time_input("Entrada tarde", value=_h((e or {}).get("entrada_tarde")), step=300)
-    stt = d.time_input("Saída tarde", value=_h((e or {}).get("saida_tarde")), step=300)
-    ativo = st.checkbox("Ativa", value=bool((e or {}).get("ativo", True)))
-    ok = st.form_submit_button("Salvar", type="primary")
+    a, b = st.columns(2)
+    et = a.time_input("Entrada tarde", value=_h((e or {}).get("entrada_tarde")), step=300)
+    stt = b.time_input("Saída tarde", value=_h((e or {}).get("saida_tarde")), step=300)
+    ok = st.form_submit_button("Salvar", type="primary", width="stretch")
 
 if ok:
     if not nome.strip():
