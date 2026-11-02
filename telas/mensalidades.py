@@ -105,6 +105,7 @@ def _tela_mes():
     aberto = df.loc[df["situacao"] != "pago", "valor"].astype(float).sum()
     venc = df.loc[df["situacao"] == "vencido", "valor"].astype(float).sum()
     base = df.loc[df["forma"].fillna("") != "Isento", "valor"].astype(float).sum()
+    _ui.olho()
     _ui.kpis([("Recebido", brl(rec), f"{(df['situacao'] == 'pago').sum()} de {len(df)} pagos"),
               ("Previsto no mês", brl(prev)), ("Em aberto", brl(aberto)),
               ("Vencido", brl(venc), f"{(df['situacao'] == 'vencido').sum()} aluno(s) · "

@@ -227,6 +227,76 @@ button[data-testid="stBaseButton-secondary"]:hover, .stLinkButton > a:hover {bor
   .ve-mais .i {font-family: "Material Symbols Rounded"; font-size: 1.9rem; line-height: 1; color: #3E5468;}
   .block-container {padding-bottom: 7.5rem !important;}
 }
+/* botão 👁️ esconder valores: pequeno, à direita, colado nos números */
+[class*="st-key-olhobtn_"] {display:flex; justify-content:flex-end; margin-bottom:-.6rem;}
+[class*="st-key-olhobtn_"] button p {font-size:.85rem !important; color: var(--ve-cinza) !important;}
+/* pendências do Hoje: linhas clicáveis */
+.st-key-pendencias [data-testid="stPageLink"] a {background:#fff; border:1px solid #E1F0EF; border-radius:16px;
+  padding: 10px 14px !important; box-shadow: var(--sombra); margin-bottom: 2px;}
+.st-key-pendencias [data-testid="stPageLink"] a p {font-weight:700 !important; color: var(--ve-azul) !important;}
+.st-key-pendencias [data-testid="stPageLink"] a::after {content:"›"; margin-left:auto; font-size:1.3rem; color:#8A9BAA;}
+/* guia de primeiros passos em uma linha */
+.st-key-guia_linha {background:#fff; border:1px solid #E1F0EF; border-radius:18px; padding:8px 12px;
+  box-shadow: var(--sombra); margin-bottom:.6rem;}
+.st-key-guia_linha [data-testid="stHorizontalBlock"] {flex-wrap: nowrap !important; gap:.5rem !important;}
+.st-key-guia_linha [data-testid="stColumn"] {min-width:0 !important;}
+.ve-guia {font-size:.92rem; color: var(--ve-azul); line-height:1.25;}
+.ve-guia .n {font-weight:800; color: var(--tif-esc);}
+.ve-guia .bar {height:5px; background:#EEF2F5; border-radius:999px; margin-top:6px; overflow:hidden;}
+.ve-guia .bar div {height:100%; background: var(--tif); border-radius:999px;}
+.st-key-guia_linha .st-key-guia_ir button p {font-size:.85rem !important; white-space:nowrap;}
+@media (max-width: 640px) {.st-key-guia_ir button [data-testid="stIconMaterial"] {display:none;}}
+/* celular: nos formulários, 2 colunas continuam lado a lado (não empilham) — economiza tela */
+@media (max-width: 640px) {
+  [data-testid="stForm"] [data-testid="stHorizontalBlock"]:not(:has(> [data-testid="stColumn"]:nth-child(3))) {
+    flex-wrap: nowrap !important; gap: .6rem !important;}
+  [data-testid="stForm"] [data-testid="stHorizontalBlock"]:not(:has(> [data-testid="stColumn"]:nth-child(3))) > [data-testid="stColumn"] {
+    min-width: 0 !important; width: auto !important; flex: 1 1 0 !important;}
+}
+@media (max-width: 640px) {
+  div[data-testid="stForm"] {padding: .8rem .85rem !important;}
+  div[data-testid="stForm"] [data-testid="stVerticalBlock"] {gap: .55rem !important;}
+}
+/* barrinha de etapas */
+.ve-etapas {display:flex; gap:6px; margin:.2rem 0 .8rem;}
+.ve-etapas .e {flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:3px;
+  position:relative;}
+.ve-etapas .e span {width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  background:#EEF2F5; color:#8A9BAA; font-weight:800; font-size:.9rem; z-index:1;}
+.ve-etapas .e b {font-size:.74rem; color:#8A9BAA; font-weight:700; white-space:nowrap; overflow:hidden;
+  text-overflow:ellipsis; max-width:100%;}
+.ve-etapas .e.atual span {background: var(--tif-esc); color:#fff;}
+.ve-etapas .e.atual b {color: var(--ve-azul);}
+.ve-etapas .e.feito span {background: var(--tif-claro); color: var(--tif-esc);}
+.ve-etapas .e:not(:first-child)::before {content:""; position:absolute; top:15px; right:50%; width:100%; height:3px;
+  background:#EEF2F5;}
+.ve-etapas .e.feito:not(:first-child)::before, .ve-etapas .e.atual:not(:first-child)::before {background: var(--tif);}
+/* botões do rodapé do cadastro (Voltar / Continuar) */
+[class*="st-key-wzpe_"] [data-testid="stHorizontalBlock"] {flex-wrap: nowrap !important; gap:.6rem !important;}
+[class*="st-key-wzpe_"] [data-testid="stColumn"] {min-width:0 !important;}
+[class*="st-key-wzpe_"] button {min-height: 50px;}
+/* linhas da ficha */
+[class*="st-key-fl_"] button {justify-content: flex-start !important; text-align:left; background:#fff !important;
+  border:1px solid #E1F0EF !important; border-radius:16px !important; padding: 10px 14px !important;
+  box-shadow: var(--sombra); min-height: 58px;}
+[class*="st-key-fl_"] button > div, [class*="st-key-al_"] button > div {justify-content: flex-start !important;
+  width: 100%; text-align: left;}
+[class*="st-key-fl_"] button [data-testid="stMarkdownContainer"], [class*="st-key-al_"] button [data-testid="stMarkdownContainer"] {
+  text-align: left; flex: 1;}
+[class*="st-key-fl_"] button p {text-align:left; color: var(--ve-cinza) !important; font-size:.85rem !important;
+  line-height:1.3 !important;}
+[class*="st-key-fl_"] button p strong {color: var(--ve-azul); font-size:1rem;}
+[class*="st-key-fl_"] button::after {content:"›"; margin-left:auto; font-size:1.4rem; color:#8A9BAA; padding-left:8px;}
+[class*="st-key-fl_"] button [data-testid="stIconMaterial"] {color: var(--tif-esc) !important; font-size:1.4rem !important;}
+[class*="st-key-al_"] button {justify-content: flex-start !important; background:#fff !important;
+  border:1px solid #E1F0EF !important; border-radius:16px !important; min-height:54px; box-shadow: var(--sombra);}
+[class*="st-key-al_"] button p {text-align:left; color: var(--ve-cinza) !important; font-size:.84rem !important;}
+[class*="st-key-al_"] button p strong {color: var(--ve-azul); font-size:1rem;}
+[class*="st-key-al_"] button::after {content:"›"; margin-left:auto; font-size:1.4rem; color:#8A9BAA; padding-left:8px;}
+.ve-ficha-topo {display:flex; align-items:center; gap:12px; margin:.2rem 0 .8rem;}
+.ve-ficha-topo .av {width:54px; height:54px; border-radius:50%; background: var(--tif-claro); color: var(--tif-esc);
+  display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.4rem; flex:none;}
+.ve-ficha-topo h3 {margin:0 !important; font-size:1.3rem !important;}
 /* meta do mês */
 .ve-meta {background:#fff; border:1px solid #E1F0EF; border-radius:18px; padding:12px 16px; margin:.3rem 0 .8rem;
   box-shadow: var(--sombra);}
@@ -237,15 +307,17 @@ button[data-testid="stBaseButton-secondary"]:hover, .stLinkButton > a:hover {bor
 .ve-meta .barra div {height:100%; border-radius:999px; background: linear-gradient(90deg, #14B8B0, #1E9E5A);}
 .ve-meta .s {font-size:.85rem; color: var(--ve-cinza);}
 /* atalhos grandes do Hoje */
-[class*="st-key-atalho_"] a {min-height: 64px; border-radius: 18px !important; font-weight: 800 !important;}
-[class*="st-key-atalho_"] a p {font-size: 1.02rem !important; font-weight: 800 !important;}
-[class*="st-key-atalho_"] a {justify-content: center !important; background: #fff !important;
-  border: 1px solid #E1F0EF !important; box-shadow: var(--sombra);}
+[class*="st-key-atalho_"] a, [class*="st-key-atalho_"] button {min-height: 64px; border-radius: 18px !important;
+  font-weight: 800 !important; justify-content: center !important; background: #fff !important;
+  border: 1px solid #E1F0EF !important; box-shadow: var(--sombra); width: 100%;}
+[class*="st-key-atalho_"] a p, [class*="st-key-atalho_"] button p {font-size: 1.02rem !important; font-weight: 800 !important;
+  color: var(--ve-azul) !important;}
 .st-key-atalhos [data-testid="stHorizontalBlock"] {flex-wrap: nowrap !important; gap: .5rem !important;}
 .st-key-atalhos [data-testid="stColumn"] {min-width: 0 !important; flex: 1 1 0 !important; width: auto !important;}
 @media (max-width: 640px) {
-  [class*="st-key-atalho_"] a {flex-direction: column !important; min-height: 70px; padding: 6px 4px !important; gap: 2px !important;}
-  [class*="st-key-atalho_"] a p {font-size: .9rem !important; white-space: nowrap;}
+  [class*="st-key-atalho_"] a, [class*="st-key-atalho_"] button {flex-direction: column !important; min-height: 70px;
+    padding: 6px 4px !important; gap: 2px !important;}
+  [class*="st-key-atalho_"] a p, [class*="st-key-atalho_"] button p {font-size: .9rem !important; white-space: nowrap;}
 }
 .st-key-atalho_rota a {background: #1E9E5A !important; border-color: #1E9E5A !important;}
 .st-key-atalho_rota a * {color: #fff !important;}
@@ -260,7 +332,9 @@ button[data-testid="stBaseButton-secondary"]:hover, .stLinkButton > a:hover {bor
 .ve-doc-al.logo {background:#FFF8E6; border-left: 4px solid #F5A524;}
 @media (max-width: 640px) {
   .ve-hero h1 {font-size: 1.9rem !important;}
-  .block-container {padding-left: .8rem; padding-right: .8rem; padding-top: 1rem;}
+  .block-container {padding-left: .8rem; padding-right: .8rem; padding-top: .4rem;}
+  h1 {margin: 0 0 .2rem !important; padding: .2rem 0 !important;}
+  .ve-etapas {margin: 0 0 .5rem;}
   .ve-kpis {grid-template-columns: repeat(2, minmax(0,1fr)); gap:10px;}
   .ve-kpi .v {font-size:1.12rem;}
   h1 {font-size: 1.6rem !important;}
@@ -279,9 +353,20 @@ def esc(t) -> str:
 # Aba do navegador e atalho do celular: o Streamlit Cloud põe "· Streamlit" no título e o ícone dele na página de fora
 # (o app roda num iframe do MESMO endereço, então dá para corrigir a página de fora daqui de dentro).
 _MARCA_ABA = """<script>(function(){try{
-if(!window.__tbMais){window.__tbMais=1; document.addEventListener('click',function(e){
-  if(e.target.closest && e.target.closest('.ve-mais')){
-    const b=document.querySelector('[data-testid="stExpandSidebarButton"]'); if(b) b.click();}});}
+if(!window.__tbMais){window.__tbMais=1;
+  /* o Streamlit fecha o menu sozinho num toque fora dele (antes do nosso clique) — então o estado é lido no
+     começo do toque, e o clique decide: aberto → fecha; fechado → abre */
+  const aberto=()=>{const sb=document.querySelector('[data-testid="stSidebar"]');
+    return !!sb && sb.getAttribute('data-collapsed')!=='true' && sb.getBoundingClientRect().right>40;};
+  const marca=e=>{if(e.target.closest && e.target.closest('.ve-mais')) window.__tbMaisAberto=aberto();};
+  document.addEventListener('pointerdown',marca,true); document.addEventListener('touchstart',marca,true);
+  document.addEventListener('click',function(e){
+    if(!(e.target.closest && e.target.closest('.ve-mais'))) return;
+    const estava = window.__tbMaisAberto===undefined ? aberto() : window.__tbMaisAberto; window.__tbMaisAberto=undefined;
+    setTimeout(()=>{const agora=aberto();
+      if(estava && agora){const b=document.querySelector('[data-testid="stSidebarCollapseButton"] button'); if(b) b.click();}
+      else if(!estava && !agora){const b=document.querySelector('[data-testid="stExpandSidebarButton"]'); if(b) b.click();}
+    },60);},true);}
 }catch(e){}})();
 (function(){try{
 const P=window.parent; if(!P||P===window) return; const d=P.document;
@@ -311,11 +396,35 @@ def css():
         st.html(_MARCA_ABA, unsafe_allow_javascript=True)
 
 
+_RE_DINHEIRO = __import__("re").compile(r"-?R\$\s?-?[\d.]+,\d{2}")
+
+
+def ocultar_valores() -> bool:
+    return bool(st.session_state.get("_ocultar_valores"))
+
+
+def _mascara(t) -> str:
+    """Com o 👁️ ligado, troca os valores em R$ por R$ •••••."""
+    t = str(t)
+    return _RE_DINHEIRO.sub("R$ •••••", t) if ocultar_valores() else t
+
+
+def olho(chave: str = "olho"):
+    """Botão 👁️ para esconder/mostrar os valores (para abrir o app na frente dos outros)."""
+    oculto = ocultar_valores()
+    with st.container(key=f"olhobtn_{chave}"):
+        if st.button("Mostrar valores" if oculto else "Esconder valores", type="tertiary", key=f"_olho_{chave}",
+                     icon=":material/visibility:" if oculto else ":material/visibility_off:"):
+            st.session_state["_ocultar_valores"] = not oculto
+            st.rerun()
+
+
 def kpis(itens: list[tuple], destaque: int | None = 0):
     """itens: (rótulo, valor, subtítulo opcional)."""
     partes = []
     for i, it in enumerate(itens):
         rot, val, sub = (list(it) + [""])[:3]
+        val, sub = _mascara(val), _mascara(sub)
         cls = "ve-kpi destaque" if i == destaque else "ve-kpi"
         partes.append(f"<div class='{cls}'><div class='l'>{esc(rot)}</div><div class='v'>{esc(val)}</div>"
                       f"<div class='s'>{esc(sub)}</div></div>")
@@ -831,26 +940,23 @@ def guia(c: dict, pagina_atual: str | None = None):
     if feitos == total:
         return
     prox = next(p for p in passos if not prog.get(p["chave"]))
-    with st.container(border=True, key="card_guia"):
-        st.markdown(f"**🚐 Comece por aqui** <span class='ve-sub'>· {feitos} de {total} feitos</span>",
-                    unsafe_allow_html=True)
-        st.progress(feitos / total)
-        linhas = ["✅ Conta criada"] + [("✅ " if prog.get(p["chave"]) else ("👉 " if p is prox else "⚪ "))
-                                         + p["titulo"] for p in passos]
-        st.markdown("  \n".join(linhas))
-        if pagina_atual != prox["pagina"]:
-            st.caption(prox["sub"])
-            if st.button(prox["botao"] + " →", type="primary", key="guia_ir", width="stretch"):
-                try:
-                    st.switch_page(prox["pagina"])
-                except Exception:  # noqa: BLE001 — página fora do menu (ex.: pausa de férias)
-                    st.info("Abra essa tela pelo menu ao lado.")
-        else:
-            st.markdown(f"👇 {prox['dica']}")
-        if st.button("Esconder este guia", type="tertiary", key="guia_fechar"):
+    # uma linha só: progresso + próximo passo (um toque leva até lá) + ✕ para quem não quer ver
+    aqui = pagina_atual == prox["pagina"]
+    with st.container(key="guia_linha"):
+        a, b, x = st.columns([6, 3, 1], vertical_alignment="center")
+        a.markdown(f"<div class='ve-guia'><span class='n'>🚐 {feitos}/{total}</span> "
+                   f"{'Agora' if aqui else 'Próximo'}: <b>{esc(prox['titulo'])}</b>"
+                   f"<div class='bar'><div style='width:{feitos / total * 100:.0f}%'></div></div></div>",
+                   unsafe_allow_html=True)
+        if not aqui and b.button("Ir agora", type="primary", key="guia_ir", width="stretch",
+                                 icon=":material/arrow_forward:"):
+            try:
+                st.switch_page(prox["pagina"])
+            except Exception:  # noqa: BLE001 — página fora do menu (ex.: pausa de férias)
+                st.info("Abra essa tela pelo menu.")
+        if x.button("", icon=":material/close:", type="tertiary", key="guia_fechar", help="Esconder o guia"):
             repo.fechar_guia(c["id"])
             st.rerun()
-
 
 
 def faixa_gratis():
@@ -864,10 +970,13 @@ def faixa_gratis():
 
 
 # ---------------------------------------------------------------- importar planilha de alunos
-def importar_planilha(c: dict, van, dia_padrao: int, chave: str = "imp"):
-    """Expander "Importar planilha": baixar modelo → subir xlsx/csv ou colar → conferir → importar."""
+def importar_planilha(c: dict, van, dia_padrao: int, chave: str = "imp", caixa: bool = True):
+    """Importar planilha: baixar modelo → subir xlsx/csv ou colar → conferir → importar.
+    caixa=False: sem o expander (quando já está dentro de um popover)."""
+    from contextlib import nullcontext
     from core import importar as imp
-    with st.expander("Importar planilha (Excel ou Google Planilhas)", icon=":material/upload_file:"):
+    with (st.expander("Importar planilha (Excel ou Google Planilhas)", icon=":material/upload_file:") if caixa
+          else nullcontext()):
         st.caption("Baixe o modelo → preencha um aluno por linha → envie o arquivo aqui. "
                    "Já tem sua planilha? Pode mandar ela mesma — a gente acha as colunas pelo nome.")
         st.download_button("Baixar modelo (.xlsx)", imp.modelo_xlsx(), file_name="modelo-alunos.xlsx",
@@ -937,8 +1046,8 @@ def meta_mes(recebido: float, previsto: float, rotulo: str = "Meta do mês"):
         return
     pct = max(0.0, min(100.0, recebido / previsto * 100))
     falta = max(0.0, previsto - recebido)
-    s = "Meta batida! 🎉 Todo mundo pagou." if falta <= 0.005 else f"Faltam {brl(falta)} para fechar o mês."
-    st.markdown(f"<div class='ve-meta'><div class='t'>{esc(rotulo)} <span>{brl(recebido)} de {brl(previsto)} · "
+    s = _mascara("Meta batida! 🎉 Todo mundo pagou." if falta <= 0.005 else f"Faltam {brl(falta)} para fechar o mês.")
+    st.markdown(f"<div class='ve-meta'><div class='t'>{esc(rotulo)} <span>{_mascara(brl(recebido) + ' de ' + brl(previsto))} · "
                 f"{pct:.0f}%</span></div><div class='barra'><div style='width:{pct:.1f}%'></div></div>"
                 f"<div class='s'>{s}</div></div>", unsafe_allow_html=True)
 
@@ -1013,3 +1122,20 @@ def documentos_vans(cid, vans):
                                                     valor=valor or None, obs=obs or None))
                 st.toast("Documento salvo.")
                 st.rerun()
+
+
+# ---------------------------------------------------------------- cadastro por etapas e ficha
+def etapas(titulos: list[str], atual: int):
+    """Barrinha de etapas no topo do cadastro: ● feito, ◉ atual, ○ falta."""
+    partes = []
+    for i, t in enumerate(titulos):
+        cls = "feito" if i < atual else ("atual" if i == atual else "")
+        partes.append(f"<div class='e {cls}'><span>{'✓' if i < atual else i + 1}</span><b>{esc(t)}</b></div>")
+    st.markdown(f"<div class='ve-etapas'>{''.join(partes)}</div>", unsafe_allow_html=True)
+
+
+def linha_ficha(rotulo: str, sub: str, chave: str, icone: str) -> bool:
+    """Linha tocável da ficha (Responsáveis ›, Endereço ›…). Devolve True quando tocada."""
+    with st.container(key=f"fl_{chave}"):
+        return st.button(f"**{rotulo}**  \n{sub}" if sub else f"**{rotulo}**", key=f"flb_{chave}", icon=icone,
+                         width="stretch")

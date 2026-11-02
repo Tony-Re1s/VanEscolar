@@ -28,6 +28,7 @@ res = repo.resumo_meses(cid, somar_meses(comp, -11), prox, van=van, origem=orige
 mes = res.iloc[-1]
 receita = float(mes["mensalidades"]) + float(mes["outras_receitas"])
 desp = float(mes["despesas"])
+_ui.olho()
 if origem == "frete":
     fr = repo.fretes(cid, ["fechado", "realizado"])
     a_rec = sum(max(float(r.valor or 0) - float(r.recebido or 0), 0) for r in fr.itertuples()) if not fr.empty else 0

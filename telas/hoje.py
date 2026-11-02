@@ -30,6 +30,7 @@ rec = mens["valor_pago"].fillna(0).astype(float).sum() if not mens.empty else 0
 prev = mens["valor"].astype(float).sum() if not mens.empty else 0
 res = repo.resumo_meses(cid, inicio_mes(h), somar_meses(inicio_mes(h), 1)).iloc[0]
 lucro = float(res["mensalidades"]) + float(res["outras_receitas"]) - float(res["despesas"])
+_ui.olho()
 _ui.kpis([("Lucro do mês", brl(lucro), mes_label(h)),
           ("Recebido", brl(rec), f"de {brl(prev)} previstos"),
           ("Alunos ativos", len(alunos), f"{len(vans)} van(s) · {int(vans['capacidade'].sum()) if len(vans) else 0} lugares"),
@@ -44,9 +45,35 @@ if not _em_pausa:
     with _at[0].container(key="atalho_rota"):
         st.page_link("telas/chamada.py", label="Iniciar rota", icon=":material/airport_shuttle:", width="stretch")
 with _at[1].container(key="atalho_aluno"):
-    st.page_link("telas/alunos.py", label="+ Aluno", icon=":material/person_add:", width="stretch")
+    if st.button("+ Aluno", icon=":material/person_add:", width="stretch", key="at_novo_aluno"):
+        st.session_state.update(al_modo="novo", al_rasc={}, al_etapa=0, al_pid=None, al_sec=None)
+        st.switch_page("telas/alunos.py")
 with _at[2].container(key="atalho_cobrar"):
     st.page_link("telas/mensalidades.py", label="Cobrar", icon=":material/chat:", width="stretch")
+
+# pendências: contadores clicáveis (o que precisa de atenção)
+_af = repo.alunos_facil(cid)
+_af = _af[_af["ativo"]] if not _af.empty else _af
+_sem_valor = int((_af["valor"].fillna(0).astype(float) <= 0).sum()) if not _af.empty else 0
+_sem_zap = int(_af["whatsapp"].isna().sum() + (_af["whatsapp"].fillna("x") == "").sum()) if not _af.empty else 0
+_atras = repo.vencidas_todas(cid, h)
+_semana = alunos[alunos["data_nasc"].notna()] if "data_nasc" in alunos else alunos.iloc[0:0]
+_semana = _semana[_semana["data_nasc"].map(
+    lambda d: 0 <= ((d.replace(year=h.year) if not (d.month == 2 and d.day == 29) else d.replace(year=h.year, day=28)) - h).days <= 6)]
+_pend = [("telas/mensalidades.py", "Mensalidades atrasadas", len(_atras), ":material/warning:"),
+         ("telas/alunos.py", "Aluno sem valor de mensalidade", _sem_valor, ":material/money_off:"),
+         ("telas/alunos.py", "Aluno sem WhatsApp do responsável", _sem_zap, ":material/phone_disabled:")]
+_pend = [x for x in _pend if x[2]]
+st.subheader("Precisa de atenção")
+if not _pend and _semana.empty:
+    st.success("Tudo em dia por aqui. 🎉", icon=":material/task_alt:")
+with st.container(key="pendencias"):
+    for _pg, _txt, _n, _ic in _pend:
+        st.page_link(_pg, label=f"{_txt} · {_n}", icon=_ic, width="stretch")
+if not _semana.empty:
+    st.markdown("<div class='ve-doc-al logo'>🎂 <b>Aniversariantes da semana:</b> " + ", ".join(
+        f"{_ui.esc(r.nome.split()[0])} ({r.data_nasc.day:02d}/{r.data_nasc.month:02d})" for r in _semana.itertuples())
+        + "</div>", unsafe_allow_html=True)
 
 # faltas avisadas
 aus = repo.ausencias_empresa(cid, h)
