@@ -19,6 +19,12 @@ CSS = """
               linear-gradient(180deg, #FAFDFD 0%, #F3F9FB 100%) !important;
   background-attachment: fixed !important; }
 [data-testid="stHeader"] {background: transparent !important;}
+/* sem a cara do Streamlit: some o "Stop/Running", o Share/estrela/editar/GitHub e o menu ⋮ (o botão de abrir o menu
+   lateral continua) — e o carregamento vira a van da Turminha */
+[data-testid="stStatusWidget"], [data-testid="stToolbarActions"], [data-testid="stMainMenu"],
+[data-testid="stAppDeployButton"], [data-testid="stDecoration"], .stDeployButton,
+[data-testid="stToolbar"] [data-testid="stToolbarActionButton"] {display: none !important;}
+[data-testid="stSkeleton"] {opacity: 0 !important;}
 .block-container {padding-top: 2rem; padding-bottom: 4rem; max-width: 1100px;}
 h1 {font-weight: 800 !important; letter-spacing: -.02em; color: var(--ve-azul);}
 h2, h3 {font-weight: 800 !important; color: var(--ve-azul);}
