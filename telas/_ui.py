@@ -307,6 +307,21 @@ button[data-testid="stBaseButton-secondary"]:hover, .stLinkButton > a:hover {bor
 .ve-placar .t span {color: var(--ve-cinza); font-size:.84rem;}
 .ve-placar .barra {height:6px; background:#EEF2F5; border-radius:999px; margin-top:6px; overflow:hidden;}
 .ve-placar .barra div {height:100%; background: linear-gradient(90deg, #14B8B0, #1E9E5A); border-radius:999px;}
+/* celular: sem a faixa de cima (ônibus + setinhas) — o "Mais" abre o menu; o ônibus vai para o lado do título */
+@media (max-width: 640px) {
+  [data-testid="stHeader"] {display: none !important;}
+  [data-testid="stMain"] h1 {display: flex !important; align-items: center; justify-content: space-between; gap: 10px;}
+  [data-testid="stMain"] h1::after {content: ""; flex: none; width: 40px; height: 40px; border-radius: 11px;
+    background: url("https://turminhaabordo.com.br/icone-180.png") center / contain no-repeat;
+    box-shadow: 0 4px 12px rgba(10,156,151,.18);}
+  [data-testid="stMain"] .ve-hero h1::after, [data-testid="stMain"] .ve-doc h1::after {display: none;}
+  .block-container {padding-top: .9rem !important;}
+}
+/* invólucros vazios do topo (CSS, script da aba, barra de abas fixa): não ocupam espaço nem somam o "gap" */
+[data-testid="stVerticalBlock"] > [data-testid="stElementContainer"]:has(> [data-testid="stMarkdown"] style),
+[data-testid="stVerticalBlock"] > [data-testid="stLayoutWrapper"]:has(> .st-key-marca_aba),
+[data-testid="stVerticalBlock"] > [data-testid="stLayoutWrapper"]:has(> .st-key-marca_android),
+[data-testid="stVerticalBlock"] > [data-testid="stLayoutWrapper"]:has(> .st-key-tabbar) {display: contents !important;}
 /* meta do mês */
 .ve-meta {background:#fff; border:1px solid #E1F0EF; border-radius:18px; padding:12px 16px; margin:.3rem 0 .8rem;
   box-shadow: var(--sombra);}
@@ -320,16 +335,22 @@ button[data-testid="stBaseButton-secondary"]:hover, .stLinkButton > a:hover {bor
 [class*="st-key-atalho_"] a, [class*="st-key-atalho_"] button {min-height: 64px; border-radius: 18px !important;
   font-weight: 800 !important; justify-content: center !important; background: #fff !important;
   border: 1px solid #E1F0EF !important; box-shadow: var(--sombra); width: 100%;}
-[class*="st-key-atalho_"] a p, [class*="st-key-atalho_"] button p {font-size: 1.02rem !important; font-weight: 800 !important;
-  color: var(--ve-azul) !important;}
+[class*="st-key-atalho_"] a p, [class*="st-key-atalho_"] button p {font-size: 1.02rem !important; font-weight: 800 !important;}
+[class*="st-key-atalho_"] button p, [class*="st-key-atalho_"] button [data-testid="stIconMaterial"] {color: var(--ve-azul) !important;}
 .st-key-atalhos [data-testid="stHorizontalBlock"] {flex-wrap: nowrap !important; gap: .5rem !important;}
 .st-key-atalhos [data-testid="stColumn"] {min-width: 0 !important; flex: 1 1 0 !important; width: auto !important;}
 @media (max-width: 640px) {
   [class*="st-key-atalho_"] a, [class*="st-key-atalho_"] button {flex-direction: column !important; min-height: 70px;
     padding: 6px 4px !important; gap: 2px !important;}
   [class*="st-key-atalho_"] a p, [class*="st-key-atalho_"] button p {font-size: .9rem !important; white-space: nowrap;}
+  /* no botão o ícone e o texto ficam num span interno: empilha igual aos atalhos que são links */
+  [class*="st-key-atalho_"] button span[data-has-shortcut] {display: flex !important; flex-direction: column !important;
+    align-items: center !important; gap: 2px !important; transform: translateY(-3px);}
+  [class*="st-key-atalho_"] button span[data-has-shortcut] > span:first-child {margin: 0 !important;}
 }
-.st-key-atalho_aluno button {margin-top: -4px;}   /* botão fica 4px abaixo dos links — alinha com os outros dois */
+.st-key-atalho_aluno button {margin-top: -4px;}
+[class*="st-key-atalho_"] button span[data-has-shortcut] {transform: translateY(-3px);}
+@media (min-width: 641px) {[class*="st-key-atalho_"] button [data-testid="stIconMaterial"] {transform: translateY(3px);}}   /* botão fica 4px abaixo dos links — alinha com os outros dois */
 .st-key-atalho_rota a {background: #1E9E5A !important; border-color: #1E9E5A !important;}
 .st-key-atalho_rota a * {color: #fff !important;}
 .st-key-atalho_cobrar a {background: #FFC83D !important; border-color: #FFC83D !important;}
@@ -352,6 +373,15 @@ button[data-testid="stBaseButton-secondary"]:hover, .stLinkButton > a:hover {bor
 }
 </style>
 """
+# ícone do título no celular embutido no CSS (não depende de baixar do site)
+try:
+    import base64 as _b64
+    from pathlib import Path as _P
+    _VAN = _b64.b64encode((_P(__file__).resolve().parent.parent / "static" / "van.svg").read_bytes()).decode()
+    CSS = CSS.replace("https://turminhaabordo.com.br/icone-180.png", f"data:image/svg+xml;base64,{_VAN}")
+except Exception:  # noqa: BLE001
+    pass
+
 
 ROTULO_MENS = {"pago": "Pago", "vencido": "Vencido", "vence_logo": "Vence em breve", "aberto": "Em aberto"}
 ROTULO_CHAM = {"embarcou": "Embarcou", "desembarcou": "Desembarcou", "faltou": "Faltou"}
