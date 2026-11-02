@@ -468,6 +468,7 @@ if _modo == "novo":
 if _modo == "ficha" and ss.get("al_pid"):
     _ficha(ss["al_pid"])
     st.stop()
+_ui.video_ajuda("aluno")
 aba_al, aba_ct = st.tabs(["Alunos", "Contratos"])
 with aba_al:
     _lista()

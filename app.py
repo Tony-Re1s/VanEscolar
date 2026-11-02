@@ -169,6 +169,8 @@ if cond and not usuario.get("bloqueado"):
     paginas.setdefault(_grupo_fc, []).append(
         st.Page("telas/fale_conosco.py", title=f"Fale conosco ({_novas} nova{'s' if _novas > 1 else ''})"
                 if _novas else "Fale conosco", icon=":material/support_agent:", url_path="fale_conosco"))
+    paginas[_grupo_fc].append(st.Page("telas/aprenda.py", title="Aprenda a usar", icon=":material/play_circle:",
+                                      url_path="aprenda"))
 if usuario.get("admin"):
     paginas["Administração"].append(st.Page("telas/suporte_admin.py", title="Suporte", icon=":material/forum:"))
 

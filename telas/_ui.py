@@ -297,6 +297,8 @@ button[data-testid="stBaseButton-secondary"]:hover, .stLinkButton > a:hover {bor
 .ve-ficha-topo .av {width:54px; height:54px; border-radius:50%; background: var(--tif-claro); color: var(--tif-esc);
   display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.4rem; flex:none;}
 .ve-ficha-topo h3 {margin:0 !important; font-size:1.3rem !important;}
+[class*="st-key-vidbtn_"] {margin: -.6rem 0 -.4rem;}
+[class*="st-key-vidbtn_"] button p {color: var(--tif-esc) !important; font-weight: 700 !important; font-size: .9rem !important;}
 /* meta do mês */
 .ve-meta {background:#fff; border:1px solid #E1F0EF; border-radius:18px; padding:12px 16px; margin:.3rem 0 .8rem;
   box-shadow: var(--sombra);}
@@ -1153,3 +1155,34 @@ def linha_ficha(rotulo: str, sub: str, chave: str, icone: str) -> bool:
     with st.container(key=f"fl_{chave}"):
         return st.button(f"**{rotulo}**  \n{sub}" if sub else f"**{rotulo}**", key=f"flb_{chave}", icon=icone,
                          width="stretch")
+
+
+# ---------------------------------------------------------------- vídeos "Aprenda a usar"
+TUTORIAIS = {
+    "aluno": ("Cadastrar um aluno", "Novo aluno em 4 etapas: aluno, responsável, escola e pagamento."),
+    "rota": ("Fazer a rota do dia", "Iniciar a rota, avisar os pais e marcar quem embarcou."),
+    "cobranca": ("Cobrar e receber mensalidades", "Cobrar no WhatsApp com o Pix e dar baixa quando receber."),
+    "despesa": ("Lançar uma despesa", "Combustível, manutenção… e contas a pagar."),
+}
+
+
+def _arquivo_tutorial(nome: str):
+    from pathlib import Path
+    p = Path(__file__).resolve().parent.parent / "static" / "tutoriais" / f"{nome}.mp4"
+    return p if p.exists() else None
+
+
+def video_ajuda(nome: str):
+    """Botãozinho ▶ 'Ver como faz' que abre o vídeo daquela tela num quadro por cima."""
+    arq = _arquivo_tutorial(nome)
+    if not arq:
+        return
+    titulo = TUTORIAIS[nome][0]
+
+    @st.dialog(titulo)
+    def _ver():
+        st.video(str(arq), autoplay=True, muted=True)
+
+    with st.container(key=f"vidbtn_{nome}"):
+        if st.button("Ver como faz", icon=":material/play_circle:", type="tertiary", key=f"vid_{nome}"):
+            _ver()

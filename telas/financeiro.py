@@ -12,6 +12,7 @@ c = exigir_condutor()
 cid = c["id"]
 h = hoje()
 st.title("Financeiro")
+_ui.video_ajuda("despesa")
 _quer_lancar = st.button("Lançar despesa ou receita", icon=":material/add:", type="primary", width="stretch",
                          key="fin_lancar")
 

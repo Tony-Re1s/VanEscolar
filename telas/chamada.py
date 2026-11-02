@@ -12,6 +12,7 @@ u = st.session_state["usuario"]
 st.title("Rota e chamada")
 if u.get("condutor"):
     _ui.guia(u["condutor"], "telas/chamada.py")
+_ui.video_ajuda("rota")
 
 if u.get("condutor") and _ui.aviso_pausa(u["condutor"]):
     st.stop()

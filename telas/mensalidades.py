@@ -80,6 +80,7 @@ def _msg(r) -> str:
 
 
 
+_ui.video_ajuda("cobranca")
 van = _ui.filtro_van(cid, "van_mens", rotulo_oculto=True)
 aba_mes, aba_cobrar, aba_painel = st.tabs(["Mês", "Cobrar vencidos", "Painel"])
 
