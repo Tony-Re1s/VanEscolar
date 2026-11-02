@@ -1344,3 +1344,21 @@ def conflitos_frete(cid, data_ida: date, data_volta: date | None, van_id, fid=No
             if n and int(n["n"] or 0):
                 avisos.append("É dia de semana: confira se não bate com o horário da rota escolar dessa van")
     return avisos
+
+
+# ------------------------------------------------------------------ guia de primeiros passos
+def progresso_inicio(cid) -> dict:
+    """O que o gestor novo já fez: aluno cadastrado, 1ª rota feita, chave Pix — e se escondeu o guia."""
+    r = db.ao_vivo("""
+        select exists(select 1 from passageiros where condutor_id = cast(:cid as uuid)) as aluno,
+               exists(select 1 from chamadas where condutor_id = cast(:cid as uuid))
+               or exists(select 1 from rotas_iniciadas ri join vans v on v.id = ri.van_id
+                         where v.condutor_id = cast(:cid as uuid)) as rota,
+               coalesce(c.chave_pix, '') <> '' as pix,
+               c.guia_fechado as fechado
+        from condutores c where c.id = cast(:cid as uuid)""", cid=str(cid))
+    return {k: bool(v) for k, v in r.iloc[0].to_dict().items()} if len(r) else {}
+
+
+def fechar_guia(cid):
+    db.gravar("update condutores set guia_fechado = true where id = cast(:cid as uuid)", cid=str(cid))

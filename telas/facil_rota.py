@@ -20,6 +20,7 @@ if vans.empty:      # modo fácil: ninguém precisa cadastrar van antes — cria
     vans = repo.vans(cid)
 
 st.title("Rota")
+_ui.guia(c, "telas/facil_rota.py")
 a, b = st.columns([3, 2])
 if len(vans) > 1:
     van_id = a.selectbox("Van", list(vans["id"].astype(str)), label_visibility="collapsed",

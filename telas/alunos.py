@@ -12,6 +12,7 @@ from telas._ui import exigir_condutor
 c = exigir_condutor()
 cid = c["id"]
 st.title("Alunos e responsáveis")
+_ui.guia(c, "telas/alunos.py")
 
 escolas = repo.escolas(cid)
 vans = repo.vans(cid)

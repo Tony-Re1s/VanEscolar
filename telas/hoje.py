@@ -21,15 +21,8 @@ if st.session_state.get("_mens_gerado") != (cid, inicio_mes(h)):
 
 alunos = repo.passageiros(cid)
 vans = repo.vans(cid)
+_ui.guia(c, "telas/hoje.py")
 if alunos.empty:
-    st.info("**Primeiros passos**\n\n1. Cadastre as **Vans** e quem dirige cada uma\n2. Cadastre as **Escolas**\n"
-            "3. Cadastre os **Alunos** (com a van) e os responsáveis — com o e-mail do Google, para os pais acessarem\n"
-            "4. Use **Rota e chamada** todo dia\n5. Em **Minha empresa**, coloque a chave Pix e o vencimento padrão; "
-            "as **Mensalidades** do mês são geradas sozinhas", icon=":material/rocket_launch:")
-    c1, c2, c3 = st.columns(3)
-    c1.page_link("telas/vans.py", label="Vans e motoristas", icon=":material/airport_shuttle:")
-    c2.page_link("telas/escolas.py", label="Escolas", icon=":material/school:")
-    c3.page_link("telas/alunos.py", label="Alunos", icon=":material/groups:")
     st.stop()
 
 mens = repo.mensalidades_mes(cid, h, h)

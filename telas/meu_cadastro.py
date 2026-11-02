@@ -7,6 +7,8 @@ from telas._ui import exigir_condutor
 
 c = exigir_condutor()
 st.title("Minha empresa")
+from telas import _ui as _ui_guia  # noqa: E402
+_ui_guia.guia(c, "telas/meu_cadastro.py")
 
 with st.form("empresa"):
     nome = st.text_input("Nome / nome do transporte *", value=c["nome"])

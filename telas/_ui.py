@@ -704,3 +704,61 @@ def instagram(texto: str = "Siga no Instagram", chave: str = "insta"):
     """Link para o Instagram do app (abre o app do Instagram no celular)."""
     st.link_button(f"{texto} @{INSTAGRAM}", INSTAGRAM_URL, icon=":material/photo_camera:", width="stretch",
                    key=chave)
+
+
+# ---------------------------------------------------------------- guia de primeiros passos (gestor novo)
+def _passos_guia(facil: bool) -> list[dict]:
+    return [
+        dict(chave="aluno", titulo="Cadastre o primeiro aluno",
+             sub="Só o nome e o WhatsApp de quem é responsável. Leva 10 segundos.",
+             pagina="telas/facil_alunos.py" if facil else "telas/alunos.py", botao="Cadastrar aluno",
+             dica="Digite o **nome do aluno** e o **WhatsApp do responsável** e toque em **Adicionar aluno**. "
+                  "Valor e vencimento você pode pôr agora ou depois."),
+        dict(chave="rota", titulo="Faça a primeira rota",
+             sub="Pode ser de teste: toque em Iniciar rota e veja como o pai é avisado.",
+             pagina="telas/facil_rota.py" if facil else "telas/chamada.py", botao="Abrir a rota",
+             dica="Toque em **Iniciar rota** e depois em **Estou a caminho**: o WhatsApp abre com a mensagem pronta "
+                  "para o responsável. É só isso no dia a dia!"),
+        dict(chave="pix", titulo="Coloque sua chave Pix",
+             sub="Ela vai junto na cobrança das mensalidades pelo WhatsApp.",
+             pagina="telas/meu_cadastro.py", botao="Colocar chave Pix",
+             dica="Preencha a **Chave Pix** e, se quiser, o **dia de vencimento** padrão — e toque em **Salvar**."),
+    ]
+
+
+def guia(c: dict, pagina_atual: str | None = None):
+    """Cartão 'Comece por aqui' com os próximos passos e um botão que leva direto para onde fazer.
+    Some sozinho quando tudo estiver feito, ou quando o gestor esconder."""
+    from core import repo
+    if not c or st.session_state.get("usuario", {}).get("bloqueado"):
+        return
+    prog = repo.progresso_inicio(c["id"])
+    if not prog or prog.get("fechado"):
+        return
+    emp = repo.empresa(c["id"]) or {}
+    passos = _passos_guia((emp.get("modo") or "completo") == "facil")
+    feitos = 1 + sum(1 for p in passos if prog.get(p["chave"]))
+    total = 1 + len(passos)
+    if feitos == total:
+        return
+    prox = next(p for p in passos if not prog.get(p["chave"]))
+    with st.container(border=True, key="card_guia"):
+        st.markdown(f"**🚐 Comece por aqui** <span class='ve-sub'>· {feitos} de {total} feitos</span>",
+                    unsafe_allow_html=True)
+        st.progress(feitos / total)
+        linhas = ["✅ Conta criada"] + [("✅ " if prog.get(p["chave"]) else ("👉 " if p is prox else "⚪ "))
+                                         + p["titulo"] for p in passos]
+        st.markdown("  \n".join(linhas))
+        if pagina_atual != prox["pagina"]:
+            st.caption(prox["sub"])
+            if st.button(prox["botao"] + " →", type="primary", key="guia_ir", width="stretch"):
+                try:
+                    st.switch_page(prox["pagina"])
+                except Exception:  # noqa: BLE001 — página fora do menu (ex.: pausa de férias)
+                    st.info("Abra essa tela pelo menu ao lado.")
+        else:
+            st.markdown(f"👇 {prox['dica']}")
+        if st.button("Esconder este guia", type="tertiary", key="guia_fechar"):
+            repo.fechar_guia(c["id"])
+            st.rerun()
+

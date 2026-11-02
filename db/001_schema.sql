@@ -566,3 +566,6 @@ create table if not exists fretes (
 );
 create index if not exists ix_fretes on fretes(condutor_id, data_ida);
 alter table lancamentos add column if not exists frete_id uuid references fretes(id) on delete set null;
+
+-- v26 — guia de primeiros passos (aparece até o gestor concluir ou esconder)
+alter table condutores add column if not exists guia_fechado boolean not null default false;

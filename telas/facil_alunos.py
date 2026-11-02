@@ -19,6 +19,7 @@ vans = repo.vans(cid)
 van_padrao = str(vans.iloc[0]["id"]) if not vans.empty else None
 
 st.title("Alunos")
+_ui.guia(c, "telas/facil_alunos.py")
 st.caption("Só o essencial. Quer endereço, escola ou contrato? Troque para o **modo completo** no topo — o que você "
            "cadastrar aqui aparece lá.")
 
