@@ -190,26 +190,42 @@ button[data-testid="stBaseButton-secondary"]:hover, .stLinkButton > a:hover {bor
 [data-testid="stElementContainer"]:has(iframe[title*="streamlit_js_eval"]) + * {margin-top: 0;}
 .ve-rodape {text-align:center; color: var(--ve-cinza); font-size:.85rem; margin-top: 2rem;}
 .ve-doc {background:#fff; border:1px solid #E1F0EF; border-radius:20px; padding: 6px 24px 18px; box-shadow: var(--sombra);}
-/* barra de abas no celular (fixa embaixo) */
+/* barra de abas no celular (fixa embaixo) — ícones e letras grandes, para usar com o dedo */
 .st-key-tabbar {display: none !important;}
 @media (max-width: 640px) {
   .st-key-tabbar {display: flex !important; position: fixed; left: 0; right: 0; bottom: 0; z-index: 999990;
     background: rgba(255,255,255,.97); backdrop-filter: blur(8px); border-top: 1px solid #E1F0EF;
-    box-shadow: 0 -6px 20px rgba(22,50,79,.08); padding: 4px 6px calc(4px + env(safe-area-inset-bottom)) !important;}
-  .st-key-tabbar [data-testid="stHorizontalBlock"] {flex-wrap: nowrap !important; gap: 2px !important; width: 100%;}
-  .st-key-tabbar [data-testid="stColumn"] {min-width: 0 !important; flex: 1 1 0 !important; width: auto !important;}
+    box-shadow: 0 -6px 20px rgba(22,50,79,.08);
+    padding: 6px max(22px, env(safe-area-inset-left)) calc(10px + env(safe-area-inset-bottom)) max(22px, env(safe-area-inset-right)) !important;}
+  .st-key-tabbar [data-testid="stHorizontalBlock"] {flex-wrap: nowrap !important; gap: 6px !important; width: 100%;
+    justify-content: space-between !important;}
+  .st-key-tabbar [data-testid="stColumn"] {min-width: 0 !important; flex: 1 1 0 !important; width: 0 !important;
+    max-width: none !important;}
+  .st-key-tabbar [data-testid="stColumn"] > div, .st-key-tabbar [data-testid="stColumn"] [data-testid="stVerticalBlock"],
+  .st-key-tabbar [data-testid="stElementContainer"], .st-key-tabbar [data-testid="stPageLink"],
+  .st-key-tabbar [data-testid="stMarkdown"], .st-key-tabbar [data-testid="stMarkdownContainer"] {width: 100% !important;}
   .st-key-tabbar [data-testid="stPageLink"] a, .ve-mais {display: flex !important; flex-direction: column !important;
-    align-items: center !important; justify-content: center; gap: 0 !important; padding: 6px 2px !important;
-    border-radius: 14px !important; background: transparent !important; min-height: 52px; cursor: pointer;}
-  .st-key-tabbar [data-testid="stPageLink"] a span, .st-key-tabbar [data-testid="stPageLink"] a p {
-    font-size: .72rem !important; font-weight: 700 !important; color: #3E5468 !important; margin: 0 !important;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
-  .st-key-tabbar [data-testid="stIconMaterial"] {font-size: 1.45rem !important; color: #3E5468 !important;}
-  .st-key-tabbar [data-testid="stPageLink"] a[aria-current="page"] {background: var(--tif-claro) !important;}
-  .st-key-tabbar [data-testid="stPageLink"] a[aria-current="page"] * {color: var(--tif-esc) !important;}
-  .ve-mais {font-size: .72rem; font-weight: 700; color: #3E5468; line-height: 1.2;}
-  .ve-mais .i {font-size: 1.35rem; line-height: 1.1;}
-  .block-container {padding-bottom: 6.5rem !important;}
+    align-items: center !important; justify-content: center !important; gap: 2px !important; padding: 6px 2px !important;
+    width: 100% !important; box-sizing: border-box; text-align: center;
+    border-radius: 16px !important; background: transparent !important; min-height: 64px; cursor: pointer;}
+  .st-key-tabbar [data-testid="stElementContainer"], .st-key-tabbar [data-testid="stPageLink"],
+  .st-key-tabbar [data-testid="stPageLink"] > div, .st-key-tabbar [data-testid="stMarkdown"],
+  .st-key-tabbar [data-testid="stMarkdownContainer"] {margin: 0 !important; padding: 0 !important;}
+  .st-key-tabbar [data-testid="stPageLink"] a, .ve-mais {height: 64px !important; min-height: 64px !important; margin: 0 !important;}
+  .st-key-tabbar [data-testid="stPageLink"] a > span:first-child, .ve-mais .i {margin: 0 !important; height: 32px !important;
+    width: auto !important; display: flex !important; align-items: center !important; justify-content: center !important;}
+  .st-key-tabbar [data-testid="stPageLink"] a > span:last-child {margin: 0 !important; height: 22px; display: flex;
+    align-items: center; justify-content: center; max-width: 100%;}
+  .st-key-tabbar [data-testid="stPageLink"] a p, .ve-mais .r {line-height: 22px !important;}
+  .st-key-tabbar [data-testid="stPageLink"] a span[data-testid="stIconMaterial"] {font-size: 1.9rem !important;
+    color: #3E5468 !important;}
+  .st-key-tabbar [data-testid="stPageLink"] a p, .ve-mais .r {font-size: .86rem !important; font-weight: 700 !important;
+    color: #3E5468 !important; margin: 0 !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+  .st-key-tab_on [data-testid="stPageLink"] a {background: var(--tif-claro) !important;}
+  .st-key-tabbar .st-key-tab_on [data-testid="stPageLink"] a p,
+  .st-key-tabbar .st-key-tab_on [data-testid="stPageLink"] a span[data-testid="stIconMaterial"] {color: var(--tif-esc) !important;}
+  .ve-mais .i {font-family: "Material Symbols Rounded"; font-size: 1.9rem; line-height: 1; color: #3E5468;}
+  .block-container {padding-bottom: 7.5rem !important;}
 }
 /* meta do mês */
 .ve-meta {background:#fff; border:1px solid #E1F0EF; border-radius:18px; padding:12px 16px; margin:.3rem 0 .8rem;
@@ -278,6 +294,11 @@ function fix(){
   if(!d.head.querySelector('link[rel~="icon"]')){const l=link("icon"); l.href=I; l.type="image/png";}
   const a=link("apple-touch-icon"); if(a.href!==I) a.href=I;
   meta("apple-mobile-web-app-title",T); meta("application-name",T); meta("theme-color","#14B8B0");
+  if(!d.getElementById("tb-sem-selo")){const s=d.createElement("style"); s.id="tb-sem-selo";
+    s.textContent='@media (max-width:640px){[data-testid="manage-app-button"],[class*="viewerBadge"],[class*="_profileContainer"]{display:none!important}}';
+    d.head.appendChild(s);}
+  if(P.innerWidth<=640){d.querySelectorAll("body *").forEach(e=>{try{const c=P.getComputedStyle(e);
+    if(c.position==="fixed"&&!e.querySelector("iframe")&&e.tagName!=="IFRAME"&&e.getBoundingClientRect().top>P.innerHeight*0.6) e.style.setProperty("display","none","important");}catch(x){}});}
 }
 fix();
 if(!P.__tbMarca){P.__tbMarca=new P.MutationObserver(()=>fix()); P.__tbMarca.observe(d.head,{subtree:true,childList:true,characterData:true,attributes:true});}
@@ -896,13 +917,17 @@ def importar_planilha(c: dict, van, dia_padrao: int, chave: str = "imp"):
 
 
 # ---------------------------------------------------------------- barra de abas (só aparece no celular)
-def barra_abas(itens: list[tuple[str, str, str]]):
-    """itens: (página, rótulo, ícone). O último botão, "Mais", abre o menu lateral com o resto."""
+def barra_abas(itens: list[tuple[str, str, str]], atual: str = ""):
+    """itens: (página, rótulo, ícone). O último botão, "Mais", abre o menu lateral com o resto.
+    `atual`: url_path da página aberta — a aba dela fica destacada (vazio = página inicial = 1ª aba)."""
+    from pathlib import Path
     with st.container(key="tabbar"):
         cols = st.columns(len(itens) + 1)
-        for col, (pag, rot, ic) in zip(cols, itens):
-            col.page_link(pag, label=rot, icon=ic)
-        cols[-1].markdown("<div class='ve-mais'><span class='i'>☰</span>Mais</div>", unsafe_allow_html=True)
+        for i, (col, (pag, rot, ic)) in enumerate(zip(cols, itens)):
+            with col.container(key="tab_on" if Path(pag).stem == atual or (not atual and i == 0) else f"tab_{i}"):
+                st.page_link(pag, label=rot, icon=ic)
+        cols[-1].markdown("<div class='ve-mais'><span class='i'>menu</span><span class='r'>Mais</span></div>",
+                          unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------------- meta do mês (recebido × previsto)
