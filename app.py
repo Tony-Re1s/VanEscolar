@@ -4,7 +4,18 @@ Rodar local:  streamlit run app.py
 """
 import importlib
 import sys
+import time
 from pathlib import Path
+
+_T0 = time.time()
+
+
+def _marca(etapa: str):
+    """Diagnóstico de lentidão: registra (nos logs do Streamlit Cloud) etapas que passam de 1,5 s."""
+    global _T0
+    if time.time() - _T0 > 1.5:
+        print(f"[lento] {etapa}: {time.time() - _T0:.1f}s", flush=True)
+    _T0 = time.time()
 
 import streamlit as st
 
@@ -26,9 +37,11 @@ def _recarregar_codigo_novo():
 
 
 _recarregar_codigo_novo()
+_marca("recarregar módulos")
 
 from core import auth, db  # noqa: E402
 from telas import _ui  # noqa: E402
+_marca("imports")
 
 _ST = Path(__file__).parent / "static"
 st.set_page_config(page_title="Turminha a Bordo", page_icon=str(_ST / "favicon.png"), layout="wide",
@@ -37,6 +50,7 @@ _ui.css()
 st.logo(str(_ST / "logo.svg"), size="large", icon_image=str(_ST / "van.svg"))
 
 db.migrar(db.banco_ativo(), db.versao_schema())
+_marca("css e migrar")
 if st.query_params.get("contrato"):     # link do contrato assinado (WhatsApp/e-mail) — baixa sem login
     st.navigation([st.Page("telas/contrato_link.py", title="Contrato", icon=":material/description:")],
                   position="hidden").run()
@@ -60,6 +74,7 @@ if st.query_params.get("origem") == "android" and _ui.app_android():   # aberto 
     _ui.marcar_android()
 
 usuario = auth.usuario_logado()
+_marca("login e perfil")
 if usuario is None:
     # visitante: página inicial (com o botão de entrar), privacidade e termos — sem login
     nav = st.navigation([st.Page("telas/inicio.py", title="Início", icon=":material/home:", default=True),
@@ -79,6 +94,7 @@ if not st.session_state.get("_comissao_ok"):     # 1x por sessão (e no máx. 1x
     except Exception:  # noqa: BLE001 — nunca atrapalha a entrada
         pass
 
+_marca("comissão do dia")
 cond = usuario.get("condutor")          # empresa da qual a pessoa é gestora
 vans_mot = usuario.get("vans_motorista") or []   # vans que a pessoa dirige (de qualquer empresa)
 if cond and not cond.get("ativo", True):
@@ -204,6 +220,7 @@ if VER_MOT:
         st.Page("telas/motorista_alunos.py", title="Meus alunos", icon=":material/groups:")],
         "Sobre": [PRIVACIDADE, TERMOS]}
 
+_marca("menu e suporte")
 nav = st.navigation(paginas, expanded=True)
 if VER_MOT:
     v1, v2 = st.columns([3, 1], vertical_alignment="center")
@@ -262,4 +279,6 @@ with st.sidebar:
     _ui.instagram(chave="insta_sidebar")
     st.button("Sair", icon=":material/logout:", on_click=auth.sair, width="stretch")
 
+_marca("barra lateral")
 nav.run()
+_marca(f"página {nav.title}")

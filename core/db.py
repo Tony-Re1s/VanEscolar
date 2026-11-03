@@ -83,9 +83,16 @@ def transacao():
 
 def _ler_uma_vez(sql: str, params: dict):
     # AUTOCOMMIT: leitura numa ida só (sem BEGIN/ROLLBACK em volta)
+    import time
+    t0 = time.time()
     with _conn().engine.connect().execution_options(isolation_level="AUTOCOMMIT") as c:
+        t1 = time.time()
         res = c.execute(text(sql), params)
-        return list(res.keys()), [tuple(r) for r in res.all()]
+        out = list(res.keys()), [tuple(r) for r in res.all()]
+    if time.time() - t0 > 1.5:      # diagnóstico de lentidão (aparece nos registros do Streamlit Cloud)
+        print(f"[lento] consulta {time.time() - t0:.1f}s (conectar {t1 - t0:.1f}s): {' '.join(sql.split())[:80]}",
+              flush=True)
+    return out
 
 
 def _ler(sql: str, params: dict):
