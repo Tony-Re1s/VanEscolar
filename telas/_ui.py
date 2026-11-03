@@ -130,6 +130,7 @@ button[data-testid="stBaseButton-secondary"]:hover, .stLinkButton > a:hover {bor
 [class*="st-key-card_falta"]:hover {opacity: .85;}
 .st-key-tela_ligada {display: none !important;}
 .st-key-marca_android {display: none !important;}
+.st-key-marca_ind {display: none !important;}
 .st-key-marca_aba {display: none !important;}
 /* rota do motorista: botões grandes e por cor — amarelo = mensagem, verde = embarcou/entregue,
    vermelho = faltou, azul = caminho. Lê de relance, toca sem errar. */
@@ -321,6 +322,7 @@ button[data-testid="stBaseButton-secondary"]:hover, .stLinkButton > a:hover {bor
 [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"]:has(> [data-testid="stMarkdown"] style),
 [data-testid="stVerticalBlock"] > [data-testid="stLayoutWrapper"]:has(> .st-key-marca_aba),
 [data-testid="stVerticalBlock"] > [data-testid="stLayoutWrapper"]:has(> .st-key-marca_android),
+[data-testid="stVerticalBlock"] > [data-testid="stLayoutWrapper"]:has(> .st-key-marca_ind),
 [data-testid="stVerticalBlock"] > [data-testid="stLayoutWrapper"]:has(> .st-key-tabbar) {display: contents !important;}
 /* meta do mês */
 .ve-meta {background:#fff; border:1px solid #E1F0EF; border-radius:18px; padding:12px 16px; margin:.3rem 0 .8rem;
@@ -747,6 +749,28 @@ def marcar_android():
     with st.container(key="marca_android"):
         st.html("<script>document.cookie='turminha_android=1; path=/; SameSite=Lax; Secure';</script>",
                 unsafe_allow_javascript=True)
+
+
+COOKIE_IND = "turminha_ind"
+
+
+def lembrar_indicacao(codigo: str | None):
+    """Guarda o código do link de indicação num cookie do aparelho (30 dias), para ele sobreviver ao login com o
+    Google (que recomeça a sessão e perde o ?indicacao=). Vale o 1º link: se já tem cookie, não troca.
+    Com codigo=None, apaga o cookie (conta criada)."""
+    if codigo and st.context.cookies.get(COOKIE_IND):
+        return
+    valor = f"{codigo}; max-age=2592000" if codigo else "; max-age=0"
+    with st.container(key="marca_ind"):
+        st.html(f"<script>document.cookie='{COOKIE_IND}={valor}; path=/; SameSite=Lax; Secure';</script>",
+                unsafe_allow_javascript=True)
+
+
+def indicacao_guardada() -> str:
+    """Código de indicação desta pessoa: o guardado no cookie (1º link aberto) ou o do link desta sessão."""
+    import re
+    cod = st.context.cookies.get(COOKIE_IND) or st.session_state.get("_indicacao") or ""   # vale o 1º link
+    return re.sub(r"[^A-Z0-9]", "", str(cod).upper())[:20]
 
 
 def aviso_assinar_pelo_site():

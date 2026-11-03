@@ -585,3 +585,34 @@ create index if not exists ix_vans_documentos on vans_documentos(condutor_id, ve
 
 -- v28 — despesa a pagar (conta lançada antes de pagar; só entra no resultado quando paga)
 alter table lancamentos add column if not exists pago boolean not null default true;
+
+-- v29 — Programa Parceiros Turminha: parceiro (quem indica sem usar o app no dia a dia) e o bônus por pagamento
+alter table condutores add column if not exists parceiro boolean not null default false;
+alter table condutores add column if not exists parceiro_desde date;
+alter table condutores add column if not exists parceiro_contrato jsonb;   -- aceite eletrônico (quem, quando, IP…)
+create table if not exists bonus_parceiro (
+  id           uuid primary key default gen_random_uuid(),
+  parceiro_id  uuid not null references condutores(id) on delete cascade,
+  cliente_id   uuid references condutores(id) on delete set null,
+  ref          text not null unique,               -- id do pagamento (não gera bônus 2x)
+  pago_cliente date not null,                      -- quando o indicado pagou
+  meses        int not null default 1,
+  base         numeric(10,2) not null,             -- quanto o indicado pagou
+  tipo         text not null,                      -- primeira | mensal | periodo | renovacao
+  valor        numeric(10,2) not null,
+  libera_em    date not null,                      -- 7 dias depois do pagamento (arrependimento/estorno)
+  pago_em      date,                               -- quando o Tony pagou o parceiro (Pix)
+  estornado    boolean not null default false,
+  criado_em    timestamptz not null default now()
+);
+create index if not exists ix_bonus_parceiro on bonus_parceiro(parceiro_id, libera_em);
+-- Exclusivo: faixas da comissão passam para 30 pagantes → 10% e 70 → 20% (decisão de 03/11/2026; só 1 vez)
+do $$
+begin
+  if not exists (select 1 from config where chave = 'mig_v29_faixas') then
+    update config set valor = jsonb_set(coalesce(valor, '{}'::jsonb), '{faixas}',
+                                        '[{"min": 30, "pct": 10}, {"min": 70, "pct": 20}]'::jsonb)
+     where chave = 'comissao';
+    insert into config (chave, valor) values ('mig_v29_faixas', '{"ok": true}') on conflict (chave) do nothing;
+  end if;
+end $$;

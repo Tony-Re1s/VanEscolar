@@ -244,17 +244,18 @@ def sincronizar(api: MercadoPago, engine, hoje: date, cid: str | None = None) ->
             res["erros"].append(f"{emp['nome']}: {e}")
             continue
         with engine.begin() as s:
-            novos = s.execute(text("""select id, assinatura from asaas_pagamentos
+            novos = s.execute(text("""select id, assinatura, valor from asaas_pagamentos
                                       where condutor_id = cast(:cid as uuid) and gateway = 'mercadopago'
                                         and not processado and status = 'RECEIVED' order by vencimento"""),
                               dict(cid=ecid)).all()
-            for pid, assin in novos:
+            for pid, assin, valor_pago in novos:
                 atual = dict(s.execute(text("select * from condutores where id = cast(:cid as uuid)"),
                                        dict(cid=ecid)).mappings().first())
                 ped = atual.get("pedido")
                 ok = isinstance(ped, dict) and ped.get("gateway") == "mercadopago" and (
                     (assin and ped.get("mp_assinatura") == assin) or ped.get("mp_ref") == pid.split(":", 1)[1])
-                cobranca.aplicar_pagamento(s, atual, hoje, ped if ok else None)
+                cobranca.aplicar_pagamento(s, atual, hoje, ped if ok else None,
+                                           float(valor_pago) if valor_pago is not None else None, pid)
                 s.execute(text("update asaas_pagamentos set processado = true where id = :i"), dict(i=pid))
                 res["pagamentos_novos"] += 1
             atual = dict(s.execute(text("select * from condutores where id = cast(:cid as uuid)"),

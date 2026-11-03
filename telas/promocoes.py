@@ -6,7 +6,7 @@ import pandas as pd
 import streamlit as st
 
 from core import planos as pl, repo
-from core.fmt import data_br, hoje
+from core.fmt import brl, data_br, hoje
 from telas import _ui
 
 if not st.session_state["usuario"].get("admin"):
@@ -19,7 +19,7 @@ st.caption("Regra: entre cupom, campanha, Passageiro VIP e anual, o cliente paga
 
 cat = pl.catalogo()
 abas = st.tabs(["Planos e preços", "Cupons", "Campanhas", "Passageiro VIP", "Degustação", "Indicação",
-               "Divulgadores", "Laboratório", "Fidelidade"])
+               "Divulgadores", "Parceiros", "Laboratório", "Fidelidade"])
 PLANOS = list(cat)
 
 
@@ -363,8 +363,8 @@ with abas[6]:
     from core import comissao
     cfg = comissao.regra()
     st.markdown("Os parceiros **Exclusivos** divulgam o app e ganham comissão por **faixas** de indicados **pagando "
-                "ao mesmo tempo** (ex.: 50 → 10%, 100 → 20%). A **maior faixa alcançada fica** (chegou a 100 e caiu "
-                "para 80 → continua 20%), mas a % é sempre sobre o que os indicados **ativos** pagam no mês. "
+                "ao mesmo tempo** (ex.: 30 → 10%, 70 → 20%). A **maior faixa alcançada fica** (chegou a 70 e caiu "
+                "para 60 → continua 20%), mas a % é sempre sobre o que os indicados **ativos** pagam no mês. "
                 "Exclusivo **não** ganha os meses grátis da indicação. Você paga por Pix e marca como pago aqui.")
 
     def _editor_faixas(faixas, chave):
@@ -466,6 +466,98 @@ with abas[6]:
 
 # ================================================================ laboratório
 with abas[7]:
+    from core import parceiro as pc
+    st.markdown("**Parceiros Turminha**: quem indica o app sem usar no dia a dia (ex.: vendedor de vans). Ganha o "
+                "**Bônus Parceiro** por pagamento do indicado: mensal = R$ 10 na 1ª paga + 20% das seguintes; "
+                "trimestral/semestral/anual = 1 mensalidade + 20% dos outros meses; renovação = 20%. Liberado 7 dias "
+                f"depois do pagamento e pago por Pix até o dia 10 do mês seguinte, até {data_br(pc.FIM)}.")
+    pdf = pc.parceiros(HOJE)
+    _ui.kpis([("A pagar agora", brl(float(pdf["a_pagar"].sum()) if len(pdf) else 0),
+               f"{int((pdf['a_pagar'] > 0).sum()) if len(pdf) else 0} parceiro(s)"),
+              ("Assinantes via parceiros", str(int(pdf["ativos"].sum()) if len(pdf) else 0)),
+              ("Pago até hoje", brl(float(pdf["pago"].sum()) if len(pdf) else 0))])
+    if pdf.empty:
+        st.caption("Nenhum parceiro ainda.")
+    for r in pdf.to_dict("records"):
+        with st.container(border=True, key=f"card_parc_{r['id']}"):
+            st.markdown(f"**{_ui.esc(r['nome'])}** <span class='ve-sub'>· {int(r['ativos'])} ativo(s) de "
+                        f"{int(r['indicados'])} · código {_ui.esc(r['codigo_indicacao'] or '—')} · Pix: "
+                        f"{_ui.esc(r['chave_pix'] or 'não informado')}"
+                        f"{'' if r['assinou'] else ' · ⚠️ ainda não assinou o contrato'}</span>",
+                        unsafe_allow_html=True)
+            x, y = st.container(key=f"linha_parc_{r['id']}").columns([3, 2], vertical_alignment="center")
+            x.markdown(_ui.sem_formula(f"A pagar: **{brl(float(r['a_pagar']))}**"
+                       + (f" <span class='ve-sub'>· {brl(float(r['aguardando']))} aguardando 7 dias</span>"
+                          if float(r["aguardando"]) else "")), unsafe_allow_html=True)
+            if y.button("Marquei como pago", key=f"pago_parc_{r['id']}", width="stretch", icon=":material/check:",
+                        disabled=float(r["a_pagar"]) <= 0):
+                total = pc.marcar_pago(r["id"], HOJE)
+                st.toast(f"{r['nome']}: {brl(total)} marcados como pagos.")
+                st.rerun()
+            with st.popover("Extrato e encerrar", icon=":material/receipt_long:"):
+                ext = pc.extrato(r["id"])
+                for e in ext.to_dict("records"):
+                    sit = ("estornado" if e["estornado"] else f"pago {data_br(e['pago_em'])}" if e["pago_em"]
+                           else f"libera {data_br(e['libera_em'])}")
+                    a1, b1 = st.columns([4, 1], vertical_alignment="center")
+                    a1.markdown(_ui.sem_formula(f"{brl(float(e['valor']))} · {_ui.esc(e['cliente'] or '—')} · {sit}<br>"
+                                f"<span class='ve-sub'>{data_br(e['pago_cliente'])} · "
+                                f"{_ui.esc(pc.TIPOS.get(e['tipo'], e['tipo']))} · pagou {brl(float(e['base']))}</span>"),
+                                unsafe_allow_html=True)
+                    if not e["pago_em"] and not e["estornado"] and b1.button("Estornar", key=f"est_{e['id']}",
+                                                                             type="tertiary"):
+                        pc.estornar(e["id"])
+                        st.rerun()
+                if ext.empty:
+                    st.caption("Sem bônus ainda.")
+                st.divider()
+                if st.button("Encerrar parceria", key=f"enc_parc_{r['id']}", icon=":material/link_off:",
+                             help="Para de gerar bônus novos e o acesso grátis acaba. Os bônus já gerados continuam "
+                                  "aqui para pagar."):
+                    pc.encerrar_parceiro(r["id"])
+                    st.toast("Parceria encerrada.")
+                    st.rerun()
+
+    with st.expander("Tornar uma empresa parceira"):
+        emps = repo.empresas_todas()
+        emps = emps[~emps["parceiro"].fillna(False).astype(bool)] if len(emps) else emps
+        if emps.empty:
+            st.caption("Nenhuma empresa para escolher.")
+        else:
+            with st.form("novo_parceiro"):
+                op = {str(i): f"{n} — {e}" for i, n, e in zip(emps["id"], emps["nome"], emps["email"])}
+                escolha = st.selectbox("Empresa (a pessoa entra no app com o Google e cria a conta antes)", list(op),
+                                       format_func=op.get)
+                planos_ok = [p for p in ("pro", "basico") if p in cat] or list(cat)
+                plano_p = st.selectbox("Plano liberado", planos_ok, format_func=lambda p: cat[p]["nome"])
+                cod_p = st.text_input("Código do link (opcional)", placeholder="ex.: ALEXVANS",
+                                      help="Só letras e números. Vazio = mantém o código que a conta já tem.")
+                if st.form_submit_button("Tornar parceiro", type="primary"):
+                    import re
+                    cod_p = re.sub(r"[^A-Z0-9]", "", cod_p.upper())[:20]
+                    if cod_p and not pc.codigo_livre(cod_p, escolha):
+                        st.error("Esse código já é de outra conta. Escolha outro.")
+                    else:
+                        pc.tornar_parceiro(escolha, plano_p, cod_p or None, HOJE)
+                        st.toast("Pronto: agora é parceiro. No próximo acesso ele assina o contrato pelo app.")
+                        st.rerun()
+
+    with st.expander("Vincular indicação na mão (até 30 dias)"):
+        sem = pc.sem_indicacao(30)
+        if sem.empty or pdf.empty:
+            st.caption("Nenhuma conta nova sem indicação (ou nenhum parceiro).")
+        else:
+            with st.form("vincular_ind"):
+                op_c = {str(i): f"{n} (desde {data_br(d)})" for i, n, d in zip(sem["id"], sem["nome"], sem["desde"])}
+                cli = st.selectbox("Conta que entrou sem o link", list(op_c), format_func=op_c.get)
+                op_p = {str(i): n for i, n in zip(pdf["id"], pdf["nome"])}
+                par = st.selectbox("Indicada por", list(op_p), format_func=op_p.get)
+                if st.form_submit_button("Vincular"):
+                    pc.vincular(cli, par)
+                    st.toast("Indicação vinculada.")
+                    st.rerun()
+
+with abas[8]:
     st.markdown("Recurso **em teste** aparece só para os **Exclusivos** (e para você). Quando estiver bom, libere "
                 "para **todos** os planos. Os outros assinantes veem um aviso de \"chega em breve\".")
     lab = dict(pl.config("laboratorio") or {})
@@ -481,7 +573,7 @@ with abas[7]:
             st.rerun()
 
 # ================================================================ fidelização
-with abas[8]:
+with abas[9]:
     fd = pl.config("fidelidade")
     st.markdown("A **pausa de férias** só aparece quando o gestor clica em **Cancelar assinatura** ou quando o plano "
                 "**vence sem pagar** — nunca como opção solta. Na pausa ele paga o valor reduzido, mantém dados e "

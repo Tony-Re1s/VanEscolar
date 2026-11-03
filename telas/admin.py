@@ -49,7 +49,7 @@ cat = pl.catalogo()
 # situação de cada empresa
 SIT = {"pago": ("pago", "Em dia"), "vence": ("vence_logo", "Vence logo"), "vencido": ("vencido", "Vencido"),
        "teste": ("embarcou", "Degustação"), "acabou": ("vencido", "Degustação acabou"),
-       "cortesia": ("desembarcou", "Exclusivo"),
+       "cortesia": ("desembarcou", "Exclusivo"), "parceiro": ("desembarcou", "Parceiro"),
        "sem_plano": ("vencido", "Sem plano"), "off": ("faltou", "Desativada"),
        "pausa": ("aviso", "Pausa de férias")}
 
@@ -65,7 +65,7 @@ def _situacao(r) -> str:
     if tipo in ("teste", "cortesia"):
         if ate and ate < HOJE:
             return "acabou"
-        return tipo
+        return "parceiro" if tipo == "cortesia" and r.get("parceiro") else tipo
     if ate and ate < HOJE:
         return "vencido"
     if pl.em_pausa(r, HOJE):
@@ -105,13 +105,14 @@ if pedidos:
 
 # filtros
 FILTROS = {"Todos": None, "Pedidos": "pedido", "Vencem logo": {"vence"}, "Vencidos": {"vencido"}, "Pagantes": {"pago", "vence"},
-           "Degustação": {"teste", "acabou"}, "Exclusivo": {"cortesia"},
+           "Degustação": {"teste", "acabou"}, "Exclusivo": {"cortesia"}, "Parceiros": {"parceiro"},
            "Bloqueados": {"vencido", "acabou", "sem_plano"}, "Desativadas": {"off"}}
 a, b = st.columns([3, 2])
 filtro = a.segmented_control("Mostrar", list(FILTROS), default="Todos", label_visibility="collapsed") or "Todos"
 busca = b.text_input("Buscar", placeholder="Buscar nome ou e-mail", label_visibility="collapsed").strip().lower()
 
-ORDEM_SIT = {"vencido": 0, "acabou": 1, "sem_plano": 2, "vence": 3, "teste": 4, "pago": 5, "cortesia": 6, "off": 7}
+ORDEM_SIT = {"vencido": 0, "acabou": 1, "sem_plano": 2, "vence": 3, "teste": 4, "pago": 5, "cortesia": 6, "parceiro": 6,
+             "off": 7}
 sel = [r for r in linhas
        if (FILTROS[filtro] is None or (FILTROS[filtro] == "pedido" and r.get("pedido"))
            or (FILTROS[filtro] != "pedido" and r["sit"] in FILTROS[filtro]))
@@ -205,7 +206,7 @@ for r in sel:
             c1.link_button("Cobrar" if r["sit"] in ("vence", "vencido") else
                            "Convidar a assinar" if r["sit"] in ("teste", "acabou") else "Oferecer plano", lk,
                            icon=":material/chat:", width="stretch")
-        if tem_plano and r["ativo"] and r["sit"] != "cortesia":
+        if tem_plano and r["ativo"] and r["sit"] not in ("cortesia", "parceiro"):
             anual = r.get("periodo") == "anual"
             if c2.button("Pagou: +12 meses" if anual else "Pagou: +1 mês", key=f"mes_{r['id']}",
                          icon=":material/payments:", width="stretch",
@@ -242,7 +243,7 @@ for r in sel:
                                     help="Só para Degustação — conta a partir de hoje.")
                 validade = st.date_input("Válido até (Pago e Exclusivo)", value=r["plano_ate"] or somar_meses(HOJE, 1),
                                          format="DD/MM/YYYY")
-                sem_prazo = st.checkbox("Exclusivo sem prazo", value=r["sit"] == "cortesia" and not r["plano_ate"])
+                sem_prazo = st.checkbox("Exclusivo sem prazo", value=r["sit"] in ("cortesia", "parceiro") and not r["plano_ate"])
                 combinado = st.number_input("Preço combinado (R$/mês)", min_value=0.0, step=1.0, format="%.2f",
                                             value=float(r.get("preco_combinado") or 0),
                                             help="Preço negociado só com esta empresa. 0 = usa o preço normal "

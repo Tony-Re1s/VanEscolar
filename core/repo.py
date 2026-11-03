@@ -66,7 +66,7 @@ def empresas_todas() -> pd.DataFrame:
     return db.ao_vivo("""
         select c.id, c.nome, u.email, c.telefone, c.ativo, c.criado_em::date as desde, c.plano, c.plano_ate, c.plano_tipo, c.periodo, c.preco_mensal, c.desconto_origem,
                c.desconto_ate, c.preco_combinado, c.vip, c.pedido, c.meses_gratis, c.indicacoes_pagas,
-               c.asaas_assinatura, c.mp_assinatura, c.gateway, c.pausa_ate, c.cancelado_em, c.perdeu_vip, c.dados_apagados_em,
+               c.asaas_assinatura, c.mp_assinatura, c.gateway, c.pausa_ate, c.cancelado_em, c.perdeu_vip, c.dados_apagados_em, c.parceiro,
                (select count(*) from vans v where v.condutor_id = c.id and v.ativo) as vans,
                (select count(*) from passageiros p where p.condutor_id = c.id and p.ativo) as alunos,
                u.ultimo_acesso
@@ -845,7 +845,7 @@ def empresa_por_codigo(codigo: str) -> dict | None:
     codigo = (codigo or "").strip().upper()
     if not codigo:
         return None
-    return db.um("select id, nome from condutores where codigo_indicacao = :c and ativo", c=codigo)
+    return db.um("select id, nome, parceiro from condutores where codigo_indicacao = :c and ativo", c=codigo)
 
 
 def aplicar_indicacao(cid, indicador_id, hoje: date) -> tuple[str, date] | None:

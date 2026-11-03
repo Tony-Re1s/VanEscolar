@@ -240,17 +240,18 @@ def sincronizar(api: Asaas, engine, hoje: date, cid: str | None = None) -> dict:
             continue
         with engine.begin() as s:
             _guardar_pagamentos(s, str(emp["id"]), emp["asaas_assinatura"], pags)
-            novos = s.execute(text("""select id from asaas_pagamentos
+            novos = s.execute(text("""select id, valor from asaas_pagamentos
                                       where condutor_id = cast(:cid as uuid) and not processado
                                         and status in ('RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH')
-                                      order by vencimento"""), dict(cid=str(emp["id"]))).scalars().all()
-            for pid in novos:
+                                      order by vencimento"""), dict(cid=str(emp["id"]))).all()
+            for pid, valor_pago in novos:
                 atual = dict(s.execute(text("select * from condutores where id = cast(:cid as uuid)"),
                                        dict(cid=str(emp["id"]))).mappings().first())
                 ped = atual.get("pedido")
                 usar_pedido = ped if isinstance(ped, dict) and ped.get("asaas_assinatura") == emp["asaas_assinatura"] \
                     else None
-                cobranca.aplicar_pagamento(s, atual, hoje, usar_pedido)
+                cobranca.aplicar_pagamento(s, atual, hoje, usar_pedido,
+                                           float(valor_pago) if valor_pago is not None else None, pid)
                 s.execute(text("update asaas_pagamentos set processado = true where id = :i"), dict(i=pid))
                 res["pagamentos_novos"] += 1
             # fim de promoção / preço atualizado pelo admin → próximas cobranças com o valor novo

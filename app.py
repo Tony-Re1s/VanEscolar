@@ -13,7 +13,7 @@ def _recarregar_codigo_novo():
     """O Streamlit Cloud atualiza os arquivos a cada publicação, mas guarda na memória os módulos já importados
     (core/*, telas/_ui). Recarrega os que mudaram desde a última execução — assim não precisa de Reboot."""
     for nome in ("core.fmt", "core.db", "core.planos", "core.contrato", "core.cobranca", "core.asaas", "core.mercadopago", "core.repo", "core.importar",
-                 "core.cobranca_pais", "core.comissao", "core.demo", "core.suporte", "core.mensagens",
+                 "core.cobranca_pais", "core.comissao", "core.contrato_parceiro", "core.parceiro", "core.demo", "core.suporte", "core.mensagens",
                  "core.backup", "core.auth", "core.rota", "telas._ui"):
         m = sys.modules.get(nome)
         arq = getattr(m, "__file__", None)
@@ -52,6 +52,9 @@ TERMOS = st.Page("telas/termos.py", title="Termos de uso", icon=":material/gavel
 
 if st.query_params.get("indicacao"):          # link "Indique e ganhe": guarda o código para o cadastro
     st.session_state["_indicacao"] = str(st.query_params["indicacao"]).strip().upper()[:20]
+    _ui.lembrar_indicacao(_ui.indicacao_guardada())   # cookie: sobrevive ao login com o Google
+if st.session_state.pop("_apagar_cookie_ind", False):
+    _ui.lembrar_indicacao(None)
 
 if st.query_params.get("origem") == "android" and _ui.app_android():   # aberto pelo app da Play Store
     _ui.marcar_android()
@@ -178,7 +181,12 @@ if usuario.get("admin"):
 from core import planos as _pl  # noqa: E402
 from core.fmt import hoje as _hj  # noqa: E402
 DIVULGADOR = st.Page("telas/divulgador.py", title="Canal do divulgador", icon=":material/campaign:")
-if cond and not usuario.get("bloqueado") and _pl.eh_exclusivo(cond, _hj()):
+PARCEIRO = st.Page("telas/parceiro.py", title="Parceiros Turminha", icon=":material/handshake:", url_path="parceiro")
+if cond and not usuario.get("bloqueado") and cond.get("parceiro"):
+    grupo = "Conta" if "Conta" in paginas else "Cadastros"
+    # parceiro: no lugar do "Indique e ganhe", o painel do Bônus Parceiro (sem o laboratório do Exclusivo)
+    paginas[grupo] = [p for p in paginas.get(grupo, []) if p.title != "Indique e ganhe"] + [PARCEIRO]
+elif cond and not usuario.get("bloqueado") and _pl.eh_exclusivo(cond, _hj()):
     grupo = "Conta" if "Conta" in paginas else "Cadastros"
     # no lugar do "Indique e ganhe": o prêmio do Exclusivo é a comissão (não ganha meses grátis)
     paginas[grupo] = [p for p in paginas.get(grupo, []) if p.title != "Indique e ganhe"] + [DIVULGADOR]

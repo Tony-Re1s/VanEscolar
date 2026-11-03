@@ -83,7 +83,7 @@ if p is None:
 elif tipo == "teste":
     sub = "degustação até " + data_br(venc)
 elif tipo == "cortesia":
-    sub = "exclusivo" + (" até " + data_br(venc) if venc else "")
+    sub = ("parceiro" if emp.get("parceiro") else "exclusivo") + (" até " + data_br(venc) if venc else "")
 else:
     sub = f"{pl.brl(vigente)}/mês" + (f" · até {data_br(venc)}" if venc else "")
 GRATIS = pl.no_gratis(emp, HOJE, cat)        # sem plano em vigor, mas no Grátis (só financeiro)
@@ -93,7 +93,7 @@ if p is None and GRATIS:
 elif p is None:
     situacao = "Bloqueado"
 else:
-    situacao = {"teste": "Degustação", "cortesia": "Exclusivo"}.get(tipo, "Ativo")
+    situacao = {"teste": "Degustação", "cortesia": "Parceiro" if emp.get("parceiro") else "Exclusivo"}.get(tipo, "Ativo")
 _ui.kpis([("Plano atual", p["nome"] if p else ("Grátis" if GRATIS else "Nenhum"), sub),
           ("Vans", _uso(uso['vans'], p['vans'] if p else (pl.limite_gratis("vans") if GRATIS else None))),
           ("Alunos ativos", _uso(uso['alunos'], p['alunos'] if p else (LIM_G if GRATIS else None))),

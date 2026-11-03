@@ -3,6 +3,7 @@ import streamlit as st
 
 from core import auth, planos as pl, repo
 from core.fmt import data_br, hoje
+from telas import _ui
 
 u = st.session_state["usuario"]
 
@@ -22,12 +23,26 @@ if not (aberto or u.get("admin") or u["email"] in permitidos):
 st.subheader("Criar minha empresa de transporte")
 st.caption("Você vira o **gestor**: cadastra as vans, os motoristas, os alunos e cuida das mensalidades. "
            "Leva 30 segundos — o resto você completa depois.")
+# link de parceiro ou Exclusivo: a indicação já vem marcada (o código fica guardado no aparelho e sobrevive ao login)
+cod_link = _ui.indicacao_guardada()
+ind_link = repo.empresa_por_codigo(cod_link) if cod_link else None
+travado = bool(ind_link) and (ind_link.get("parceiro") or pl.eh_exclusivo(repo.empresa(ind_link["id"]) or {}, hoje()))
+if travado:
+    cfg_ind = pl.config("indicacao")
+    presente = (f": ganhou <b>{int(cfg_ind.get('dias_degustacao') or 30)} dias do plano "
+                f"{pl.catalogo().get(cfg_ind.get('plano_degustacao'), {}).get('nome', 'Pro')}</b> grátis"
+                if cfg_ind.get("ativo") else "")
+    st.markdown(f"<div class='ve-faixa'>🎁 Você foi indicado por <b>{_ui.esc(ind_link['nome'])}</b>{presente}.</div>",
+                unsafe_allow_html=True)
 with st.form("nova_empresa"):
     nome = st.text_input("Seu nome ou nome do transporte *", value=u.get("nome") or "")
     telefone = st.text_input("WhatsApp", placeholder="(11) 99999-9999")
-    cod_ind = st.text_input("Código de indicação (opcional)", value=st.session_state.get("_indicacao") or "",
-                            placeholder="Se um colega te indicou, digite o código dele",
-                            help="Quem é indicado ganha uns dias de plano pago de presente.")
+    if travado:
+        cod_ind = cod_link
+    else:
+        cod_ind = st.text_input("Código de indicação (opcional)", value=cod_link,
+                                placeholder="Se um colega te indicou, digite o código dele",
+                                help="Quem é indicado ganha uns dias de plano pago de presente.")
     dirige = st.checkbox("Eu também dirijo uma van", value=True,
                          help="Já cria a 'Van 1' com você de motorista. Dá para mudar em Vans e motoristas.")
     ok = st.form_submit_button("Criar", type="primary", width="stretch")
@@ -55,5 +70,6 @@ if ok:
             st.session_state["_boas_vindas_msg"] = (f"Conta criada! Você ganhou {(deg[1] - hoje()).days} dias do plano "
                                                    f"{pl.catalogo()[deg[0]]['nome']} de graça, até {data_br(deg[1])}. 🎉")
     st.session_state.pop("_indicacao", None)
+    st.session_state["_apagar_cookie_ind"] = True
     auth.perfil(u)
     st.rerun()

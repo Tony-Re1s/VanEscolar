@@ -34,7 +34,7 @@ CONFIG_PADRAO = {
     "indicacao": {"ativo": True, "meta": 10, "premio_meses": 2, "plano_degustacao": "pro", "dias_degustacao": 30},
     "degustacao": {"ativo": True, "plano": "pro", "dias": 30},
     "comissao": {"ativo": True, "ate": "2027-12-31",
-                 "faixas": [{"min": 50, "pct": 10}, {"min": 100, "pct": 20}]},
+                 "faixas": [{"min": 30, "pct": 10}, {"min": 70, "pct": 20}]},
     "laboratorio": {},
     # quem não assina (ou a degustação acabou) cai no Grátis: só a parte financeira, até N alunos ativos
     "gratis": {"ativo": True, "alunos": 10, "vans": 1},
@@ -319,7 +319,9 @@ def texto_divulgacao(modelo: str, valores: dict) -> str:
 
 
 def eh_exclusivo(empresa: dict, hoje: date, cat: dict | None = None) -> bool:
-    return bool(empresa) and tipo_da_empresa(empresa) == "cortesia" and liberada(empresa, hoje, cat)
+    """Exclusivo = liberado sem cobrar (cortesia) e NÃO parceiro (o parceiro tem o painel dele, sem laboratório)."""
+    return (bool(empresa) and tipo_da_empresa(empresa) == "cortesia" and not empresa.get("parceiro")
+            and liberada(empresa, hoje, cat))
 
 
 def liberado(empresa: dict | None, chave: str, hoje: date, admin: bool = False) -> bool:

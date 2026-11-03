@@ -127,7 +127,8 @@ def divulgadores(hoje: date) -> pd.DataFrame:
                               (select coalesce(sum(valor), 0) from comissoes k
                                 where k.condutor_id = c.id and k.pago_em is not null) as ja_pago
                        from condutores c
-                       where c.plano_tipo = 'cortesia' or exists (select 1 from comissoes k where k.condutor_id = c.id)
+                       where c.plano_tipo = 'cortesia' and not c.parceiro
+                          or exists (select 1 from comissoes k where k.condutor_id = c.id)
                        order by c.nome""")
     if df.empty:
         return df
@@ -174,9 +175,9 @@ def atualizar_todos(hoje: date) -> bool:
                  on conflict (chave) do update set valor = excluded.valor""", v=f'{{"dia": "{hoje.isoformat()}"}}')
     if not regra()["ativo"]:
         return True
-    ids = db.ao_vivo("select id from condutores where plano_tipo = 'cortesia' and comissao_desde is not null "
-                     "or plano_tipo = 'cortesia' and exists (select 1 from condutores x where x.indicado_por = "
-                     "condutores.id)")
+    ids = db.ao_vivo("select id from condutores where plano_tipo = 'cortesia' and not parceiro and ("
+                     "comissao_desde is not null or exists (select 1 from condutores x where x.indicado_por = "
+                     "condutores.id))")
     for i in ids["id"] if len(ids) else []:
         situacao(i, hoje)
     return True

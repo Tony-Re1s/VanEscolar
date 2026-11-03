@@ -32,9 +32,11 @@ def contar_indicacao(s, emp: dict):
                        where id = cast(:i as uuid)"""), dict(i=str(emp["indicado_por"])))
 
 
-def aplicar_pagamento(s, emp: dict, hoje: date, pedido: dict | None = None) -> date:
+def aplicar_pagamento(s, emp: dict, hoje: date, pedido: dict | None = None, valor: float | None = None,
+                      ref: str | None = None) -> date:
     """Com `pedido`: aplica o plano/preço pedido. Sem: renova o plano atual (1 mês, ou 12 no anual).
-    Conta a indicação no 1º pagamento. Devolve a nova data de validade."""
+    Conta a indicação no 1º pagamento e gera o Bônus Parceiro (se quem indicou é parceiro).
+    `valor`/`ref`: quanto foi pago e o id do pagamento (sem eles, usa o preço do pedido/plano). Devolve a validade."""
     plano = (pedido or {}).get("plano") or emp["plano"]
     periodo = (pedido or {}).get("periodo") or emp.get("periodo") or "mensal"
     meses = 12 if periodo == "anual" else 1
@@ -68,4 +70,13 @@ def aplicar_pagamento(s, emp: dict, hoje: date, pedido: dict | None = None) -> d
         s.execute(text("""update condutores set plano_tipo='pago', plano_ate=:ate, periodo=:periodo, cancelado_em=null
                           where id = cast(:cid as uuid)"""), dict(ate=ate, periodo=periodo, cid=cid))
     contar_indicacao(s, emp)
+    if valor is None:
+        if pedido:
+            valor = pedido.get("total") if periodo == "anual" else pedido.get("preco")
+        else:
+            mensal = emp.get("preco_combinado") or emp.get("preco_mensal")
+            valor = float(mensal) * meses if mensal else None
+    from core import parceiro
+    parceiro.registrar_bonus(s, emp, hoje, float(valor) if valor else None, meses,
+                             ref or f"manual:{cid}:{hoje.isoformat()}:{ate.isoformat()}")
     return ate
