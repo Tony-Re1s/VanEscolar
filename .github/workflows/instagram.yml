@@ -1,11 +1,13 @@
 name: Instagram — post do dia
 
-# Todo dia às 18h40 (Brasília) gera a arte/Reels do próximo post da pauta e publica no @turminha_abordo pela API.
+# Todo dia às 18h40 (Brasília) um agendamento do Claude dispara este workflow (workflow_dispatch) na hora certa.
+# O cron abaixo é só reserva (19h40): se o post do dia já saiu, não faz nada; se o GitHub atrasar e
+# chegar depois das 23h, também não publica (o script confere a janela 18h–23h).
 # As mídias vão para o branch `instagram-midia` (não mexe no main, então o app publicado não reinicia).
 # Secrets: IG_TOKEN (token do Instagram) e NEON_URL (guarda o token renovado). Sem IG_TOKEN, não faz nada.
 on:
   schedule:
-    - cron: "40 21 * * *"
+    - cron: "40 22 * * *"
   workflow_dispatch:
     inputs:
       id:

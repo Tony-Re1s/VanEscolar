@@ -122,9 +122,33 @@ def _esperar(cid: str, tok: str, limite=600):
     raise IGErro("a mídia demorou demais para processar")
 
 
-def _publicar(uid: str, tok: str, cid: str) -> str:
+def _ja_publicado(uid: str, tok: str, cid: str) -> str | None:
+    """Depois de um erro no media_publish: o post às vezes sai mesmo assim. Devolve o id se saiu."""
+    try:
+        if _req("GET", f"{API}/{cid}?fields=status_code&access_token={tok}").get("status_code") == "PUBLISHED":
+            recentes = _req("GET", f"{API}/{uid}/media?fields=id,timestamp&limit=1&access_token={tok}").get("data", [])
+            return recentes[0]["id"] if recentes else cid
+    except IGErro:
+        pass
+    return None
+
+
+def _publicar(uid: str, tok: str, cid: str, tentativas=4) -> str:
+    """Publica o container. Erro genérico da Meta ("Fatal", "unexpected error"…) é passageiro:
+    espera, confere se o post saiu mesmo assim (nunca duplica) e só então tenta de novo."""
     _esperar(cid, tok)
-    return _req("POST", f"{API}/{uid}/media_publish", {"creation_id": cid, "access_token": tok})["id"]
+    for n in range(1, tentativas + 1):
+        try:
+            return _req("POST", f"{API}/{uid}/media_publish", {"creation_id": cid, "access_token": tok})["id"]
+        except IGErro as e:
+            print(f"aviso: publicação falhou (tentativa {n}/{tentativas}): {e}")
+            time.sleep(45 * n)
+            pid = _ja_publicado(uid, tok, cid)
+            if pid:
+                print("o post saiu mesmo com o erro — não vou publicar de novo")
+                return pid
+            if n == tentativas:
+                raise
 
 
 def publicar(post: dict, urls: dict, legenda: str, tok: str) -> dict:
@@ -240,6 +264,11 @@ def escolher(pauta: list[dict], feitos: dict, forcado: str | None) -> dict | Non
 def main():
     seco = "--seco" in sys.argv
     forcado = sys.argv[sys.argv.index("--id") + 1] if "--id" in sys.argv else None
+    agora = datetime.now(ZoneInfo("America/Sao_Paulo"))
+    if os.environ.get("GITHUB_EVENT_NAME") == "schedule" and not 18 <= agora.hour < 23 and not forcado:
+        # o agendador do GitHub atrasa horas; fora da janela da noite não publica (evita post de madrugada)
+        print(f"Agendamento do GitHub chegou atrasado ({agora:%H:%M}) — fora da janela 18h–23h, não publico.")
+        return
     e = estado() if MIDIA.exists() else {"publicados": {}}
     hoje_ja = [k for k, v in e["publicados"].items() if v.get("data") == HOJE.isoformat()]
     if hoje_ja and not forcado:
