@@ -18,7 +18,7 @@ concorda com estes Termos e com a Política de Privacidade.
 #### 2. Contas e perfis
 O acesso é feito com uma conta Google. O **gestor** cria a empresa e cadastra vans, motoristas, alunos e
 responsáveis. **Motoristas** e **responsáveis** veem apenas o que o gestor liberou para eles. Você é responsável
-pelo uso da sua conta.
+pelo uso da sua conta. Para dar suporte, a equipe do Turminha a Bordo pode acessar a conta da empresa e cadastrar ou corrigir dados a pedido ou em benefício do gestor; cada acesso fica registrado e é avisado no app.
 
 #### 3. Responsabilidades do gestor
 O gestor declara que: as informações cadastradas são verdadeiras; tem autorização dos pais ou responsáveis para

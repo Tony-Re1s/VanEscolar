@@ -21,6 +21,7 @@ if vans.empty:      # modo fácil: ninguém precisa cadastrar van antes — cria
 
 st.title("Rota")
 _ui.guia(c, "telas/facil_rota.py")
+_ui.aviso_suporte(c["id"])
 a, b = st.container(key="linha_frota_top").columns([1, 1], vertical_alignment="center")
 if len(vans) > 1:
     van_id = a.selectbox("Van", list(vans["id"].astype(str)), label_visibility="collapsed",

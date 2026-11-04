@@ -42,6 +42,8 @@ Para identificar quem entra no app e mostrar a cada pessoa só o que é dela; or
 famílias; gerar e controlar mensalidades e o financeiro do gestor; registrar e emitir o contrato digital; e manter
 a segurança, o funcionamento e o suporte do serviço.
 
+**Acesso do suporte:** para ajudar o gestor (cadastrar ou corrigir dados, tirar dúvidas), a equipe do Turminha a Bordo pode acessar a conta da empresa. Cada acesso fica registrado (quem, quando) e o gestor vê o aviso no app; o histórico pode ser pedido a qualquer momento.
+
 **Bases legais (LGPD, art. 7º e 11):** execução de contrato e procedimentos preliminares; cumprimento de obrigação
 legal; legítimo interesse (segurança e melhoria do serviço); e, quando necessário, consentimento — inclusive o
 consentimento específico dos pais ou responsáveis para dados de crianças.

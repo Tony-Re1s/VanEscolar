@@ -131,6 +131,8 @@ button[data-testid="stBaseButton-secondary"]:hover, .stLinkButton > a:hover {bor
 .st-key-tela_ligada {display: none !important;}
 .st-key-marca_android {display: none !important;}
 .st-key-marca_ind {display: none !important;}
+.ve-suporte {background: #FFF4CC; color: #7A5200; border: 1px solid #F5C451; border-radius: 12px;
+  padding: .45rem .75rem; font-size: .92rem; line-height: 1.25;}
 .st-key-marca_aba {display: none !important;}
 /* rota do motorista: botões grandes e por cor — amarelo = mensagem, verde = embarcou/entregue,
    vermelho = faltou, azul = caminho. Lê de relance, toca sem errar. */
@@ -749,6 +751,20 @@ def marcar_android():
     with st.container(key="marca_android"):
         st.html("<script>document.cookie='turminha_android=1; path=/; SameSite=Lax; Secure';</script>",
                 unsafe_allow_javascript=True)
+
+
+def aviso_suporte(cid) -> None:
+    """Transparência do modo suporte: o gestor vê quando o suporte entrou na conta dele (últimos 7 dias)."""
+    if st.session_state.get("_suporte") or not cid:
+        return
+    from core import db
+    from core.fmt import TZ
+    r = db.um("""select max(inicio) as quando, count(*) as n from suporte_acessos
+                 where condutor_id = cast(:c as uuid) and inicio >= now() - interval '7 days'""", c=str(cid))
+    if r and r.get("quando"):
+        q = r["quando"].astimezone(TZ)
+        st.caption(f"🛠️ O suporte do Turminha acessou sua conta em {q:%d/%m} às {q:%H:%M} para te ajudar"
+                   + (f" ({int(r['n'])} acessos nos últimos 7 dias)." if int(r["n"]) > 1 else "."))
 
 
 COOKIE_IND = "turminha_ind"

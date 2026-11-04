@@ -220,8 +220,25 @@ if VER_MOT:
         st.Page("telas/motorista_alunos.py", title="Meus alunos", icon=":material/groups:")],
         "Sobre": [PRIVACIDADE, TERMOS]}
 
+SUPORTE = usuario.get("suporte")
+if SUPORTE:     # modo suporte: assinatura, pagamento e parceria ficam fora (o admin cuida disso em Assinantes)
+    _fora = {"Meu plano", "Parceiros Turminha", "Canal do divulgador"}
+    paginas = {g: [p for p in ps if p.title not in _fora] for g, ps in paginas.items()}
+    paginas = {g: ps for g, ps in paginas.items() if ps}
+
 _marca("menu e suporte")
 nav = st.navigation(paginas, expanded=True)
+if SUPORTE:
+    if st.session_state.pop("_ir_inicio", False):
+        _inicio = next((p for g, ps in paginas.items() if g != "Administração" for p in ps), None)
+        if _inicio is not None and nav.url_path != _inicio.url_path:
+            st.switch_page(_inicio)
+    with st.container(key="linha_suporte"):
+        s1, s2 = st.columns([3, 1], vertical_alignment="center")
+        s1.markdown(f"<div class='ve-suporte'>🛠️ Suporte na conta de <b>{_ui.esc(SUPORTE['nome'])}</b></div>",
+                    unsafe_allow_html=True)
+        s2.button("Sair do suporte", icon=":material/logout:", width="stretch", on_click=auth.sair_suporte, type="primary",
+                  help="Sair do modo suporte e voltar para a sua conta")
 if VER_MOT:
     v1, v2 = st.columns([3, 1], vertical_alignment="center")
     v1.info("👁️ Você está vendo o app **como o motorista / monitor(a)** vê.", icon=":material/visibility:")
@@ -255,7 +272,7 @@ with st.sidebar:
     if cond and not usuario.get("bloqueado") and not usuario.get("gratis") and not VER_MOT:
         # modo fácil × completo: escolha de uma vez só — fica no menu (no celular, em "Mais"), não no topo das telas
         modo_atual = cond.get("modo") or "completo"
-        escolhido = st.segmented_control("Jeito de usar", ["facil", "completo"], default=modo_atual, key="modo_app",
+        escolhido = st.segmented_control("Jeito de usar", ["facil", "completo"], default=modo_atual, key=f"modo_app_{cond['id']}",
                                          format_func={"facil": "Modo fácil", "completo": "Modo completo"}.get,
                                          width="stretch",
                                          help="Só muda o que aparece. Os dados são os mesmos nos dois.")

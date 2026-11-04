@@ -95,7 +95,59 @@ def perfil(usuario: dict) -> dict:
     usuario["gratis"] = bool(cond) and not usuario["admin"] and pl.no_gratis(cond, hoje(), cat)
     usuario["bloqueado"] = (bool(cond) and not usuario["admin"] and not pl.liberada(cond, hoje(), cat)
                             and not usuario["gratis"])
+    _aplicar_suporte(usuario)
     return usuario
+
+
+# ---------------------------------------------------------------- modo suporte (admin ajudando um cliente)
+# O admin "entra" na conta de uma empresa e usa as mesmas telas do gestor. Cada acesso fica registrado
+# (suporte_acessos) e o cliente vê o aviso na conta dele. Assinatura, pagamento e parceria ficam de fora.
+def _aplicar_suporte(usuario: dict) -> None:
+    sup = st.session_state.get("_suporte")
+    if not sup or not usuario.get("admin"):
+        usuario.pop("suporte", None)
+        return
+    c = db.ao_vivo("select * from condutores where id = cast(:c as uuid)", c=sup["cid"])
+    if not len(c):
+        st.session_state.pop("_suporte", None)
+        usuario.pop("suporte", None)
+        return
+    usuario["condutor"] = c.iloc[0].to_dict()
+    usuario.update(vans_motorista=[], filhos=[], bloqueios=[], bloqueado=False, gratis=False, suporte=sup)
+
+
+def _limpar_telas():
+    """Apaga o estado das telas (rascunhos, filtros, ficha aberta) para não misturar empresas."""
+    for k in list(st.session_state.keys()):
+        if k not in ("usuario", "_suporte", "_comissao_ok"):
+            del st.session_state[k]
+
+
+def entrar_suporte(cid) -> None:
+    usuario = st.session_state.get("usuario") or {}
+    if not usuario.get("admin"):
+        return
+    if st.session_state.get("_suporte"):
+        sair_suporte()
+    c = db.um("select id, nome from condutores where id = cast(:c as uuid)", c=str(cid))
+    if not c:
+        return
+    log = db.gravar("""insert into suporte_acessos (condutor_id, admin_email) values (cast(:c as uuid), :e)
+                       returning id""", c=str(cid), e=usuario["email"])
+    _limpar_telas()
+    st.session_state["_suporte"] = dict(cid=str(cid), nome=c["nome"], log=str((log or {}).get("id") or ""))
+    st.session_state["_ir_inicio"] = True
+    perfil(usuario)
+
+
+def sair_suporte() -> None:
+    sup = st.session_state.pop("_suporte", None)
+    if sup and sup.get("log"):
+        db.gravar("update suporte_acessos set fim = now() where id = cast(:i as uuid) and fim is null", i=sup["log"])
+    usuario = st.session_state.get("usuario")
+    _limpar_telas()
+    if usuario:
+        perfil(usuario)
 
 
 def usuario_logado() -> dict | None:

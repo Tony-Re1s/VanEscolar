@@ -22,6 +22,7 @@ if st.session_state.get("_mens_gerado") != (cid, inicio_mes(h)):
 alunos = repo.passageiros(cid)
 vans = repo.vans(cid)
 _ui.guia(c, "telas/hoje.py")
+_ui.aviso_suporte(c["id"])
 if alunos.empty:
     st.stop()
 

@@ -616,3 +616,13 @@ begin
     insert into config (chave, valor) values ('mig_v29_faixas', '{"ok": true}') on conflict (chave) do nothing;
   end if;
 end $$;
+
+-- v30 — modo suporte: registro de cada vez que o admin entra na conta de uma empresa (transparência / LGPD)
+create table if not exists suporte_acessos (
+  id           uuid primary key default gen_random_uuid(),
+  condutor_id  uuid not null references condutores(id) on delete cascade,
+  admin_email  text not null,
+  inicio       timestamptz not null default now(),
+  fim          timestamptz
+);
+create index if not exists ix_suporte_acessos on suporte_acessos(condutor_id, inicio desc);

@@ -3,6 +3,7 @@ from datetime import timedelta
 
 import streamlit as st
 
+from core import auth
 from core import planos as pl
 from core import repo
 from core.fmt import brl, data_br, hoje, link_whats, somar_meses
@@ -265,6 +266,27 @@ for r in sel:
                      icon=":material/block:" if r["ativo"] else ":material/check_circle:"):
             repo.ativar_empresa(r["id"], not r["ativo"])
             st.rerun()
+        if r["ativo"] and st.button("Entrar na conta (suporte)", key=f"sup_{r['id']}", icon=":material/support_agent:",
+                                    width="stretch", type="tertiary",
+                                    help="Abre o app como o gestor desta empresa para cadastrar e corrigir. "
+                                         "O acesso fica registrado e o cliente vê o aviso."):
+            auth.entrar_suporte(r["id"])
+            st.rerun()
+
+
+# ---------------------------------------------------------------- registro do modo suporte
+with st.expander("Acessos do suporte (últimos 30)", icon=":material/support_agent:"):
+    from core import db as _db
+    from core.fmt import TZ as _TZ
+    acs = _db.ao_vivo("""select a.inicio, a.fim, a.admin_email, c.nome from suporte_acessos a
+                         join condutores c on c.id = a.condutor_id order by a.inicio desc limit 30""")
+    if acs.empty:
+        st.caption("Ninguém entrou em conta de cliente ainda.")
+    for a in acs.to_dict("records"):
+        ini = a["inicio"].astimezone(_TZ)
+        fim = f"até {a['fim'].astimezone(_TZ):%H:%M}" if a["fim"] else "sem saída registrada"
+        st.markdown(f"**{_ui.esc(a['nome'])}** <span class='ve-sub'>· {ini:%d/%m %H:%M} {fim} · "
+                    f"{_ui.esc(a['admin_email'])}</span>", unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------------- guarda dos dados (fidelização)
