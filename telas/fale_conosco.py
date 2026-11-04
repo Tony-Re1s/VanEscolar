@@ -69,5 +69,9 @@ if txt:
            f"({pl.TIPOS.get(pl.tipo_da_empresa(emp), '')}) · {u['email']}")
     if c.get("telefone"):
         cab += f" · {c['telefone']}"
+    primeira = not any(m["autor"] == "cliente" for m in suporte.mensagens(ENG, c["id"]))
     suporte.enviar_cliente(ENG, _ui.telegram(), c["id"], u["email"], txt, cab)
+    if primeira:
+        from core import avisos_admin
+        avisos_admin.primeira_mensagem(emp["nome"], cab, txt)
     st.rerun()

@@ -64,6 +64,7 @@ if ok:
             st.session_state["_boas_vindas_msg"] = (
                 f"Indicação de {indicador['nome']} aplicada: plano {pl.catalogo()[presente[0]]['nome']} liberado "
                 f"de graça até {data_br(presente[1])}! 🎉")
+    deg = None
     if not presente:
         deg = repo.aplicar_degustacao_inicial(nova["id"], hoje())
         if deg and not st.session_state.get("_boas_vindas_msg"):
@@ -71,5 +72,9 @@ if ok:
                                                    f"{pl.catalogo()[deg[0]]['nome']} de graça, até {data_br(deg[1])}. 🎉")
     st.session_state.pop("_indicacao", None)
     st.session_state["_apagar_cookie_ind"] = True
+    from core import avisos_admin
+    _p = presente or deg
+    avisos_admin.conta_nova(nome.strip(), u["email"], telefone or None, indicador["nome"] if indicador else None,
+                            f"{pl.catalogo().get(_p[0], {}).get('nome', _p[0])} até {data_br(_p[1])}" if _p else None)
     auth.perfil(u)
     st.rerun()
