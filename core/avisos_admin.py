@@ -44,6 +44,25 @@ def _enviar_email(cfg: dict, assunto: str, corpo: str) -> None:
         print(f"[avisos] e-mail não saiu: {type(e).__name__}: {e}", flush=True)
 
 
+def testar(cfg: dict) -> tuple[bool, str]:
+    """Envio de teste na hora (sem thread), para o admin conferir a configuração."""
+    msg = EmailMessage()
+    msg["From"] = f"Turminha a Bordo <{cfg['usuario']}>"
+    msg["To"] = cfg["avisar"]
+    msg["Subject"] = "✅ Teste de aviso — Turminha a Bordo"
+    msg.set_content("Se você recebeu este e-mail, os avisos de conta nova e de 1ª mensagem de suporte estão funcionando.")
+    try:
+        with smtplib.SMTP_SSL(cfg.get("servidor", "smtp.gmail.com"), int(cfg.get("porta", 465)),
+                              context=ssl.create_default_context(), timeout=15) as s:
+            s.login(cfg["usuario"], cfg["senha_app"])
+            s.send_message(msg)
+        return True, ""
+    except smtplib.SMTPAuthenticationError:
+        return False, "o Gmail recusou o login — confira o e-mail e a senha de app nos Secrets."
+    except Exception as e:  # noqa: BLE001
+        return False, f"{type(e).__name__}: {e}"
+
+
 def _enviar_telegram(texto: str) -> None:
     try:
         from core import db, suporte

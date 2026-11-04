@@ -274,6 +274,22 @@ for r in sel:
             st.rerun()
 
 
+# ---------------------------------------------------------------- avisos por e-mail (conta nova / 1ª mensagem)
+with st.expander("Avisos por e-mail", icon=":material/mail:"):
+    from core import avisos_admin
+    _ce = avisos_admin._cfg_email()
+    if not _ce:
+        st.caption("Sem a seção [email] nos Secrets (usuario, senha_app, avisar).")
+    else:
+        st.caption(f"Os avisos saem de {_ce['usuario']} para {_ce['avisar']}.")
+        if st.button("Enviar e-mail de teste", icon=":material/send:"):
+            ok, erro = avisos_admin.testar(_ce)
+            if ok:
+                st.success("E-mail de teste enviado. Confira a caixa de entrada (e o spam).")
+            else:
+                st.error(f"Não saiu: {erro}")
+
+
 # ---------------------------------------------------------------- registro do modo suporte
 with st.expander("Acessos do suporte (últimos 30)", icon=":material/support_agent:"):
     from core import db as _db
