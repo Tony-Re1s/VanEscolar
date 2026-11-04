@@ -1,0 +1,36 @@
+name: Vigia dos apps
+
+# De 30 em 30 minutos um navegador abre os apps (Turminha e Finanças). Se algum dormiu, acorda.
+# Se não abrir: no Turminha tenta o reinício automático (muda um comentário no requirements.txt → o Streamlit
+# reinstala e sobe o app de novo) e testa de novo; se continuar fora, avisa o Tony no Telegram e por e-mail.
+# Secrets usados: NEON_URL, TELEGRAM_TOKEN, EMAIL_USUARIO, EMAIL_SENHA_APP, EMAIL_AVISAR (os de e-mail são opcionais).
+on:
+  schedule:
+    - cron: "7,37 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vigia
+  cancel-in-progress: false
+
+jobs:
+  vigiar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -q playwright "SQLAlchemy>=2.0" "psycopg[binary]>=3.2" && python -m playwright install --with-deps chromium >/dev/null
+      - name: Testar os apps
+        env:
+          NEON_URL: ${{ secrets.NEON_URL }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          EMAIL_USUARIO: ${{ secrets.EMAIL_USUARIO }}
+          EMAIL_SENHA_APP: ${{ secrets.EMAIL_SENHA_APP }}
+          EMAIL_AVISAR: ${{ secrets.EMAIL_AVISAR }}
+        run: python scripts/vigia.py
