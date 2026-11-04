@@ -58,7 +58,13 @@ def _req(metodo: str, url: str, dados: dict | None = None) -> dict:
             return json.loads(r.read().decode() or "{}")
     except urllib.error.HTTPError as e:
         try:
-            msg = json.loads(e.read().decode()).get("error", {}).get("message") or str(e)
+            err = json.loads(e.read().decode()).get("error", {})
+            msg = err.get("message") or str(e)
+            # "Fatal" sozinho não diz nada — o motivo real vem em code/subcode/user_msg
+            extra = [f"{k}={err[k]}" for k in ("code", "error_subcode", "error_user_title", "error_user_msg",
+                                                "fbtrace_id") if err.get(k)]
+            if extra:
+                msg += " [" + "; ".join(str(x) for x in extra) + "]"
         except Exception:  # noqa: BLE001
             msg = str(e)
         raise IGErro(f"{metodo} {url.split('?')[0].replace(API, '')}: {msg}") from e
@@ -151,6 +157,18 @@ def _publicar(uid: str, tok: str, cid: str, tentativas=4) -> str:
                 raise
 
 
+def _publicar_reels(uid: str, tok: str, urls: dict, legenda: str) -> str:
+    """Reels: 1º com a capa personalizada; se a Meta recusar, um container novo sem capa (usa um quadro do vídeo).
+    _publicar já confere se o anterior saiu antes de desistir, então não duplica."""
+    base = dict(media_type="REELS", video_url=urls["reels"], caption=legenda, share_to_feed="true")
+    if urls.get("capa"):
+        try:
+            return _publicar(uid, tok, _criar(uid, tok, **base, cover_url=urls["capa"]), tentativas=2)
+        except IGErro as e:
+            print("aviso: Reels com capa falhou — tentando sem a capa:", e)
+    return _publicar(uid, tok, _criar(uid, tok, **base, thumb_offset="1000"), tentativas=2)
+
+
 def publicar(post: dict, urls: dict, legenda: str, tok: str) -> dict:
     if tok.startswith("EAA"):
         uid = IG_USER_ID
@@ -159,8 +177,7 @@ def publicar(post: dict, urls: dict, legenda: str, tok: str) -> dict:
         eu = _req("GET", f"{API}/me?fields=user_id,username&access_token={tok}")
         uid = eu.get("user_id") or eu["id"]
     if post["formato"] == "reels":
-        cid = _criar(uid, tok, media_type="REELS", video_url=urls["reels"], caption=legenda, share_to_feed="true",
-                     cover_url=urls.get("capa", ""))
+        mid = _publicar_reels(uid, tok, urls, legenda)
     elif len(urls["imagens"]) == 1:
         cid = _criar(uid, tok, image_url=urls["imagens"][0], caption=legenda)
     else:
@@ -168,7 +185,8 @@ def publicar(post: dict, urls: dict, legenda: str, tok: str) -> dict:
         for f in filhos:
             _esperar(f, tok)
         cid = _criar(uid, tok, media_type="CAROUSEL", children=",".join(filhos), caption=legenda)
-    mid = _publicar(uid, tok, cid)
+    if post["formato"] != "reels":
+        mid = _publicar(uid, tok, cid)
     link = _req("GET", f"{API}/{mid}?fields=permalink&access_token={tok}").get("permalink")
     story = None
     if urls.get("story"):

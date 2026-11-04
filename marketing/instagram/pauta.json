@@ -16,23 +16,6 @@
   "status": "pendente", "publicado_em": null
  },
  {
-  "id": "002", "data_sugerida": "2026-11-03", "dia": "ter", "formato": "reels", "pilar": "humor",
-  "tema": "Coisas que só tio e tia da van entendem",
-  "cenas": [
-   {"emoji": "😅", "titulo": "Coisas que só\n*tio e tia da van*\nentendem", "dur": 2.6, "fundo": "grad"},
-   {"emoji": "⏰", "titulo": "“Tio, só mais\num minutinho!”\n*(foram 10)*", "dur": 2.6, "fundo": "navy"},
-   {"emoji": "🎒", "titulo": "A mochila\nesquecida\n*de novo* na van", "dur": 2.4, "fundo": "grad"},
-   {"emoji": "📱", "titulo": "47 mensagens de\n“a van já saiu?”\nàs *6h40*", "dur": 2.8, "fundo": "navy"},
-   {"emoji": "🎤", "titulo": "E o *show* de\nmúsica da turma\nna volta", "dur": 2.4, "fundo": "amarelo"},
-   {"emoji": "💛", "titulo": "Cansa?\nCansa.\nMas é *amor*.", "dur": 2.6, "fundo": "grad"}
-  ],
-  "fim": {"titulo": "Marca um tio ou tia da van 👇", "sub": "Turminha a Bordo", "botao": "Siga @turminha_abordo"},
-  "legenda": "Qual dessas acontece com você TODO dia? 😂🚐\n\n⏰ O “só mais um minutinho”\n🎒 A mochila esquecida de novo\n📱 As mensagens de “a van já saiu?”\n🎤 O show na volta da escola\n\nMarca aqui um colega tio ou tia da van! 💛",
-  "hashtags": ["tioescolar", "vanescolar", "transporteescolar", "tiadavan", "motoristadevan"],
-  "story": {"selo": "Pergunta do dia", "emoji": "😂", "titulo": "Qual é o *maior perrengue* da sua rota?", "pergunta": "Conta o seu perrengue 👇"},
-  "status": "pendente", "publicado_em": null
- },
- {
   "id": "003", "data_sugerida": "2026-11-04", "dia": "qua", "formato": "carrossel", "pilar": "documentacao",
   "tema": "Documentos que todo motorista escolar precisa manter em dia",
   "slides": [
@@ -203,6 +186,23 @@
   "legenda": "Por trás de cada rota tem um tio ou uma tia que acorda cedo, conhece cada criança pelo nome e cuida do caminho como se fosse da própria família. 🚐💛\n\nBom domingo e bom descanso, turminha!\n\nMarca um colega da van 👇",
   "hashtags": ["vanescolar", "transporteescolar", "tioescolar", "tiadavan", "motoristadevan"],
   "story": {"selo": "Pergunta do dia", "emoji": "💬", "titulo": "O que te fez virar *tio ou tia* da van?", "pergunta": "Conta sua história 👇"},
+  "status": "pendente", "publicado_em": null
+ },
+ {
+  "id": "002", "data_sugerida": "2026-11-16", "dia": "seg", "formato": "reels", "pilar": "humor",
+  "tema": "Coisas que só tio e tia da van entendem",
+  "cenas": [
+   {"emoji": "😅", "titulo": "Coisas que só\n*tio e tia da van*\nentendem", "dur": 2.6, "fundo": "grad"},
+   {"emoji": "⏰", "titulo": "“Tio, só mais\num minutinho!”\n*(foram 10)*", "dur": 2.6, "fundo": "navy"},
+   {"emoji": "🎒", "titulo": "A mochila\nesquecida\n*de novo* na van", "dur": 2.4, "fundo": "grad"},
+   {"emoji": "📱", "titulo": "47 mensagens de\n“a van já saiu?”\nàs *6h40*", "dur": 2.8, "fundo": "navy"},
+   {"emoji": "🎤", "titulo": "E o *show* de\nmúsica da turma\nna volta", "dur": 2.4, "fundo": "amarelo"},
+   {"emoji": "💛", "titulo": "Cansa?\nCansa.\nMas é *amor*.", "dur": 2.6, "fundo": "grad"}
+  ],
+  "fim": {"titulo": "Marca um tio ou tia da van 👇", "sub": "Turminha a Bordo", "botao": "Siga @turminha_abordo"},
+  "legenda": "Qual dessas acontece com você TODO dia? 😂🚐\n\n⏰ O “só mais um minutinho”\n🎒 A mochila esquecida de novo\n📱 As mensagens de “a van já saiu?”\n🎤 O show na volta da escola\n\nMarca aqui um colega tio ou tia da van! 💛",
+  "hashtags": ["tioescolar", "vanescolar", "transporteescolar", "tiadavan", "motoristadevan"],
+  "story": {"selo": "Pergunta do dia", "emoji": "😂", "titulo": "Qual é o *maior perrengue* da sua rota?", "pergunta": "Conta o seu perrengue 👇"},
   "status": "pendente", "publicado_em": null
  }
 ]
