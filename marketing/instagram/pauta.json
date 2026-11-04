@@ -16,7 +16,7 @@
   "status": "pendente", "publicado_em": null
  },
  {
-  "id": "003", "data_sugerida": "2026-11-04", "dia": "qua", "formato": "carrossel", "pilar": "documentacao",
+  "id": "003", "data_sugerida": "2026-11-03", "dia": "ter", "formato": "carrossel", "pilar": "documentacao",
   "tema": "Documentos que todo motorista escolar precisa manter em dia",
   "slides": [
    {"modelo": "capa", "fundo": "navy", "selo": "📋 Documentação", "titulo": "A papelada da van *sempre em dia*", "texto": "O checklist para não ser pego de surpresa numa fiscalização."},
@@ -31,7 +31,7 @@
   "status": "pendente", "publicado_em": null
  },
  {
-  "id": "004", "data_sugerida": "2026-11-05", "dia": "qui", "formato": "carrossel", "pilar": "app",
+  "id": "004", "data_sugerida": "2026-11-04", "dia": "qua", "formato": "carrossel", "pilar": "app",
   "tema": "Chega de caderninho: a rotina da van no celular",
   "slides": [
    {"modelo": "capa", "selo": "Para tios e tias", "emoji": "📒", "titulo": "Ainda faz a chamada no *caderninho*?", "texto": "Veja como fica a rotina com tudo no celular."},
@@ -46,7 +46,7 @@
   "status": "pendente", "publicado_em": null
  },
  {
-  "id": "005", "data_sugerida": "2026-11-06", "dia": "sex", "formato": "carrossel", "pilar": "relacao-pais",
+  "id": "005", "data_sugerida": "2026-11-05", "dia": "qui", "formato": "carrossel", "pilar": "relacao-pais",
   "tema": "Mensagens prontas para os pais (copie e cole)",
   "slides": [
    {"modelo": "capa", "selo": "💬 Copie e cole", "emoji": "📲", "titulo": "Mensagens prontas para mandar *aos pais*", "texto": "Educadas, curtas e sem climão. Arrasta e salva."},
@@ -62,7 +62,7 @@
   "status": "pendente", "publicado_em": null
  },
  {
-  "id": "006", "data_sugerida": "2026-11-07", "dia": "sab", "formato": "carrossel", "pilar": "pratico",
+  "id": "006", "data_sugerida": "2026-11-06", "dia": "sex", "formato": "carrossel", "pilar": "pratico",
   "tema": "Contrato de transporte escolar: o que o seu precisa ter",
   "slides": [
    {"modelo": "capa", "selo": "📝 Contrato", "titulo": "O que o seu contrato *precisa ter*", "texto": "Combinado claro hoje = zero dor de cabeça em dezembro."},
@@ -77,7 +77,7 @@
   "status": "pendente", "publicado_em": null
  },
  {
-  "id": "007", "data_sugerida": "2026-11-08", "dia": "dom", "formato": "post", "pilar": "afeto",
+  "id": "007", "data_sugerida": "2026-11-07", "dia": "sab", "formato": "post", "pilar": "afeto",
   "tema": "Homenagem ao tio e à tia da van",
   "slides": [
    {"modelo": "citacao", "fundo": "grad", "selo": "💛 Domingo", "texto": "Todo dia, alguém confia a você o que tem de *mais precioso*.", "autor": "A todos os tios e tias da van"}
@@ -88,7 +88,7 @@
   "status": "pendente", "publicado_em": null
  },
  {
-  "id": "008", "data_sugerida": "2026-11-09", "dia": "seg", "formato": "carrossel", "pilar": "gestao",
+  "id": "008", "data_sugerida": "2026-11-08", "dia": "dom", "formato": "carrossel", "pilar": "gestao",
   "tema": "Inadimplência: como cobrar sem perder o cliente",
   "slides": [
    {"modelo": "capa", "selo": "💰 Gestão da van", "emoji": "😬", "titulo": "Pai atrasou de novo? *Cobre sem climão*", "texto": "Um jeito de receber sem perder o cliente (nem a paciência)."},
@@ -103,7 +103,7 @@
   "status": "pendente", "publicado_em": null
  },
  {
-  "id": "009", "data_sugerida": "2026-11-10", "dia": "ter", "formato": "reels", "pilar": "app",
+  "id": "009", "data_sugerida": "2026-11-09", "dia": "seg", "formato": "reels", "pilar": "app",
   "tema": "A pergunta que acabou: a van já saiu?",
   "cenas": [
    {"emoji": "📱", "titulo": "6h40.\n“Tio, a van\n*já saiu*?”", "dur": 2.6, "fundo": "navy"},
@@ -118,7 +118,7 @@
   "status": "pendente", "publicado_em": null
  },
  {
-  "id": "010", "data_sugerida": "2026-11-11", "dia": "qua", "formato": "carrossel", "pilar": "documentacao",
+  "id": "010", "data_sugerida": "2026-11-10", "dia": "ter", "formato": "carrossel", "pilar": "documentacao",
   "tema": "Vistoria semestral sem susto: o que conferir antes",
   "slides": [
    {"modelo": "capa", "fundo": "navy", "selo": "🔧 Vistoria", "titulo": "Vistoria chegando? *Confira antes*", "texto": "O que mais reprova e dá para resolver em casa."},
@@ -133,7 +133,7 @@
   "status": "pendente", "publicado_em": null
  },
  {
-  "id": "011", "data_sugerida": "2026-11-12", "dia": "qui", "formato": "carrossel", "pilar": "app-seguranca",
+  "id": "011", "data_sugerida": "2026-11-11", "dia": "qua", "formato": "carrossel", "pilar": "app-seguranca",
   "tema": "Conferência de fim de rota: o hábito que protege o motorista",
   "slides": [
    {"modelo": "capa", "fundo": "navy", "selo": "✅ Boa prática", "titulo": "Os 30 segundos que *protegem* sua van", "texto": "A conferência de fim de rota que todo tio caprichoso faz."},
@@ -147,7 +147,7 @@
   "status": "pendente", "publicado_em": null
  },
  {
-  "id": "012", "data_sugerida": "2026-11-13", "dia": "sex", "formato": "reels", "pilar": "humor",
+  "id": "012", "data_sugerida": "2026-11-12", "dia": "qui", "formato": "reels", "pilar": "humor",
   "tema": "Tipos de passageiro da van",
   "cenas": [
    {"emoji": "🚐", "titulo": "Os *tipos* de\npassageiro\nda van", "dur": 2.4, "fundo": "grad"},
@@ -163,7 +163,7 @@
   "status": "pendente", "publicado_em": null
  },
  {
-  "id": "013", "data_sugerida": "2026-11-14", "dia": "sab", "formato": "carrossel", "pilar": "pratico",
+  "id": "013", "data_sugerida": "2026-11-13", "dia": "sex", "formato": "carrossel", "pilar": "pratico",
   "tema": "Manutenção preventiva da van: o calendário",
   "slides": [
    {"modelo": "capa", "selo": "🔧 Van em dia", "titulo": "Van parada é *rota perdida*", "texto": "O calendário de manutenção que evita a quebra no meio da semana."},
@@ -178,7 +178,7 @@
   "status": "pendente", "publicado_em": null
  },
  {
-  "id": "014", "data_sugerida": "2026-11-15", "dia": "dom", "formato": "post", "pilar": "afeto",
+  "id": "014", "data_sugerida": "2026-11-14", "dia": "sab", "formato": "post", "pilar": "afeto",
   "tema": "Frase de domingo: quem cuida do caminho",
   "slides": [
    {"modelo": "citacao", "fundo": "navy", "selo": "💛 Domingo", "texto": "Antes do sinal da escola tocar, *um tio já cuidou* do caminho.", "autor": "Turminha a Bordo"}
@@ -189,7 +189,7 @@
   "status": "pendente", "publicado_em": null
  },
  {
-  "id": "002", "data_sugerida": "2026-11-16", "dia": "seg", "formato": "reels", "pilar": "humor",
+  "id": "002", "data_sugerida": "2026-11-15", "dia": "dom", "formato": "reels", "pilar": "humor",
   "tema": "Coisas que só tio e tia da van entendem",
   "cenas": [
    {"emoji": "😅", "titulo": "Coisas que só\n*tio e tia da van*\nentendem", "dur": 2.6, "fundo": "grad"},
