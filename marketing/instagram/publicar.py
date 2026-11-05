@@ -171,26 +171,45 @@ def _subir_video(tok: str, uri: str, arquivo: Path):
         raise IGErro(f"upload do vídeo: {e.code} {e.read().decode()[:300]}") from e
 
 
+def _recodificar(arquivo: Path, nome: str, audio: str) -> Path:
+    """Gera uma versão alternativa do Reels a partir do mp4 (cor bt709, taxa maior). audio: 'sem' ou 'ruido'."""
+    saida = arquivo.with_name(nome)
+    cmd = ["ffmpeg", "-y", "-loglevel", "error", "-i", str(arquivo)]
+    if audio == "ruido":     # chiado quase inaudível (-70 dB) no lugar do silêncio digital
+        cmd += ["-f", "lavfi", "-i", "anoisesrc=color=pink:amplitude=0.0003:sample_rate=48000", "-shortest",
+                "-map", "0:v", "-map", "1:a", "-c:a", "aac", "-b:a", "128k", "-ac", "2"]
+    else:
+        cmd += ["-an"]
+    cmd += ["-c:v", "libx264", "-preset", "veryfast", "-profile:v", "high", "-level", "4.1", "-b:v", "5M",
+            "-maxrate", "8M", "-bufsize", "10M", "-g", "60", "-r", "30",
+            "-vf", "scale=out_color_matrix=bt709:out_range=tv,format=yuv420p",
+            "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv",
+            "-movflags", "+faststart", str(saida)]
+    subprocess.run(cmd, check=True)
+    return saida
+
+
 def _publicar_reels(uid: str, tok: str, urls: dict, legenda: str) -> str:
     """Reels em até 3 jeitos (cada um é um container novo; _publicar confere se o anterior saiu, então não duplica):
-    1) link do vídeo + capa; 2) upload direto do arquivo + capa; 3) upload direto sem capa e sem share_to_feed."""
-    base = dict(media_type="REELS", caption=legenda)
-    jeitos = [("link + capa", dict(video_url=urls["reels"], share_to_feed="true", cover_url=urls.get("capa")), False)]
+    1) link do vídeo + capa; 2) upload direto sem trilha de áudio; 3) upload direto com áudio de ruído baixíssimo.
+    A Meta devolve 2207085 ("não processou o vídeo") quando não gosta do arquivo — repetir o mesmo não adianta."""
+    base = dict(media_type="REELS", caption=legenda, share_to_feed="true", cover_url=urls.get("capa"))
+    jeitos = [("link + capa", None)]
     if urls.get("reels_arquivo"):
-        jeitos += [("upload direto + capa", dict(share_to_feed="true", cover_url=urls.get("capa")), True),
-                   ("upload direto, sem capa", dict(), True)]
+        jeitos += [("upload direto, sem áudio", "sem"), ("upload direto, áudio de ruído baixo", "ruido")]
     ultimo = None
-    for nome, extra, direto in jeitos:
-        campos = {k: v for k, v in dict(base, **extra).items() if v}
+    for nome, audio in jeitos:
+        campos = {k: v for k, v in base.items() if v}
         print(f"Reels — tentando: {nome}")
         try:
-            if direto:
+            if audio:
+                arq = _recodificar(urls["reels_arquivo"], f"reels_{audio}.mp4", audio)
                 r = _req("POST", f"{API}/{uid}/media", dict(campos, upload_type="resumable", access_token=tok))
-                _subir_video(tok, r["uri"], urls["reels_arquivo"])
+                _subir_video(tok, r["uri"], arq)
                 cid = r["id"]
             else:
-                cid = _criar(uid, tok, **campos)
-            mid = _publicar(uid, tok, cid, tentativas=2)
+                cid = _criar(uid, tok, video_url=urls["reels"], **campos)
+            mid = _publicar(uid, tok, cid, tentativas=1)
             print(f"Reels saiu pelo jeito: {nome}")
             return mid
         except IGErro as e:

@@ -265,7 +265,11 @@ def reels(post: dict, pasta: Path, amostra=False):
                     "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=48000", "-shortest",
                     # perfil que a Meta recomenda p/ Reels: H.264 High 4.1, quadro-chave a cada 2 s, AAC 128k 48 kHz
                     "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-profile:v", "high", "-level", "4.1",
-                    "-g", str(FPS * 2), "-pix_fmt", "yuv420p", "-r", str(FPS),
+                    "-g", str(FPS * 2), "-r", str(FPS),
+                    # os quadros são JPEG (faixa "cheia"); sem isto o vídeo saía com cor bt470bg/sem tag e a Meta
+                    # recusava no media_publish (erro 2207085 = "não consegui processar o vídeo")
+                    "-vf", "scale=out_color_matrix=bt709:out_range=tv,format=yuv420p",
+                    "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv",
                     "-c:a", "aac", "-b:a", "128k", "-ar", "48000", "-ac", "2",
                     "-movflags", "+faststart", str(pasta / "reels.mp4")], check=True)
     shutil.rmtree(quadros, ignore_errors=True)
