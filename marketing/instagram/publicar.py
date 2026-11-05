@@ -58,7 +58,9 @@ def _req(metodo: str, url: str, dados: dict | None = None) -> dict:
             return json.loads(r.read().decode() or "{}")
     except urllib.error.HTTPError as e:
         try:
-            err = json.loads(e.read().decode()).get("error", {})
+            bruto = e.read().decode()
+            print(f"  resposta da Meta ({e.code}): {bruto[:800]}")
+            err = json.loads(bruto).get("error", {})
             msg = err.get("message") or str(e)
             # "Fatal" sozinho não diz nada — o motivo real vem em code/subcode/user_msg
             extra = [f"{k}={err[k]}" for k in ("code", "error_subcode", "error_user_title", "error_user_msg",
@@ -157,16 +159,44 @@ def _publicar(uid: str, tok: str, cid: str, tentativas=4) -> str:
                 raise
 
 
+def _subir_video(tok: str, uri: str, arquivo: Path):
+    """Upload direto do vídeo para a Meta (upload_type=resumable) — não depende dela baixar do jsDelivr."""
+    dados = arquivo.read_bytes()
+    req = urllib.request.Request(uri, data=dados, method="POST", headers={
+        "Authorization": f"OAuth {tok}", "offset": "0", "file_size": str(len(dados))})
+    try:
+        with urllib.request.urlopen(req, timeout=300) as r:
+            print("  vídeo enviado direto:", r.read().decode()[:200])
+    except urllib.error.HTTPError as e:
+        raise IGErro(f"upload do vídeo: {e.code} {e.read().decode()[:300]}") from e
+
+
 def _publicar_reels(uid: str, tok: str, urls: dict, legenda: str) -> str:
-    """Reels: 1º com a capa personalizada; se a Meta recusar, um container novo sem capa (usa um quadro do vídeo).
-    _publicar já confere se o anterior saiu antes de desistir, então não duplica."""
-    base = dict(media_type="REELS", video_url=urls["reels"], caption=legenda, share_to_feed="true")
-    if urls.get("capa"):
+    """Reels em até 3 jeitos (cada um é um container novo; _publicar confere se o anterior saiu, então não duplica):
+    1) link do vídeo + capa; 2) upload direto do arquivo + capa; 3) upload direto sem capa e sem share_to_feed."""
+    base = dict(media_type="REELS", caption=legenda)
+    jeitos = [("link + capa", dict(video_url=urls["reels"], share_to_feed="true", cover_url=urls.get("capa")), False)]
+    if urls.get("reels_arquivo"):
+        jeitos += [("upload direto + capa", dict(share_to_feed="true", cover_url=urls.get("capa")), True),
+                   ("upload direto, sem capa", dict(), True)]
+    ultimo = None
+    for nome, extra, direto in jeitos:
+        campos = {k: v for k, v in dict(base, **extra).items() if v}
+        print(f"Reels — tentando: {nome}")
         try:
-            return _publicar(uid, tok, _criar(uid, tok, **base, cover_url=urls["capa"]), tentativas=2)
+            if direto:
+                r = _req("POST", f"{API}/{uid}/media", dict(campos, upload_type="resumable", access_token=tok))
+                _subir_video(tok, r["uri"], urls["reels_arquivo"])
+                cid = r["id"]
+            else:
+                cid = _criar(uid, tok, **campos)
+            mid = _publicar(uid, tok, cid, tentativas=2)
+            print(f"Reels saiu pelo jeito: {nome}")
+            return mid
         except IGErro as e:
-            print("aviso: Reels com capa falhou — tentando sem a capa:", e)
-    return _publicar(uid, tok, _criar(uid, tok, **base, thumb_offset="1000"), tentativas=2)
+            print(f"aviso: Reels ({nome}) falhou: {e}")
+            ultimo = e
+    raise ultimo
 
 
 def publicar(post: dict, urls: dict, legenda: str, tok: str) -> dict:
@@ -223,6 +253,7 @@ def subir_midias(post: dict, pasta: Path) -> dict:
             (destino / f.name).write_bytes(f.read_bytes())
             if f.name == "reels.mp4":
                 nomes["reels"] = f.name
+                nomes["reels_arquivo"] = destino / f.name
             if f.name == "capa.jpg":
                 nomes["capa"] = f.name
     sha = _git_commit(f"mídias do post {post['id']}")
@@ -232,6 +263,8 @@ def subir_midias(post: dict, pasta: Path) -> dict:
     for k in ("story", "reels", "capa"):
         if nomes.get(k):
             urls[k] = base + nomes[k]
+    if nomes.get("reels_arquivo"):
+        urls["reels_arquivo"] = nomes["reels_arquivo"]
     for u in urls["imagens"] + [urls.get("reels")] + [urls.get("story")]:   # espera o link responder
         if u:
             for _ in range(20):
@@ -304,7 +337,22 @@ def main():
         print(sorted(f.name for f in pasta.iterdir()))
         return
     urls = subir_midias(post, pasta)
-    res = publicar(post, urls, leg, token())
+    tok = token()
+    try:
+        res = publicar(post, urls, leg, tok)
+    except IGErro as err:
+        if post["formato"] != "reels" or forcado:
+            raise
+        # o dia não fica sem post: o Reels volta para a fila e sai o próximo carrossel/post
+        print("ERRO no Reels — vou publicar o próximo post da pauta no lugar:", err)
+        outros = {k: v for k, v in e["publicados"].items()}
+        outros.update({p["id"]: 1 for p in estudio.carregar() if p["formato"] == "reels"})
+        post = escolher(estudio.carregar(), outros, None)
+        if not post:
+            raise
+        print("post:", post["id"], post["formato"], "—", post["tema"])
+        pasta, leg = estudio.gerar(post), estudio.legenda(post)
+        res = publicar(post, subir_midias(post, pasta), leg, tok)
     e["publicados"][post["id"]] = dict(res, data=HOJE.isoformat(), tema=post["tema"], formato=post["formato"])
     salvar_estado(e, f"publicado {post['id']}")
     print("PUBLICADO:", res.get("link"))

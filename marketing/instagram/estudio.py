@@ -262,9 +262,12 @@ def reels(post: dict, pasta: Path, amostra=False):
     if amostra:
         return
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(FPS), "-i", str(quadros / "%05d.jpg"),
-                    "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100", "-shortest",
-                    "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", "-r", str(FPS),
-                    "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", str(pasta / "reels.mp4")], check=True)
+                    "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=48000", "-shortest",
+                    # perfil que a Meta recomenda p/ Reels: H.264 High 4.1, quadro-chave a cada 2 s, AAC 128k 48 kHz
+                    "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-profile:v", "high", "-level", "4.1",
+                    "-g", str(FPS * 2), "-pix_fmt", "yuv420p", "-r", str(FPS),
+                    "-c:a", "aac", "-b:a", "128k", "-ar", "48000", "-ac", "2",
+                    "-movflags", "+faststart", str(pasta / "reels.mp4")], check=True)
     shutil.rmtree(quadros, ignore_errors=True)
     arq.unlink(missing_ok=True)
 
