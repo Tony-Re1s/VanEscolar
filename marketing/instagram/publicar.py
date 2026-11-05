@@ -219,6 +219,7 @@ def _publicar_reels(uid: str, tok: str, urls: dict, legenda: str) -> str:
 
 
 def publicar(post: dict, urls: dict, legenda: str, tok: str) -> dict:
+    global API
     if tok.startswith("EAA"):
         uid = IG_USER_ID
         eu = _req("GET", f"{API}/{uid}?fields=username&access_token={tok}")
@@ -226,7 +227,19 @@ def publicar(post: dict, urls: dict, legenda: str, tok: str) -> dict:
         eu = _req("GET", f"{API}/me?fields=user_id,username&access_token={tok}")
         uid = eu.get("user_id") or eu["id"]
     if post["formato"] == "reels":
-        mid = _publicar_reels(uid, tok, urls, legenda)
+        try:
+            mid = _publicar_reels(uid, tok, urls, legenda)
+        except IGErro as err:
+            # vídeo pelo token do usuário do sistema (Facebook) dá 2207085 em qualquer formato; o outro caminho
+            # (login do Instagram, graph.instagram.com) fica como plano B se o Secret IG_TOKEN_IG existir
+            alt = os.environ.get("IG_TOKEN_IG") or ""
+            if not (tok.startswith("EAA") and alt.startswith("IG")):
+                raise
+            print("aviso: tentando o Reels pelo token do login do Instagram:", err)
+            API = "https://graph.instagram.com/v23.0"
+            eu2 = _req("GET", f"{API}/me?fields=user_id,username&access_token={alt}")
+            tok, uid = alt, eu2.get("user_id") or eu2["id"]
+            mid = _publicar_reels(uid, tok, urls, legenda)
     elif len(urls["imagens"]) == 1:
         cid = _criar(uid, tok, image_url=urls["imagens"][0], caption=legenda)
     else:
