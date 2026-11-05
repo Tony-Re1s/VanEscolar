@@ -20,7 +20,9 @@ with eng.begin() as s_:
     r_ = s_.execute(text("select valor from config where chave = 'instagram'")).first()
 salvo = (r_[0] if r_ and isinstance(r_[0], dict) else {}) or {}
 print("token guardado no banco:", (salvo.get("token") or "")[:3] or "nenhum", "renovado_em", salvo.get("renovado_em"))
-if (salvo.get("token") or "").startswith("IG") and "--ig" in sys.argv:
+import os  # noqa: E402
+if (os.environ.get("IG_TOKEN_IG") or "").startswith("IG"):
+    salvo["token"] = os.environ["IG_TOKEN_IG"]
     p.API = "https://graph.instagram.com/v23.0"
     tok = salvo["token"]
     eu = p._req("GET", f"{p.API}/me?fields=user_id,username&access_token={tok}")
