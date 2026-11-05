@@ -50,4 +50,4 @@ jobs:
           NEON_URL: ${{ secrets.NEON_URL }}
         run: |
           if [ -z "$IG_TOKEN" ]; then echo "IG_TOKEN não configurado — nada a fazer."; exit 0; fi
-          if [ -n "${{ inputs.id }}" ]; then python marketing/instagram/diag_reels.py "${{ inputs.id }}"; fi
+          if [ -n "${{ inputs.id }}" ]; then python marketing/instagram/diag_reels.py ${{ inputs.id }}; fi
