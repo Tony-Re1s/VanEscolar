@@ -1,0 +1,33 @@
+name: Instagram — insights
+
+# Rodar na mão (Actions → "Instagram — insights" → Run workflow): imprime o desempenho do @turminha_abordo.
+on:
+  workflow_dispatch:
+    inputs:
+      dias:
+        description: "Quantos dias para trás (conta)"
+        default: "7"
+
+permissions:
+  contents: read
+
+jobs:
+  insights:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -q "SQLAlchemy>=2.0" "psycopg[binary]>=3.2"
+      - name: Buscar os números
+        env:
+          IG_TOKEN: ${{ secrets.IG_TOKEN }}
+          NEON_URL: ${{ secrets.NEON_URL }}
+          DIAS: ${{ inputs.dias }}
+        run: python marketing/instagram/insights.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: insights-${{ github.run_number }}
+          path: insights.json
