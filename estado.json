@@ -36,5 +36,15 @@
    "tema": "Mensagens prontas para os pais (copie e cole)",
    "formato": "carrossel"
   }
+ },
+ "manuais": {
+  "002": {
+   "data": "2026-11-05",
+   "tema": "Coisas que só tio e tia da van entendem",
+   "via": [
+    "Telegram",
+    "e-mail"
+   ]
+  }
  }
 }
