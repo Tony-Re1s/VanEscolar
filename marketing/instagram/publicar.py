@@ -332,6 +332,67 @@ def salvar_estado(e: dict, msg: str):
     _git_commit(msg)
 
 
+# ---------------------------------------------------------------- Reels manual (a Meta recusa vídeo pela API)
+def _telegram_chat():
+    from sqlalchemy import text
+    eng = _motor()
+    if eng is None:
+        return None
+    with eng.begin() as s:
+        r = s.execute(text("select valor from config where chave = 'telegram_admin'")).scalar()
+    r = json.loads(r) if isinstance(r, str) else r
+    return (r or {}).get("chat_id")
+
+
+def mandar_kit(post: dict, pasta: Path, leg: str) -> list[str]:
+    """Manda o vídeo pronto + legenda para o Tony postar pelo celular. Devolve por onde saiu."""
+    import smtplib
+    import ssl
+    import uuid
+    from email.message import EmailMessage
+    video = (pasta / "reels.mp4").read_bytes()
+    titulo = f"🎬 Reels pronto para postar: {post['tema']}"
+    passos = ("A Meta ainda não aceita vídeo pela API, então este vai por você:\n"
+              "1) Salve o vídeo no celular  2) Instagram → + → Reel → escolha o vídeo\n"
+              "3) Se quiser, ponha uma música em alta (volume baixo)  4) Cole a legenda abaixo e publique.")
+    saiu = []
+    tok, chat = os.environ.get("TELEGRAM_TOKEN"), None
+    try:
+        chat = _telegram_chat() if tok else None
+    except Exception as err:  # noqa: BLE001
+        print("aviso: sem chat do Telegram:", err)
+    if tok and chat:
+        try:
+            b = uuid.uuid4().hex
+            partes = []
+            for nome, valor in (("chat_id", str(chat)), ("caption", f"{titulo}\n\n{passos}"[:1000])):
+                partes.append(f"--{b}\r\nContent-Disposition: form-data; name=\"{nome}\"\r\n\r\n{valor}\r\n".encode())
+            partes.append(f"--{b}\r\nContent-Disposition: form-data; name=\"video\"; filename=\"reels.mp4\"\r\n"
+                          "Content-Type: video/mp4\r\n\r\n".encode() + video + f"\r\n--{b}--\r\n".encode())
+            req = urllib.request.Request(f"https://api.telegram.org/bot{tok}/sendVideo", data=b"".join(partes),
+                                         headers={"Content-Type": f"multipart/form-data; boundary={b}"})
+            urllib.request.urlopen(req, timeout=120).read()
+            dados = urllib.parse.urlencode({"chat_id": chat, "text": leg}).encode()   # legenda separada, fácil de copiar
+            urllib.request.urlopen(f"https://api.telegram.org/bot{tok}/sendMessage", dados, timeout=30).read()
+            saiu.append("Telegram")
+        except Exception as err:  # noqa: BLE001
+            print("aviso: Telegram não saiu:", err)
+    u, senha = os.environ.get("EMAIL_USUARIO"), (os.environ.get("EMAIL_SENHA_APP") or "").replace(" ", "")
+    if u and senha:
+        m = EmailMessage()
+        m["From"], m["To"], m["Subject"] = f"Turminha a Bordo <{u}>", os.environ.get("EMAIL_AVISAR") or u, titulo
+        m.set_content(f"{passos}\n\n--- LEGENDA ---\n\n{leg}\n")
+        m.add_attachment(video, maintype="video", subtype="mp4", filename=f"reels-{post['id']}.mp4")
+        try:
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ssl.create_default_context(), timeout=60) as srv:
+                srv.login(u, senha)
+                srv.send_message(m)
+            saiu.append("e-mail")
+        except Exception as err:  # noqa: BLE001
+            print("aviso: e-mail não saiu:", err)
+    return saiu
+
+
 # ---------------------------------------------------------------- principal
 def escolher(pauta: list[dict], feitos: dict, forcado: str | None) -> dict | None:
     if forcado:
@@ -346,6 +407,16 @@ def escolher(pauta: list[dict], feitos: dict, forcado: str | None) -> dict | Non
 
 def main():
     seco = "--seco" in sys.argv
+    if "--kit" in sys.argv:      # só manda o vídeo + legenda de um Reels para postar à mão (não publica nada)
+        post = next(p for p in estudio.carregar() if p["id"] == sys.argv[sys.argv.index("--kit") + 1])
+        pasta = estudio.gerar(post)
+        saiu = mandar_kit(post, pasta, estudio.legenda(post))
+        print("kit enviado por:", ", ".join(saiu) or "NENHUM canal (faltam os Secrets TELEGRAM_TOKEN/EMAIL_*)")
+        if saiu and MIDIA.exists():
+            e = estado()
+            e.setdefault("manuais", {})[post["id"]] = dict(data=HOJE.isoformat(), tema=post["tema"], via=saiu)
+            salvar_estado(e, f"kit manual {post['id']}")
+        return
     forcado = sys.argv[sys.argv.index("--id") + 1] if "--id" in sys.argv else None
     agora = datetime.now(ZoneInfo("America/Sao_Paulo"))
     if os.environ.get("GITHUB_EVENT_NAME") == "schedule" and not 18 <= agora.hour < 23 and not forcado:
@@ -357,7 +428,7 @@ def main():
     if hoje_ja and not forcado:
         print("Já saiu post hoje:", hoje_ja)
         return
-    post = escolher(estudio.carregar(), e["publicados"], forcado)
+    post = escolher(estudio.carregar(), {**e["publicados"], **e.get("manuais", {})}, forcado)
     if not post:
         print("Nada para publicar hoje (pauta acabou ou próximos posts são para os próximos dias).")
         return
@@ -375,9 +446,13 @@ def main():
     except IGErro as err:
         if post["formato"] != "reels" or forcado:
             raise
-        # o dia não fica sem post: o Reels volta para a fila e sai o próximo carrossel/post
-        print("ERRO no Reels — vou publicar o próximo post da pauta no lugar:", err)
-        outros = {k: v for k, v in e["publicados"].items()}
+        # o vídeo vai para o Tony postar pelo celular; no feed sai o próximo carrossel/post (o dia não fica sem post)
+        print("ERRO no Reels — mando o vídeo para postar à mão e publico o próximo post no lugar:", err)
+        saiu = mandar_kit(post, pasta, leg)
+        print("kit do Reels enviado por:", ", ".join(saiu) or "NENHUM canal (faltam os Secrets TELEGRAM_TOKEN/EMAIL_*)")
+        if saiu:     # não reenvia o mesmo Reels amanhã; o próximo Reels da pauta tenta a API de novo
+            e.setdefault("manuais", {})[post["id"]] = dict(data=HOJE.isoformat(), tema=post["tema"], via=saiu)
+        outros = {**e["publicados"], **e.get("manuais", {})}
         outros.update({p["id"]: 1 for p in estudio.carregar() if p["formato"] == "reels"})
         post = escolher(estudio.carregar(), outros, None)
         if not post:

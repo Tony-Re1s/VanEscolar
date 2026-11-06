@@ -1,4 +1,4 @@
-name: Instagram — diagnóstico Reels
+name: Instagram — Reels para postar à mão
 
 # Todo dia às 18h40 (Brasília) um agendamento do Claude dispara este workflow (workflow_dispatch) na hora certa.
 # O cron abaixo é só reserva (19h40): se o post do dia já saiu, não faz nada; se o GitHub atrasar e
@@ -48,7 +48,10 @@ jobs:
         env:
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
           NEON_URL: ${{ secrets.NEON_URL }}
-          IG_TOKEN_IG: ${{ secrets.IG_TOKEN_IG }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          EMAIL_USUARIO: ${{ secrets.EMAIL_USUARIO }}
+          EMAIL_SENHA_APP: ${{ secrets.EMAIL_SENHA_APP }}
+          EMAIL_AVISAR: ${{ secrets.EMAIL_AVISAR }}
         run: |
           if [ -z "$IG_TOKEN" ]; then echo "IG_TOKEN não configurado — nada a fazer."; exit 0; fi
-          if [ -n "${{ inputs.id }}" ]; then python marketing/instagram/diag_reels.py ${{ inputs.id }}; fi
+          if [ -n "${{ inputs.id }}" ]; then python marketing/instagram/publicar.py --kit ${{ inputs.id }}; fi

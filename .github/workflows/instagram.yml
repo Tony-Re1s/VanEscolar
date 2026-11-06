@@ -51,6 +51,10 @@ jobs:
           IG_TOKEN: ${{ secrets.IG_TOKEN }}
           NEON_URL: ${{ secrets.NEON_URL }}
           IG_TOKEN_IG: ${{ secrets.IG_TOKEN_IG }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          EMAIL_USUARIO: ${{ secrets.EMAIL_USUARIO }}
+          EMAIL_SENHA_APP: ${{ secrets.EMAIL_SENHA_APP }}
+          EMAIL_AVISAR: ${{ secrets.EMAIL_AVISAR }}
         run: |
           if [ -z "$IG_TOKEN" ]; then echo "IG_TOKEN não configurado — nada a fazer."; exit 0; fi
           if [ -n "${{ inputs.id }}" ]; then python marketing/instagram/publicar.py --id "${{ inputs.id }}"; else python marketing/instagram/publicar.py; fi
