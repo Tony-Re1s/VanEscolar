@@ -178,7 +178,23 @@
   "status": "pendente", "publicado_em": null
  },
  {
-  "id": "014", "data_sugerida": "2026-11-14", "dia": "sab", "formato": "post", "pilar": "afeto",
+  "id": "015", "data_sugerida": "2026-11-14", "dia": "sab", "formato": "carrossel", "pilar": "relacao-pais",
+  "tema": "Pai achou caro? Como mostrar o valor do seu serviço",
+  "slides": [
+   {"modelo": "capa", "selo": "🤝 Relação com os pais", "emoji": "💬", "titulo": "Pai achou *caro*? Mostre o seu valor", "texto": "Como responder sem baixar o preço (e sem climão)."},
+   {"modelo": "texto", "fundo": "claro", "emoji": "👂", "titulo": "Primeiro, *escute*", "texto": "Pergunte com calma: caro comparado a quê? Muitas vezes a dúvida é sobre o que está incluso, não sobre o preço."},
+   {"modelo": "lista", "fundo": "claro", "titulo": "Mostre o que *está incluso*", "itens": ["Busca na porta de casa", "Horário certinho todo dia", "Aviso na saída e na chegada", "Van revisada e documentos em dia", "Alguém que conhece a criança pelo nome"]},
+   {"modelo": "texto", "fundo": "claro", "emoji": "📲", "titulo": "Uma resposta *pronta*", "caixa": "Entendo! No valor estão a busca na porta, o horário certinho, os avisos de saída e chegada e a van sempre revisada. Posso te mandar tudo por escrito?"},
+   {"modelo": "texto", "fundo": "grad", "emoji": "💡", "titulo": "Baixar o preço *não é* a saída", "texto": "Se for flexibilizar, peça algo em troca: pagamento antecipado ou a indicação de outra família. Desconto sem troca vira o preço do ano que vem."},
+   {"modelo": "cta", "titulo": "Salve para a *próxima conversa*", "texto": "E mande para o tio ou tia que sempre acaba baixando o preço.", "botao": "Salvar e compartilhar 💛"}
+  ],
+  "legenda": "Tio e tia: o pai disse que a van está cara? Dá para responder sem baixar o preço. 🤝🚐\n\n1. Escute primeiro: caro comparado a quê?\n2. Mostre o que está incluso: busca na porta, horário certinho, avisos, van revisada e documentos em dia\n3. Tenha uma resposta pronta e educada\n4. Se for flexibilizar, peça algo em troca (pagamento antecipado ou indicação)\n\nO seu trabalho tem valor. Salve para a próxima conversa e conta: qual frase você mais ouve na renovação? 👇",
+  "hashtags": ["vanescolar", "transporteescolar", "tioescolar", "tiadavan", "motoristadevan"],
+  "story": {"selo": "Pergunta do dia", "emoji": "🤝", "titulo": "O que você responde quando dizem que *está caro*?", "pergunta": "Me conta a sua resposta 👇"},
+  "status": "pendente", "publicado_em": null
+ },
+ {
+  "id": "014", "data_sugerida": "2026-11-15", "dia": "dom", "formato": "post", "pilar": "afeto",
   "tema": "Frase de domingo: quem cuida do caminho",
   "slides": [
    {"modelo": "citacao", "fundo": "navy", "selo": "💛 Domingo", "texto": "Antes do sinal da escola tocar, *um tio já cuidou* do caminho.", "autor": "Turminha a Bordo"}
