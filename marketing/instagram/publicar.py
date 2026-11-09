@@ -9,6 +9,9 @@ Fluxo:
      e usa o link do jsDelivr (espelho público do GitHub) como endereço das mídias;
   4. cria o container na API (imagem, carrossel ou Reels), espera processar e publica; depois publica o story;
   5. registra em `estado.json` (no mesmo branch): id, data, link do post — assim nunca publica o mesmo post 2 vezes.
+  Reels: não tenta a API (a Meta recusa vídeo). O vídeo + legenda vão por Telegram/e-mail para o Tony postar
+  pelo celular, o Reels fica em `estado.json → manuais` e no feed sai o próximo post da pauta.
+  (Com --id <reels> ainda tenta a API, para testar se a Meta voltou a aceitar.)
 
 Variáveis (Secrets do repositório):
   IG_TOKEN   token de acesso do Instagram (longa duração, 60 dias)
@@ -439,6 +442,26 @@ def main():
         print(leg)
         print(sorted(f.name for f in pasta.iterdir()))
         return
+    if post["formato"] == "reels" and not forcado:
+        # Reels: a Meta recusa vídeo pela API, então nem tenta. O vídeo + legenda vão primeiro por Telegram/e-mail
+        # (antes de qualquer push no GitHub) para o Tony postar pelo celular; no feed sai o próximo post.
+        saiu = mandar_kit(post, pasta, leg)
+        print("kit do Reels enviado por:", ", ".join(saiu) or "NENHUM canal (faltam os Secrets TELEGRAM_TOKEN/EMAIL_*)")
+        if not saiu:
+            raise RuntimeError(f"Reels {post['id']}: o vídeo não saiu por Telegram nem por e-mail")
+        e.setdefault("manuais", {})[post["id"]] = dict(data=HOJE.isoformat(), tema=post["tema"], via=saiu)
+        try:
+            salvar_estado(e, f"kit manual {post['id']}")
+        except Exception as err:  # noqa: BLE001  (o estado é salvo de novo no fim, junto com o post do feed)
+            print("aviso: não salvei o estado agora:", err)
+        outros = {**e["publicados"], **e["manuais"]}
+        outros.update({p["id"]: 1 for p in estudio.carregar() if p["formato"] == "reels"})
+        post = escolher(estudio.carregar(), outros, None)
+        if not post:
+            print("Reels enviado para postar à mão; não há outro post pronto para o feed hoje.")
+            return
+        print("post:", post["id"], post["formato"], "—", post["tema"])
+        pasta, leg = estudio.gerar(post), estudio.legenda(post)
     urls = subir_midias(post, pasta)
     tok = token()
     try:
