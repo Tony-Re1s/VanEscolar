@@ -326,5 +326,111 @@
   "hashtags": ["vanescolar", "transporteescolar", "tioescolar", "tiadavan", "motoristadevan"],
   "story": {"selo": "Pergunta do dia", "emoji": "💛", "titulo": "Qual frase de criança da van você *nunca esqueceu*?", "pergunta": "Conta pra gente 👇"},
   "status": "pendente", "publicado_em": null
+ },
+ {
+  "id": "023", "data_sugerida": "2026-11-23", "dia": "seg", "formato": "carrossel", "pilar": "gestao",
+  "tema": "Reajuste para 2027: como anunciar o novo valor",
+  "slides": [
+   {"modelo": "capa", "selo": "💰 Gestão da van", "emoji": "📈", "titulo": "Reajuste para 2027: *como avisar* os pais", "texto": "O jeito certo de subir o valor sem susto e sem briga."},
+   {"modelo": "lista", "fundo": "claro", "titulo": "Antes, *faça a conta*", "itens": ["Combustível do ano", "Manutenção e pneus", "Seguro, vistoria e taxas", "O seu próprio salário"]},
+   {"modelo": "texto", "fundo": "claro", "emoji": "🗓️", "titulo": "Avise *com antecedência*", "texto": "O ideal é falar agora, antes da rematrícula. Assim cada família se planeja e ninguém é pego de surpresa em fevereiro."},
+   {"modelo": "texto", "fundo": "claro", "emoji": "📲", "titulo": "Uma mensagem *pronta*", "caixa": "Olá! Para 2027 a mensalidade passa a ser R$ ___. Os custos da van subiram e quero manter o mesmo cuidado de sempre. Qualquer dúvida, estou à disposição. Obrigado pela confiança! 💛"},
+   {"modelo": "texto", "fundo": "grad", "emoji": "💡", "titulo": "Mostre o que *você entrega*", "texto": "Pontualidade, van revisada, aviso de embarque. Quem vê o valor do serviço entende o valor da mensalidade."},
+   {"modelo": "cta", "titulo": "Salve para *a rematrícula*", "texto": "E mande para o colega que ainda não sabe quanto cobrar em 2027.", "botao": "Salvar e compartilhar 💛"}
+  ],
+  "legenda": "Tio e tia: já decidiu o valor da van para 2027? 📈🚐\n\nAntes de avisar, faça a conta: combustível, manutenção, pneus, seguro, vistoria, taxas e o seu salário.\n\n🗓️ Avise agora, antes da rematrícula\n📲 Use uma mensagem clara e educada (tem uma pronta no carrossel)\n💡 Lembre os pais de tudo o que você entrega além da viagem\n\nSalve para a rematrícula e conta: você vai reajustar este ano? 👇",
+  "hashtags": ["vanescolar", "transporteescolar", "tioescolar", "tiadavan", "motoristadevan"],
+  "story": {"selo": "Pergunta do dia", "emoji": "📈", "titulo": "Quando você *avisa os pais* do reajuste?", "pergunta": "Me conta 👇"},
+  "status": "pendente", "publicado_em": null
+ },
+ {
+  "id": "024", "data_sugerida": "2026-11-24", "dia": "ter", "formato": "reels", "pilar": "humor",
+  "tema": "Dia de chuva na van",
+  "cenas": [
+   {"emoji": "🌧️", "titulo": "Dia de\n*chuva*\nna van", "dur": 2.2, "fundo": "grad"},
+   {"emoji": "☂️", "titulo": "Um só\nguarda-chuva\npara *15 crianças*", "dur": 2.4, "fundo": "navy"},
+   {"emoji": "💦", "titulo": "A única poça\nda rua? Alguém\n*pulou dentro*", "dur": 2.4, "fundo": "grad"},
+   {"emoji": "🌫️", "titulo": "Vidro embaçado\ne a turma\n*desenhando nele*", "dur": 2.4, "fundo": "amarelo"},
+   {"emoji": "🚦", "titulo": "Trânsito\ndobrado e você\n*no horário*", "dur": 2.5, "fundo": "navy"}
+  ],
+  "fim": {"titulo": "Marca um tio ou tia da van 👇", "sub": "Turminha a Bordo", "botao": "Siga @turminha_abordo", "dur": 2.6},
+  "legenda": "Tio e tia: dia de chuva na van é outro esporte, né? 🌧️😂\n\n☂️ Um guarda-chuva para a turma inteira\n💦 A poça que ninguém consegue evitar\n🌫️ O vidro embaçado virando quadro de desenho\n🚦 E você chegando no horário mesmo assim\n\nQual dessas é a sua van? Conta aqui e marca um colega! 👇",
+  "hashtags": ["vanescolar", "transporteescolar", "tioescolar", "tiadavan", "motoristadevan"],
+  "story": {"selo": "Pergunta do dia", "emoji": "🌧️", "titulo": "Qual é o *maior perrengue* da van em dia de chuva?", "pergunta": "Conta pra gente 👇"},
+  "status": "pendente", "publicado_em": null
+ },
+ {
+  "id": "025", "data_sugerida": "2026-11-25", "dia": "qua", "formato": "carrossel", "pilar": "documentacao",
+  "tema": "Seguro da van escolar: os tipos e qual a prefeitura pede",
+  "slides": [
+   {"modelo": "capa", "selo": "📋 Regularização", "emoji": "🛡️", "titulo": "Seguro da van: *qual você precisa*?", "texto": "Os três tipos mais comuns, explicados sem complicação."},
+   {"modelo": "texto", "fundo": "claro", "emoji": "🧒", "titulo": "Seguro *APP*", "texto": "Acidentes Pessoais de Passageiros: cobre quem está dentro da van. Em muitas cidades, a prefeitura pede a apólice para o cadastro."},
+   {"modelo": "texto", "fundo": "claro", "emoji": "🚗", "titulo": "Seguro *RCF*", "texto": "Responsabilidade Civil: cobre danos que a van causar a terceiros, como outro carro ou uma pessoa na rua."},
+   {"modelo": "texto", "fundo": "claro", "emoji": "🚐", "titulo": "Seguro *da van*", "texto": "Cobre o seu veículo: batida, roubo, incêndio. É o que protege o seu ganha-pão."},
+   {"modelo": "lista", "fundo": "grad", "titulo": "Antes de *contratar*", "itens": ["Confirme na prefeitura o que é exigido", "Diga que a van é escolar", "Confira valores e lotação na apólice", "Anote o vencimento e renove antes"]},
+   {"modelo": "cta", "titulo": "Salve e *confira o seu*", "texto": "E mande para o colega que nunca leu a apólice.", "botao": "Salvar e compartilhar 💛"}
+  ],
+  "legenda": "Tio e tia: você sabe exatamente o que o seu seguro cobre? 🛡️🚐\n\n🧒 APP (Acidentes Pessoais de Passageiros): protege quem está dentro da van. Em muitas cidades a prefeitura pede a apólice no cadastro.\n🚗 RCF (Responsabilidade Civil): cobre danos a terceiros.\n🚐 Seguro do veículo: batida, roubo, incêndio.\n\nAs exigências mudam de cidade para cidade: confirme na prefeitura o que vale aí. E, na hora de contratar, avise que a van é escolar.\n\nSalve e conta: qual desses você já tem? 👇",
+  "hashtags": ["vanescolar", "transporteescolar", "tioescolar", "tiadavan", "motoristadevan"],
+  "story": {"selo": "Pergunta do dia", "emoji": "🛡️", "titulo": "Você já *leu a sua apólice* inteira?", "pergunta": "Sim, não, só a capa? 👇"},
+  "status": "pendente", "publicado_em": null
+ },
+ {
+  "id": "026", "data_sugerida": "2026-11-26", "dia": "qui", "formato": "carrossel", "pilar": "app",
+  "tema": "Área dos pais: o pai acompanha e o seu celular descansa",
+  "slides": [
+   {"modelo": "capa", "selo": "Para tios e tias", "emoji": "📵", "titulo": "Menos pergunta no seu *WhatsApp*", "texto": "“Já embarcou?”, “Qual a placa?”, “Cadê o contrato?”…"},
+   {"modelo": "lista", "fundo": "claro", "icone": "✕", "titulo": "O que *trava* a sua rota", "itens": ["Pai perguntando se embarcou", "Pedido do contrato de novo", "“Me passa seu número?”", "Responder tudo dirigindo"]},
+   {"modelo": "tela", "fundo": "claro", "titulo": "O pai *vê sozinho*", "texto": "Se embarcou, a van no mapa, o contrato assinado e a carteirinha com seus contatos.", "tela": "pai_full", "altura": 800, "topo": 120},
+   {"modelo": "lista", "fundo": "grad", "titulo": "Com o *Turminha*", "itens": ["Você marca a chamada", "O pai vê na hora", "Você só dirige"]},
+   {"modelo": "cta", "titulo": "Teste *30 dias* grátis", "texto": "Sem cartão. Direto no navegador do celular.", "botao": "Link na bio 👆"}
+  ],
+  "legenda": "Tio e tia: quantas vezes por dia você responde “já embarcou?” no WhatsApp? 📵🚐\n\nNo Turminha a Bordo o pai tem a área dele:\n✅ Vê quando a criança embarcou (é só você marcar a chamada)\n✅ Vê a van no mapa\n✅ Encontra o contrato assinado e a carteirinha com os seus contatos\n\nVocê dirige, o pai acompanha. Teste 30 dias grátis, sem cartão — link na bio.\n\nQual pergunta dos pais você mais responde por dia? 👇",
+  "hashtags": ["vanescolar", "transporteescolar", "tioescolar", "tiadavan", "motoristadevan"],
+  "story": {"selo": "Pergunta do dia", "emoji": "📲", "titulo": "Qual pergunta dos pais você *mais responde* por dia?", "pergunta": "Conta pra gente 👇"},
+  "status": "pendente", "publicado_em": null
+ },
+ {
+  "id": "027", "data_sugerida": "2026-11-27", "dia": "sex", "formato": "carrossel", "pilar": "relacao-pais",
+  "tema": "Grupo de WhatsApp dos pais: regras de convivência",
+  "slides": [
+   {"modelo": "capa", "selo": "🤝 Relação com os pais", "emoji": "💬", "titulo": "Grupo dos pais *sem dor de cabeça*", "texto": "Regras simples que deixam o grupo útil e você em paz."},
+   {"modelo": "lista", "fundo": "claro", "titulo": "As *regras* do grupo", "itens": ["Só avisos da van", "Horário para mensagens", "Assunto particular no privado", "Respostas só com a van parada"]},
+   {"modelo": "texto", "fundo": "claro", "emoji": "📌", "titulo": "Fixe uma *mensagem*", "caixa": "Bem-vindos! 💛 Este grupo é só para avisos da van. Respondo com a van parada, então posso demorar um pouquinho. Assuntos particulares, me chamem no privado. Obrigado!"},
+   {"modelo": "texto", "fundo": "claro", "emoji": "🙅", "titulo": "O que *não* entra", "texto": "Cobrança de mensalidade, reclamação sobre outra família e correntes. Isso resolve no privado, com calma."},
+   {"modelo": "texto", "fundo": "grad", "emoji": "💡", "titulo": "Seja *o exemplo*", "texto": "Avisos curtos, educados e no horário. Quando o grupo vê o seu capricho, todo mundo segue o mesmo tom."},
+   {"modelo": "cta", "titulo": "Salve e *fixe no grupo*", "texto": "E mande para o colega que tem grupo de 300 mensagens por dia.", "botao": "Salvar e compartilhar 💛"}
+  ],
+  "legenda": "Tio e tia: o grupo de WhatsApp dos pais está te ajudando ou te enlouquecendo? 💬🚐\n\nRegras simples resolvem:\n📌 Só avisos da van\n⏰ Horário para mensagens\n🔒 Assunto particular e cobrança no privado\n🚐 Resposta só com a van parada\n\nTem uma mensagem de boas-vindas pronta no carrossel, é só copiar e fixar.\n\nSalve e conta: qual regra você colocaria no seu grupo? 👇",
+  "hashtags": ["vanescolar", "transporteescolar", "tioescolar", "tiadavan", "motoristadevan"],
+  "story": {"selo": "Pergunta do dia", "emoji": "💬", "titulo": "Qual regra *não pode faltar* no grupo dos pais?", "pergunta": "Conta pra gente 👇"},
+  "status": "pendente", "publicado_em": null
+ },
+ {
+  "id": "028", "data_sugerida": "2026-11-28", "dia": "sab", "formato": "carrossel", "pilar": "pratico",
+  "tema": "Calor na van: como deixar a viagem mais fresca",
+  "slides": [
+   {"modelo": "capa", "selo": "🧰 Van caprichada", "emoji": "☀️", "titulo": "Van *fresquinha* no verão", "texto": "Cuidados simples que as crianças sentem e os pais notam."},
+   {"modelo": "lista", "fundo": "claro", "titulo": "Antes do *verão*", "itens": ["Revise o ar-condicionado", "Troque o filtro de cabine", "Confira as saídas de ar do fundo", "Cortina ou película permitida"]},
+   {"modelo": "lista", "fundo": "claro", "titulo": "No *dia a dia*", "itens": ["Estacione na sombra", "Abra as portas antes do embarque", "Ligue o ar alguns minutos antes", "Água sempre a bordo"]},
+   {"modelo": "texto", "fundo": "claro", "emoji": "🚪", "titulo": "No fim da *rota*", "texto": "Ande até o último banco e confira a van inteira antes de trancar. No calor, esse hábito é ainda mais importante."},
+   {"modelo": "texto", "fundo": "grad", "emoji": "📋", "titulo": "Película e *cortina*", "texto": "Há limites de escurecimento dos vidros e regras para van escolar. Confirme no Detran e na prefeitura antes de instalar."},
+   {"modelo": "cta", "titulo": "Salve para o *verão*", "texto": "E mande para o colega que vai trocar o filtro só em fevereiro.", "botao": "Salvar e compartilhar 💛"}
+  ],
+  "legenda": "Tio e tia: a sua van está pronta para o calor? ☀️🚐\n\nAntes do verão: revise o ar, troque o filtro de cabine e confira as saídas de ar do fundo.\nNo dia a dia: sombra, portas abertas antes do embarque, ar ligado uns minutos antes e água a bordo.\nNo fim da rota: confira a van inteira, até o último banco, antes de trancar.\n\nVai colocar película ou cortina? Confirme as regras no Detran e na prefeitura antes.\n\nSalve e conta: qual é o seu truque para a van não virar forno? 👇",
+  "hashtags": ["vanescolar", "transporteescolar", "tioescolar", "tiadavan", "motoristadevan"],
+  "story": {"selo": "Pergunta do dia", "emoji": "☀️", "titulo": "Qual é o seu *truque* para a van não virar forno?", "pergunta": "Conta pra gente 👇"},
+  "status": "pendente", "publicado_em": null
+ },
+ {
+  "id": "029", "data_sugerida": "2026-11-29", "dia": "dom", "formato": "post", "pilar": "afeto",
+  "tema": "Frase de domingo: a tranquilidade de cada família",
+  "slides": [
+   {"modelo": "citacao", "fundo": "grad", "selo": "💛 Domingo", "texto": "Você não leva só crianças. Leva a *tranquilidade* de cada família.", "autor": "A todos os tios e tias da van"}
+  ],
+  "legenda": "Toda manhã, alguém fecha o portão de casa e vai trabalhar em paz porque sabe que você está chegando. 🚐💛\n\nIsso não aparece no contrato, mas é o que o seu trabalho entrega todos os dias.\n\nBom domingo e bom descanso, turminha!\n\nMarca aqui um tio ou uma tia da van que merece ler isso 👇",
+  "hashtags": ["vanescolar", "transporteescolar", "tioescolar", "tiadavan", "motoristadevan"],
+  "story": {"selo": "Pergunta do dia", "emoji": "💛", "titulo": "O que te faz *gostar* de ser tio ou tia da van?", "pergunta": "Conta pra gente 👇"},
+  "status": "pendente", "publicado_em": null
  }
 ]
